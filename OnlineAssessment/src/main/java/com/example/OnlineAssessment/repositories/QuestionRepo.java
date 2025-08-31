@@ -9,7 +9,8 @@ import java.util.List;
 
 public interface QuestionRepo extends JpaRepository<Questions, Integer> {
 
-    // JPQL query (entity-based, not raw SQL)
-    @Query("SELECT q FROM Questions q WHERE q.quiz.quizId = :quizId")
-    List<Questions> findQuestionsByQuizId(@Param("quizId") int quizId);
+   
+	@Query("SELECT q FROM Questions q JOIN FETCH q.options WHERE q.quiz.quizId = :quizId")
+	List<Questions> findQuestionsByQuizId(@Param("quizId") int quizId);
+
 }

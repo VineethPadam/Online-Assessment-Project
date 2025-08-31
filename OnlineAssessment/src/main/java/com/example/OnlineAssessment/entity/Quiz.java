@@ -3,6 +3,8 @@ package com.example.OnlineAssessment.entity;
 import jakarta.persistence.*;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+
 @Entity
 public class Quiz {
     
@@ -15,6 +17,7 @@ public class Quiz {
     private Student student;
 
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
+    @JsonBackReference
     private List<Questions> questions;
 
     // Getters & Setters
