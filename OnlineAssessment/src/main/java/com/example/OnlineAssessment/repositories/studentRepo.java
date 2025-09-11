@@ -1,11 +1,13 @@
 package com.example.OnlineAssessment.repositories;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import com.example.OnlineAssessment.entity.Student;
 import java.util.Optional;
 
-public interface studentRepo extends JpaRepository<Student, String> {
+import org.springframework.data.jpa.repository.JpaRepository;
 
-    Optional<Student> findByStudentRollNumberAndStudentEmailAndDepartment(
-        String rollNumber, String email, String department);
+import com.example.OnlineAssessment.entity.Student;
+
+public interface studentRepo extends JpaRepository<Student, String> {
+	 Optional<Student> findByStudentRollNumberAndStudentEmailAndDepartmentAndStudentYear(
+		        String rollNumber, String email, String department, int Year
+		    );
 }

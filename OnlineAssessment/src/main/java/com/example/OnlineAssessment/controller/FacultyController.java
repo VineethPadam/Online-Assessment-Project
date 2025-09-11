@@ -9,28 +9,26 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.example.OnlineAssessment.entity.Student;
-import com.example.OnlineAssessment.service.StudentService;
+import com.example.OnlineAssessment.entity.Faculty;
+import com.example.OnlineAssessment.service.FacultyService;
 
 @RestController
-@RequestMapping("/student")
+@RequestMapping("/faculty")
 @CrossOrigin(origins = "*")
-public class StudentController {
+public class FacultyController {
 
     @Autowired
-    private StudentService studentService;
+    private FacultyService facultyService;
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validateStudent(@RequestBody Student student){
-        Student s = studentService.validateStudent(
-                student.getStudentRollNumber(),
-                student.getStudentEmail(),
-                student.getDepartment(),
-                student.getStudentYear()
+    public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty){
+        Faculty f = facultyService.validateFaculty(
+                faculty.getEmail(),
+                faculty.getDepartment()
         );
 
-        if(s != null){
-            return ResponseEntity.ok(s);
+        if(f != null){
+            return ResponseEntity.ok(f);
         } else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid Credentials");

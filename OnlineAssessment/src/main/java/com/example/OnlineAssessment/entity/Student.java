@@ -10,11 +10,11 @@ public class Student {
     private String studentRollNumber;
     private String studentName;
     private String studentSection;
-    private int studentYear;  // fixed lowercase
+    private int studentYear;
     private String studentEmail;
     private String department;
 
-    // getters & setters
+    // Getters & Setters
     public String getStudentRollNumber() { return studentRollNumber; }
     public void setStudentRollNumber(String studentRollNumber) { this.studentRollNumber = studentRollNumber; }
 

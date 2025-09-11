@@ -18,38 +18,23 @@ public class Questions {
     private String questionText;
 
     @ManyToOne
-    @JoinColumn(name = "quizId") // FK to Quiz
- 
+    @JoinColumn(name = "quizId")
     private Quiz quiz;
 
     @OneToOne(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     @JsonManagedReference
     private Options options;
 
-
     // Getters & Setters
-    public int getQuestionId() {
-        return questionId;
-    }
-    public void setQuestionId(int questionId) {
-        this.questionId = questionId;
-    }
-    public String getQuestionText() {
-        return questionText;
-    }
-    public void setQuestionText(String questionText) {
-        this.questionText = questionText;
-    }
-    public Quiz getQuiz() {
-        return quiz;
-    }
-    public void setQuiz(Quiz quiz) {
-        this.quiz = quiz;
-    }
-    public Options getOptions() {
-        return options;
-    }
-    public void setOptions(Options options) {
-        this.options = options;
-    }
+    public int getQuestionId() { return questionId; }
+    public void setQuestionId(int questionId) { this.questionId = questionId; }
+
+    public String getQuestionText() { return questionText; }
+    public void setQuestionText(String questionText) { this.questionText = questionText; }
+
+    public Quiz getQuiz() { return quiz; }
+    public void setQuiz(Quiz quiz) { this.quiz = quiz; }
+
+    public Options getOptions() { return options; }
+    public void setOptions(Options options) { this.options = options; }
 }
