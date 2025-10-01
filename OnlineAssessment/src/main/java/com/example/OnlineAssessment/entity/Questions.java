@@ -1,8 +1,8 @@
 package com.example.OnlineAssessment.entity;
 
 import com.fasterxml.jackson.annotation.JsonManagedReference;
-
 import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.Id;
@@ -14,7 +14,8 @@ import jakarta.persistence.OneToOne;
 public class Questions {
 
     @Id
-    private int questionId;
+    private String questionId;  // Updated to String
+    @Column(columnDefinition = "LONGTEXT")
     private String questionText;
 
     @ManyToOne
@@ -26,8 +27,8 @@ public class Questions {
     private Options options;
 
     // Getters & Setters
-    public int getQuestionId() { return questionId; }
-    public void setQuestionId(int questionId) { this.questionId = questionId; }
+    public String getQuestionId() { return questionId; }
+    public void setQuestionId(String questionId) { this.questionId = questionId; }
 
     public String getQuestionText() { return questionText; }
     public void setQuestionText(String questionText) { this.questionText = questionText; }

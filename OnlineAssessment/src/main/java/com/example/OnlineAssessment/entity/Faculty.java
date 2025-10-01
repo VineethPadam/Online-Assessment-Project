@@ -1,6 +1,9 @@
 package com.example.OnlineAssessment.entity;
+
+import java.util.List;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.OneToMany;
 
 @Entity
 public class Faculty {
@@ -10,6 +13,10 @@ public class Faculty {
     private String facultyName;
     private String email;
     private String department;
+    private String password;  // optional if login requires password
+
+    @OneToMany
+    private List<Quiz> quizzes;  // faculty quizzes
 
     // Getters & Setters
     public String getFacultyId() { return facultyId; }
@@ -23,4 +30,10 @@ public class Faculty {
 
     public String getDepartment() { return department; }
     public void setDepartment(String department) { this.department = department; }
+
+    public List<Quiz> getQuizzes() { return quizzes; }
+    public void setQuizzes(List<Quiz> quizzes) { this.quizzes = quizzes; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }

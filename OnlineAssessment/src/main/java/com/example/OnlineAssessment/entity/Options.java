@@ -1,13 +1,16 @@
 package com.example.OnlineAssessment.entity;
 
 import com.fasterxml.jackson.annotation.JsonBackReference;
-
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
+
+import java.util.Arrays;
+import java.util.List;
 
 @Entity
 public class Options {
@@ -26,6 +29,12 @@ public class Options {
     @JoinColumn(name = "question_id")
     @JsonBackReference
     private Questions question;
+
+    // --- Helper to return options as a list for frontend ---
+    @JsonProperty("optionsArray")
+    public List<String> getOptionsArray() {
+        return Arrays.asList(option1, option2, option3, option4);
+    }
 
     // Getters & Setters
     public int getId() { return id; }

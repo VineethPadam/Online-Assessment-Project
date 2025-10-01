@@ -1,52 +1,73 @@
 package com.example.OnlineAssessment.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.entity.Result;
 import com.example.OnlineAssessment.service.ResultService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @RestController
-@RequestMapping("/result")
+@RequestMapping("/results")
 @CrossOrigin(origins = "*")
 public class ResultController {
 
     @Autowired
     private ResultService resultService;
 
-    @GetMapping("/section-department")
-    public List<Result> getResultsBySectionAndDepartment(
+    private ObjectMapper objectMapper = new ObjectMapper();
+
+    // Submit quiz result
+    @PostMapping("/submit")
+    public Result submitResult(@RequestBody Map<String, Object> payload) throws Exception {
+        String rollNumber = (String) payload.get("rollNumber");
+        String quizId = (String) payload.get("quizId");
+
+        @SuppressWarnings("unchecked")
+        Map<String, String> answers = (Map<String, String>) (Map<?, ?>) payload.get("answers");
+
+        return resultService.evaluateAndSaveResult(rollNumber, quizId, answers);
+    }
+
+    // Get results by filter
+    @GetMapping("/filter")
+    public List<Result> getResultsByFilter(
             @RequestParam String section,
             @RequestParam String department,
-            @RequestParam(required=false) Integer quizId){
-        return resultService.getResultsBySectionAndDepartment(section, department, quizId);
+            @RequestParam String year,
+            @RequestParam String quizId) {
+        return resultService.getResultsByFilter(section, department, year, quizId);
     }
 
-    @GetMapping("/student/{rollNumber}")
-    public List<Result> getResultsByStudent(
+    // Get student results for a quiz
+    @GetMapping("/student")
+    public List<Result> getStudentResults(
+            @RequestParam String rollNumber,
+            @RequestParam String quizId) {
+        return resultService.getStudentResults(rollNumber, quizId);
+    }
+
+    // Check if student has already attempted a quiz
+    @GetMapping("/student/attempted")
+    public boolean hasStudentAttempted(
+            @RequestParam String rollNumber,
+            @RequestParam String quizId) {
+        return resultService.getStudentResults(rollNumber, quizId).size() > 0;
+    }
+
+    // ✅ New endpoint: fetch student's submitted answers
+    @GetMapping("/student/{rollNumber}/quiz/{quizId}/answers")
+    public Map<String, String> getStudentAnswers(
             @PathVariable String rollNumber,
-            @RequestParam(required=false) Integer quizId){
-        return resultService.getResultsByStudentRollNumber(rollNumber, quizId);
+            @PathVariable String quizId) throws Exception {
+
+        String jsonAnswers = resultService.getStudentAnswers(rollNumber, quizId);
+        Map<String, String> answersMap = objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {});
+        return answersMap;
     }
 
-    @PostMapping("/save")
-    public Result saveResult(@RequestBody Result result){
-        return resultService.saveResult(result);
-    }
-
-    // ✅ New endpoint to check if student already attempted quiz
-    @GetMapping("/attempted")
-    public boolean isQuizAttempted(@RequestParam String rollNumber, @RequestParam int quizId){
-        List<Result> results = resultService.getResultsByStudentRollNumber(rollNumber, quizId);
-        return !results.isEmpty();
-    }
 }

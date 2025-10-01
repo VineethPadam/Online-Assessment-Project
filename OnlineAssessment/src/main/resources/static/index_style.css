@@ -1,0 +1,143 @@
+:root {
+  --primary-color: #6a0dad;
+  --secondary-color: #ff6600;
+  --card-bg: #fff;
+  --card-shadow: rgba(0,0,0,0.2);
+  --card-hover: linear-gradient(135deg,#6a0dad,#ff6600);
+  --transition: all 0.4s ease;
+  --font-main: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ---------- BODY ---------- */
+body {
+  margin: 0;
+  font-family: var(--font-main);
+  background: linear-gradient(to right, #e0c3fc, #8ec5fc);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+/* ---------- PORTAL BOX ---------- */
+.portal-box {
+  background: #fff;
+  border-radius: 25px;
+  padding: 40px 30px;
+  width: 90%;
+  max-width: 900px;
+  text-align: center;
+  box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+}
+
+/* ---------- HEADER ---------- */
+.portal-header {
+  background-color: var(--primary-color);
+  color: #fff;
+  padding: 20px 30px;
+  border-radius: 20px;
+  margin-bottom: 25px;
+}
+
+.portal-header h1 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+}
+
+.portal-header h2 {
+  margin: 5px 0 0 0;
+  font-size: 15px;
+  font-weight: 400;
+  opacity: 0.9;
+}
+
+/* ---------- SECTION TITLE ---------- */
+.section-title {
+  font-size: 20px;
+  margin-bottom: 30px;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+/* ---------- ROLE CARDS ---------- */
+.card-container {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  gap: 30px;
+}
+
+.role-card {
+  flex: 1 1 30%;
+  max-width: 220px;
+  background-color: var(--card-bg);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 12px 25px var(--card-shadow);
+  cursor: pointer;
+  text-align: center;
+  transition: var(--transition);
+}
+
+.role-card:hover {
+  transform: translateY(-8px) scale(1.05);
+  background: var(--card-hover);
+  color: #fff;
+}
+
+.role-card .icon {
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.role-card h3 {
+  margin: 10px 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.role-card p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 0;
+}
+
+/* ---------- DASHBOARD CARDS ---------- */
+.dashboard-cards {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-top: 30px;
+}
+
+.dashboard-cards .role-card {
+  flex: 1 1 180px;
+  max-width: 200px;
+}
+
+/* Logout card pinned at bottom */
+.logout-btn {
+  margin-top: auto;
+  background: #f44336 !important;
+  color: #fff !important;
+}
+
+/* ---------- HIDDEN CLASS ---------- */
+.hidden {
+  display: none;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .card-container, .dashboard-cards {
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .role-card {
+    width: 90%;
+    max-width: 300px;
+  }
+}

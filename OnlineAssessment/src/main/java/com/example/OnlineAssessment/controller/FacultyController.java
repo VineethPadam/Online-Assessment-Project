@@ -1,16 +1,11 @@
 package com.example.OnlineAssessment.controller;
 
+import com.example.OnlineAssessment.entity.Faculty;
+import com.example.OnlineAssessment.service.FacultyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import com.example.OnlineAssessment.entity.Faculty;
-import com.example.OnlineAssessment.service.FacultyService;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/faculty")
@@ -20,6 +15,7 @@ public class FacultyController {
     @Autowired
     private FacultyService facultyService;
 
+    // ✅ Faculty login
     @PostMapping("/validate")
     public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty){
         Faculty f = facultyService.validateFaculty(
@@ -34,4 +30,7 @@ public class FacultyController {
                                  .body("Invalid Credentials");
         }
     }
+
+    // ✅ Optional: View all activations (faculty can check which quizzes are active)
+    // You can implement this by calling a QuizService method returning all QuizActivation entries
 }

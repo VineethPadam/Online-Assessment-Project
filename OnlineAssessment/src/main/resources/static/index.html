@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Online Assessment Portal</title>
+<link rel="stylesheet" href="index_style.css">
+<link rel="stylesheet" href="login_style.css">
+<link rel="stylesheet" href="student_style.css">
+<link rel="stylesheet" href="faculty_style.css">
+<link rel="stylesheet" href="admin_style.css">
+
+</head>
+<body>
+
+<div class="portal-box">
+
+  <!-- College Name + Subtitle -->
+  <div class="portal-header">
+    <h1>Madanapalle Institute of Technology and Science</h1>
+    <h2>Deemed to be University</h2>
+  </div>
+
+  <!-- Role Selection -->
+  <div id="roleSelection">
+	<div class="section-title"><h3>MITS ONLINE ASSESSMENT PORTAL</h3></div>
+    <div class="section-title">Select Your Role</div>
+	
+    <div class="card-container">
+      <div class="role-card" data-role="student">
+        <div class="icon">🎓</div>
+        <h3>Student</h3>
+        <p>Access quizzes, view results, and track progress.</p>
+      </div>
+      <div class="role-card" data-role="faculty">
+        <div class="icon">👨‍🏫</div>
+        <h3>Faculty</h3>
+        <p>Create quizzes, manage students, and monitor results.</p>
+      </div>
+      <div class="role-card" data-role="admin">
+		<div class="icon">🛡</div>
+        <h3>Admin</h3>
+        <p>System administration and full oversight.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---------- LOGIN FORM ---------- -->
+  <div id="loginSection">
+    <h3 class="login-title" id="loginTitle"></h3>
+    <div id="loginError"></div>
+
+    <!-- Student Fields -->
+    <div id="studentFields">
+      <input type="text" id="studentRoll" placeholder="Roll Number" class="login-input">
+      <input type="password" id="studentPassword" placeholder="Password" class="login-input">
+    </div>
+
+    <!-- Faculty Fields -->
+    <div id="facultyFields">
+      <input type="email" id="facultyEmail" placeholder="Email" class="login-input">
+      <input type="text" id="facultyDepartment" placeholder="Department" class="login-input">
+    </div>
+
+    <!-- Admin Fields -->
+    <div id="adminFields">
+      <input type="text" id="adminUsername" placeholder="Username" class="login-input">
+      <input type="password" id="adminPassword" placeholder="Password" class="login-input">
+    </div>
+
+    <button id="loginBtn" class="login-btn">Login</button>
+    <button id="backBtn" class="back-btn">Back</button>
+  </div>
+
+  <!-- ---------- DASHBOARD ---------- -->
+  <div id="dashboard" class="hidden">
+    <h3 id="welcomeMsg"></h3>
+
+    <!-- Student Dashboard -->
+    <div id="studentDashboard" class="dashboard-cards hidden">
+      <div class="role-card" id="takeQuizBtn">Take Quiz 🎯</div>
+      <div class="role-card" id="viewResultBtn">View My Result 📊</div>
+      <div class="role-card logout-btn" id="studentLogout">Logout 🔒</div>
+    </div>
+
+    <!-- Faculty Dashboard -->
+    <div id="facultyDashboard" class="dashboard-cards hidden">
+		<div id="uploadStudentBtn" class="role-card">Upload Student Excel 📁</div>
+		<div id="addQuizBtn" class="role-card">Add Quiz ➕</div>
+		<div id="activateQuizBtn" class="role-card">Activate Quiz ✅</div>
+		<div id="viewClassResultsBtn" class="role-card">View Class Results 📋</div>
+
+      <div class="role-card logout-btn" id="facultyLogout">Logout 🔒</div>
+    </div>
+
+    <!-- Admin Dashboard -->
+	<div id="adminDashboard" class="dashboard-cards hidden">
+	  <div class="role-card" id="uploadFacultyBtn">Upload/Update Faculty Details 📤</div>
+	  <div class="role-card" id="downloadFacultyBtn">Download Faculty Details 📥</div>
+	  <div class="role-card logout-btn" id="adminLogout">Logout 🔒</div>
+	</div>
+
+  </div>
+
+</div>
+
+<script src="login.js"></script>
+<script src="student.js"></script>
+<script src="faculty.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

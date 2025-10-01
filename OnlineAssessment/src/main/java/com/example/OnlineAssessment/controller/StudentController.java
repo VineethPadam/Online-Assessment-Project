@@ -3,11 +3,7 @@ package com.example.OnlineAssessment.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.entity.Student;
 import com.example.OnlineAssessment.service.StudentService;
@@ -20,13 +16,12 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
+    // Student login
     @PostMapping("/validate")
     public ResponseEntity<?> validateStudent(@RequestBody Student student){
         Student s = studentService.validateStudent(
                 student.getStudentRollNumber(),
-                student.getStudentEmail(),
-                student.getDepartment(),
-                student.getStudentYear()
+                student.getPassword()
         );
 
         if(s != null){
@@ -36,4 +31,6 @@ public class StudentController {
                                  .body("Invalid Credentials");
         }
     }
+    
+    
 }

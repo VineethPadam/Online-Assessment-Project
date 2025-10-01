@@ -1,7 +1,10 @@
 package com.example.OnlineAssessment.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
-
 import com.example.OnlineAssessment.entity.Options;
 
-public interface OptionsRepo extends JpaRepository<Options, Integer> { }
+public interface OptionsRepo extends JpaRepository<Options, Integer> {
+
+    // Fetch correct options for a question
+    Options findByQuestion_QuestionId(String questionId);
+}

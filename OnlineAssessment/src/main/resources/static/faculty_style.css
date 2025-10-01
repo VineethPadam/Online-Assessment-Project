@@ -1,0 +1,210 @@
+/* ---------- MODAL OVERLAY ---------- */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* ---------- MODAL CONTENT ---------- */
+.modal-content {
+  background: #fff;
+  padding: 25px;
+  border-radius: 15px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+  text-align: center;
+  position: relative;
+}
+
+.modal-content h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: #6a0dad;
+}
+
+/* ---------- MODAL INPUTS / SELECTS ---------- */
+.modal-content input[type="text"],
+.modal-content input[type="file"],
+.modal-content input[type="number"],
+.modal-content input[type="email"],
+.modal-content select {
+  width: 90%;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.modal-content select {
+  background: #fff;
+  cursor: pointer;
+}
+
+/* ---------- MODAL BUTTONS ---------- */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.modal-actions button {
+  padding: 8px 14px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.modal-actions button:hover {
+  opacity: 0.85;
+}
+
+.modal-actions button:first-child {
+  background: #ccc;
+  color: #333;
+}
+
+.modal-actions button:last-child {
+  background: #6a0dad;
+  color: #fff;
+}
+
+/* ---------- CLASS RESULTS SECTION ---------- */
+#classResultsSection {
+  margin-top: 30px;
+  width: 100%;
+  text-align: center;
+}
+
+.results-filters {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.results-filters select,
+.results-filters input[type="text"] {
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+}
+
+.results-filters button {
+  padding: 8px 14px;
+  border-radius: 6px;
+  border: none;
+  background: #6a0dad;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.results-filters button:hover {
+  opacity: 0.85;
+}
+
+/* ---------- RESULTS TABLE ---------- */
+.results-table {
+  width: 95%;
+  margin: 0 auto 15px auto;
+  border-collapse: collapse;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.results-table th,
+.results-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #ddd;
+  font-size: 14px;
+  text-align: center;
+}
+
+.results-table th {
+  background: #6a0dad;
+  color: #fff;
+  font-weight: 600;
+}
+
+.results-table tbody tr:nth-child(even) {
+  background: #f8f8f8;
+}
+
+/* ---------- DOWNLOAD / BACK BUTTONS ---------- */
+#downloadExcelBtn,
+#backToDashboard {
+  padding: 8px 16px;
+  margin: 5px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+#downloadExcelBtn {
+  background: #ff6600;
+  color: #fff;
+}
+
+#backToDashboard {
+  background: #ccc;
+  color: #333;
+}
+
+#downloadExcelBtn:hover,
+#backToDashboard:hover {
+  opacity: 0.85;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .results-filters {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .results-table {
+    font-size: 12px;
+  }
+
+  .modal-content {
+    width: 95%;
+  }
+}
+
+.modal-message {
+  margin-top: 12px;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.modal-message.success {
+  color: green;
+}
+
+.modal-message.error {
+  color: red;
+}
+
+.modal-message.info {
+  color: #333;
+}
+

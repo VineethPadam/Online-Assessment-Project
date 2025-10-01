@@ -2,17 +2,21 @@ package com.example.OnlineAssessment.entity;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 
 @Entity
+@Table(name = "student")
 public class Student {
 
     @Id
     private String studentRollNumber;
+
     private String studentName;
     private String studentSection;
     private int studentYear;
-    private String studentEmail;
     private String department;
+    private String studentEmail;
+    private String password;
 
     // Getters & Setters
     public String getStudentRollNumber() { return studentRollNumber; }
@@ -32,4 +36,7 @@ public class Student {
 
     public String getStudentEmail() { return studentEmail; }
     public void setStudentEmail(String studentEmail) { this.studentEmail = studentEmail; }
+
+    public String getPassword() { return password; }
+    public void setPassword(String password) { this.password = password; }
 }
