@@ -1,8 +1,6 @@
 package com.example.OnlineAssessment.service;
 
-import java.util.List;
-import java.util.Map;
-
+import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +31,6 @@ public class ResultService {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    // Evaluate score based on answers and save result (saves answers as JSON)
     public Result evaluateAndSaveResult(String rollNumber, String quizId, Map<String, String> answers) throws Exception {
         if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId)) {
             throw new RuntimeException("You have already attempted this quiz.");
@@ -49,11 +46,24 @@ public class ResultService {
 
         for (Map.Entry<String, String> entry : answers.entrySet()) {
             String questionId = entry.getKey();
-            String selectedOption = entry.getValue();
+            String selectedOptionStr = entry.getValue();
 
-            Options correctOption = optionsRepo.findByQuestion_QuestionId(questionId);
-            if (correctOption != null && correctOption.getCorrectOption().equalsIgnoreCase(selectedOption)) {
-                score++;
+            Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(questionId).orElse(null);
+            if (correctOptionObj != null) {
+                // Parse correct options as list
+                List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
+                        .map(String::trim)
+                        .toList();
+
+                // Parse selected options as list (comma-separated for multiple selection)
+                List<String> selectedOptions = Arrays.stream(selectedOptionStr.split(","))
+                        .map(String::trim)
+                        .toList();
+
+                // ✅ Award point only if sets match exactly
+                if (correctOptions.size() == selectedOptions.size() && correctOptions.containsAll(selectedOptions)) {
+                    score++;
+                }
             }
         }
 
@@ -61,24 +71,16 @@ public class ResultService {
         result.setStudent(student);
         result.setQuiz(quiz);
         result.setScore(score);
-
-        // Save answers as JSON string
-        String jsonAnswers = objectMapper.writeValueAsString(answers);
-        result.setAnswers(jsonAnswers);
+        result.setAnswers(objectMapper.writeValueAsString(answers));
 
         return resultRepo.save(result);
     }
 
-    // Fetch answers JSON for a student for a specific quiz
     public String getStudentAnswers(String rollNumber, String quizId) {
         Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
-        if (result != null) {
-            return result.getAnswers();
-        }
-        return "{}"; // empty map if not found
+        return result != null ? result.getAnswers() : "{}";
     }
 
-    // Existing methods
     public List<Result> getResultsByFilter(String section, String department, String year, String quizId) {
         return resultRepo.findResultsBySectionDepartmentYearAndQuiz(section, department, year, quizId);
     }

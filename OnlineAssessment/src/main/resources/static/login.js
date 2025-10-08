@@ -61,19 +61,25 @@ loginBtn.addEventListener("click", async () => {
         if(!roll || !pass) { loginError.textContent = "Please fill all fields!"; return; }
         payload = { studentRollNumber: roll, password: pass };
         url = "/student/validate";
+
     } else if(selectedRole === "faculty") {
         const email = document.getElementById("facultyEmail").value.trim();
-        const dept = document.getElementById("facultyDepartment").value.trim();
-        if(!email || !dept) { loginError.textContent = "Please fill all fields!"; return; }
-        payload = { email: email, department: dept };
+        const pass = document.getElementById("facultyPassword").value.trim(); // updated
+        if(!email || !pass) { loginError.textContent = "Please fill all fields!"; return; }
+        payload = { email: email, password: pass }; // updated payload
         url = "/faculty/validate";
+
     } else if(selectedRole === "admin") {
         const username = document.getElementById("adminUsername").value.trim();
         const password = document.getElementById("adminPassword").value.trim();
         if(!username || !password) { loginError.textContent = "Please fill all fields!"; return; }
         payload = { username: username, password: password };
         url = "/admin/validate";
-    } else { loginError.textContent = "Please select a role!"; return; }
+
+    } else { 
+        loginError.textContent = "Please select a role!"; 
+        return; 
+    }
 
     try {
         const res = await fetch(url, {

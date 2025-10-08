@@ -11,13 +11,15 @@ public class StudentService {
     @Autowired
     private studentRepo studentRepo;
 
-    // Login validation
+    // Case-sensitive login validation
     public Student validateStudent(String rollNumber, String password){
-        return studentRepo.findByStudentRollNumberAndPassword(rollNumber, password)
-                          .orElse(null);
+        Student student = studentRepo.findById(rollNumber).orElse(null);
+        if(student != null && student.getPassword().equals(password)){
+            return student; // exact match
+        }
+        return null;
     }
 
-    // Save student (used for Excel upload)
     public Student saveStudent(Student student) {
         return studentRepo.save(student);
     }

@@ -20,7 +20,7 @@ public class FacultyController {
     public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty){
         Faculty f = facultyService.validateFaculty(
                 faculty.getEmail(),
-                faculty.getDepartment()
+                faculty.getPassword()
         );
 
         if(f != null){

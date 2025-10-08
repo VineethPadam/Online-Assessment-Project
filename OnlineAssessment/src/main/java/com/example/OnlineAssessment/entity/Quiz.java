@@ -18,11 +18,7 @@ public class Quiz {
     @JsonBackReference
     private List<Questions> questions; // Questions associated with the quiz
 
-    // Optional: can map QuizActivation if needed
-    // @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
-    // private List<QuizActivation> activations;
-
-    // Getters & Setters
+   
     public String getQuizId() { return quizId; }
     public void setQuizId(String quizId) { this.quizId = quizId; }
 

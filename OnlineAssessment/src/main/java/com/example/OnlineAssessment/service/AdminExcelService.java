@@ -1,8 +1,6 @@
 package com.example.OnlineAssessment.service;
 
-import com.example.OnlineAssessment.entity.Admin;
 import com.example.OnlineAssessment.entity.Faculty;
-import com.example.OnlineAssessment.repositories.AdminRepo;
 import com.example.OnlineAssessment.repositories.FacultyRepo;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -11,44 +9,27 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.io.ByteArrayOutputStream;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class AdminExcelService {
 
-    private final AdminRepo adminRepo;
     private final FacultyRepo facultyRepo;
 
-    public AdminExcelService(AdminRepo adminRepo, FacultyRepo facultyRepo) {
-        this.adminRepo = adminRepo;
+    public AdminExcelService(FacultyRepo facultyRepo) {
         this.facultyRepo = facultyRepo;
     }
 
-    // Upload Admin Excel
-    public void uploadAdmins(MultipartFile file) throws Exception {
-        try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            for (int i = 1; i <= sheet.getLastRowNum(); i++) {
-                Row row = sheet.getRow(i);
-                if (row == null) continue;
-
-                String username = getCellValueAsString(row.getCell(0));
-                String password = getCellValueAsString(row.getCell(1));
-
-                if (username.isEmpty() || adminRepo.existsById(username)) continue;
-
-                Admin admin = new Admin();
-                admin.setUsername(username);
-                admin.setPassword(password);
-                adminRepo.save(admin);
-            }
-        }
-    }
-
-    // Upload Faculty Excel
+    // Upload or Update Faculty Excel
     public void uploadFaculty(MultipartFile file) throws Exception {
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             Sheet sheet = workbook.getSheetAt(0);
+
+            // Step 1: Collect all faculty IDs from Excel
+            Set<String> excelFacultyIds = new HashSet<>();
+
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
                 if (row == null) continue;
@@ -59,18 +40,32 @@ public class AdminExcelService {
                 String department = getCellValueAsString(row.getCell(3));
                 String password = getCellValueAsString(row.getCell(4));
 
-                if (facultyId.isEmpty() || facultyRepo.existsById(facultyId)) continue;
+                if (facultyId.isEmpty()) continue;
 
-                Faculty faculty = new Faculty();
+                excelFacultyIds.add(facultyId); // collect all IDs in Excel
+
+                // Find existing faculty or create new
+                Faculty faculty = facultyRepo.findById(facultyId).orElse(new Faculty());
                 faculty.setFacultyId(facultyId);
-                faculty.setFacultyName(name);
-                faculty.setEmail(email);
-                faculty.setDepartment(department);
-                faculty.setPassword(password);
+
+                if (!name.isEmpty()) faculty.setFacultyName(name);
+                if (!email.isEmpty()) faculty.setEmail(email);
+                if (!department.isEmpty()) faculty.setDepartment(department);
+                if (!password.isEmpty()) faculty.setPassword(password);
+
                 facultyRepo.save(faculty);
+            }
+
+            // Step 2: Delete faculties that are not present in Excel
+            List<Faculty> dbFaculties = facultyRepo.findAll();
+            for (Faculty f : dbFaculties) {
+                if (!excelFacultyIds.contains(f.getFacultyId())) {
+                    facultyRepo.delete(f);
+                }
             }
         }
     }
+
 
     // Generate Faculty Excel
     public byte[] generateFacultyExcel() throws Exception {
@@ -104,7 +99,7 @@ public class AdminExcelService {
         if (cell == null) return "";
         switch (cell.getCellType()) {
             case STRING: return cell.getStringCellValue().trim();
-            case NUMERIC: return String.valueOf((long)cell.getNumericCellValue());
+            case NUMERIC: return String.valueOf((long) cell.getNumericCellValue());
             case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
             case FORMULA: return cell.getCellFormula();
             default: return "";

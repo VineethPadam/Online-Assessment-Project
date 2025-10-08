@@ -1,13 +1,16 @@
 package com.example.NPTELAssignment;
 
-import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import com.example.OnlineAssessment.OnlineAssessmentApplication;
+
+import org.junit.jupiter.api.Test;
+
+@SpringBootTest(classes = OnlineAssessmentApplication.class) // <-- use your main class here
 class NptelAssignmentApplicationTests {
 
-	@Test
-	void contextLoads() {
-	}
-
+    @Test
+    void contextLoads() {
+        // This test just checks if Spring Boot context loads
+    }
 }

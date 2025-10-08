@@ -71,4 +71,11 @@ public class QuizController {
     public List<Questions> getQuestionsByQuizId(@PathVariable String quizId) {
         return questionService.getQuestionsByQuizId(quizId);
     }
+ // In QuizController
+    @GetMapping("/questions/{questionId}/is-multiple")
+    public boolean isQuestionMultiple(@PathVariable String questionId) {
+        return questionService.isMultiple(questionId);
+    }
+
 }
+

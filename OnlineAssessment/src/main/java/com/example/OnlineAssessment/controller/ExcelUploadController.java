@@ -54,7 +54,7 @@ public class ExcelUploadController {
         }
     }
 
-    @PostMapping("/admins")
+    /*@PostMapping("/admins")
     public ResponseEntity<String> uploadAdmins(@RequestParam("file") MultipartFile file){
         try{
             adminExcelService.uploadAdmins(file);
@@ -64,7 +64,7 @@ public class ExcelUploadController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                                  .body("Error: " + e.getMessage());
         }
-    }
+    }*/
 
     @PostMapping("/faculty")
     public ResponseEntity<String> uploadFaculty(@RequestParam("file") MultipartFile file){

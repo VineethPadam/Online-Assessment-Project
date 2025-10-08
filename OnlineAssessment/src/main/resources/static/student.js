@@ -1,20 +1,17 @@
 (() => {
     const takeQuizBtn = document.getElementById("takeQuizBtn");
     const viewResultBtn = document.getElementById("viewResultBtn");
-
+    const leftMenu = document.getElementById("leftMenu"); 
     let quizContainer = null;
     let studentRoll = "";
     let modal = null;
+    let lastModalContent = null;
 
-    // -------------------- SET STUDENT ROLL --------------------
-    window.setStudentRoll = (roll) => {
-        studentRoll = roll;
-    };
+    window.setStudentRoll = (roll) => studentRoll = roll;
 
-    // -------------------- CREATE MODAL --------------------
+    // -------------------- MODAL --------------------
     function createModal() {
         if (modal) return;
-
         modal = document.createElement("div");
         modal.id = "studentModal";
         modal.className = "modal hidden";
@@ -27,18 +24,37 @@
             </div>
         `;
         document.body.appendChild(modal);
-
         modal.querySelector("#modalClose").addEventListener("click", () => {
             modal.classList.add("hidden");
-            modal.querySelector("#modalBody").innerHTML = "";
-            modal.querySelector("#modalFooter").innerHTML = "";
+            if(leftMenu) leftMenu.style.display = "flex";
         });
+    }
+
+    function saveModalState() {
+        if (!modal) return;
+        lastModalContent = {
+            header: modal.querySelector("#modalHeader").innerHTML,
+            body: modal.querySelector("#modalBody").innerHTML,
+            footer: modal.querySelector("#modalFooter").innerHTML
+        };
+    }
+
+    function restoreModalState() {
+        if (!lastModalContent) return;
+        modal.querySelector("#modalHeader").innerHTML = lastModalContent.header;
+        modal.querySelector("#modalBody").innerHTML = lastModalContent.body;
+        modal.querySelector("#modalFooter").innerHTML = lastModalContent.footer;
+        modal.classList.remove("hidden");
+        lastModalContent = null;
+        if(leftMenu) leftMenu.style.display = "flex";
     }
 
     // -------------------- TAKE QUIZ --------------------
     takeQuizBtn.addEventListener("click", () => {
         if (!studentRoll) return alert("Please login first.");
+        if(leftMenu) leftMenu.style.display = "none";
         createModal();
+        saveModalState();
         openTakeQuizModal();
     });
 
@@ -68,19 +84,17 @@
                 ${["A","B","C","D","E","F","G","H","I","J"].map(s=>`<option value="${s}">${s}</option>`).join("")}
             </select>
         `;
-        modalFooter.innerHTML = `<button id="fetchQuizzesBtn" class="login-btn">Fetch Quizzes</button>`;
+        modalFooter.innerHTML = `<button class="login-btn" id="fetchQuizzesBtn">Fetch Quizzes</button>`;
         modal.classList.remove("hidden");
 
         document.getElementById("fetchQuizzesBtn").addEventListener("click", fetchQuizzes);
     }
 
-    // -------------------- FETCH QUIZZES --------------------
     async function fetchQuizzes() {
         const dept = document.getElementById("quizDept").value;
         const year = document.getElementById("quizYear").value;
         const section = document.getElementById("quizSection").value;
-
-        if (!dept || !year || !section) return alert("Please select Department, Year, and Section.");
+        if (!dept || !year || !section) return alert("Select all fields.");
 
         const modalHeader = modal.querySelector("#modalHeader");
         const modalBody = modal.querySelector("#modalBody");
@@ -93,9 +107,12 @@
 
             if (quizzes.length === 0) {
                 modalHeader.textContent = "No Activated Quizzes";
-                modalBody.innerHTML = "<p>No quizzes are currently activated for your selection.</p>";
+                modalBody.innerHTML = "<p>No quizzes are active for your selection.</p>";
                 modalFooter.innerHTML = `<button class="login-btn" id="modalOkBtn">OK</button>`;
-                document.getElementById("modalOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
+                document.getElementById("modalOkBtn").addEventListener("click", () => {
+                    modal.classList.add("hidden");
+                    if(leftMenu) leftMenu.style.display = "flex";
+                });
                 return;
             }
 
@@ -106,275 +123,261 @@
             quizzes.forEach(q => {
                 const li = document.createElement("li");
                 li.textContent = `${q.quiz.quizId} - ${q.quiz.quizName}`;
-                li.style.cursor = "pointer";
                 li.addEventListener("click", () => openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section));
                 quizListUL.appendChild(li);
             });
 
             modalFooter.innerHTML = "";
         } catch (err) {
-            alert("Error fetching quizzes: " + err.message);
+            alert("Error: " + err.message);
         }
     }
 
-    // -------------------- OPEN QUIZ --------------------
-    async function openQuiz(quizId, quizName, department, year, section) {
+    async function openQuiz(quizId, quizName, dept, year, section) {
         if (!studentRoll) return;
+        modal.classList.add("hidden");
 
         try {
-            const attemptRes = await fetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${quizId}`);
-            if (!attemptRes.ok) throw new Error(await attemptRes.text());
-            const attempted = await attemptRes.json();
-
-            if (attempted) {
-                createModal();
+            const attemptRes = await fetch(`/results/student?rollNumber=${studentRoll}&quizId=${quizId}`);
+            const attempts = await attemptRes.json();
+            if (attempts && attempts.length > 0) {
+                saveModalState();
                 const modalHeader = modal.querySelector("#modalHeader");
                 const modalBody = modal.querySelector("#modalBody");
                 const modalFooter = modal.querySelector("#modalFooter");
-
                 modalHeader.textContent = "⚠️ Quiz Already Attempted";
-                modalBody.innerHTML = "<p>You have already attempted this quiz. You cannot retake it.</p>";
-                modalFooter.innerHTML = `<button class="login-btn" id="okBtn">OK</button>`;
+                modalBody.innerHTML = `<p>You have already attempted this quiz on ${new Date(attempts[0].submittedAt).toLocaleString()}.</p>`;
+                modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
                 modal.classList.remove("hidden");
-
-                document.getElementById("okBtn").addEventListener("click", () => {
-                    modal.classList.add("hidden");
-                });
+                document.getElementById("closeModalBtn").addEventListener("click", () => restoreModalState());
                 return;
             }
-        } catch (err) {
-            alert("Error checking quiz attempt: " + err.message);
-            return;
-        }
 
-        try {
-            const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${department}&year=${year}&section=${section}`);
+            const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
             if (!res.ok) throw new Error(await res.text());
             const questions = await res.json();
-            if (!questions || questions.length === 0) return alert("No questions found for this quiz.");
+            if (!questions || questions.length === 0) return alert("No questions found");
 
-            modal.classList.add("hidden");
-            if (quizContainer) quizContainer.remove();
+            quizContainer?.remove();
             quizContainer = document.createElement("div");
-            quizContainer.id = "quizContainer";
-            quizContainer.className = "quiz-container show";
+            quizContainer.className = "overlay-center";
 
-            // Header
-            const header = document.createElement("div");
-            header.className = "quiz-header";
-            header.textContent = "MITS Online Quiz";
-            quizContainer.appendChild(header);
+            const inner = document.createElement("div");
+            inner.className = "quiz-container";
 
-            // Quiz Info
-            const infoGrid = document.createElement("div");
+            window.scrollTo({ top: 0, behavior: "auto" });
+
+            const header = document.createElement("div"); 
+            header.className = "quiz-header"; 
+            header.textContent = "MITS Online Quiz"; 
+            inner.appendChild(header);
+
+            const infoGrid = document.createElement("div"); 
             infoGrid.className = "quiz-info";
-            [
-                ["Quiz ID", quizId],
-                ["Quiz Name", quizName],
-                ["Roll Number", studentRoll],
-                ["Year", year],
-                ["Department", department],
-                ["Section", section]
-            ].forEach(([key, val]) => {
-                const div = document.createElement("div");
-                div.innerHTML = `<strong>${key}:</strong> ${val}`;
+            [["Quiz ID", quizId], ["Quiz Name", quizName], ["Roll Number", studentRoll], ["Year", year], ["Department", dept], ["Section", section]].forEach(([k, v]) => {
+                const div = document.createElement("div"); 
+                div.innerHTML = `<strong>${k}:</strong> ${v}`; 
                 infoGrid.appendChild(div);
             });
-            quizContainer.appendChild(infoGrid);
+            inner.appendChild(infoGrid);
 
-            // Questions
-            questions.forEach((q, idx) => {
-                const qDiv = document.createElement("div");
-                qDiv.className = "quiz-question";
-                qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
+            for (let idx = 0; idx < questions.length; idx++) {
+                const q = questions[idx];
+                const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
+                const isMultiple = (await multiRes.json());
 
-                const optsDiv = document.createElement("div");
-                optsDiv.className = "quiz-options";
+                const qDiv = document.createElement("div"); qDiv.className = "quiz-question";
+                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
+                const optsDiv = document.createElement("div"); optsDiv.className = "quiz-options";
 
-                const o = q.options || {};
-                ["option1", "option2", "option3", "option4"].forEach(optKey => {
-                    if (o[optKey]) {
-                        const label = document.createElement("label");
-                        label.className = "option-card";
-
-                        const input = document.createElement("input");
-                        input.type = "radio";
-                        input.name = q.questionId;
-                        input.value = optKey;
-
-                        input.addEventListener("change", () => {
-                            optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
-                            label.classList.add("selected");
-                        });
-
-                        label.appendChild(input);
-                        label.appendChild(document.createTextNode(o[optKey]));
-                        optsDiv.appendChild(label);
-                    }
+                ["option1","option2","option3","option4"].forEach(optKey => {
+                    if (!q.options[optKey]) return;
+                    const label = document.createElement("label"); 
+                    label.className = "option-card";
+                    label.style.whiteSpace = "pre-wrap";
+                    const input = document.createElement("input"); 
+                    input.type = isMultiple ? "checkbox" : "radio";
+                    input.name = q.questionId; input.value = optKey;
+                    input.addEventListener("change", () => {
+                        if (!isMultiple) optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
+                        label.classList.toggle("selected");
+                    });
+                    label.appendChild(input); 
+                    label.appendChild(document.createTextNode(q.options[optKey]));
+                    optsDiv.appendChild(label);
                 });
-
                 qDiv.appendChild(optsDiv);
-                quizContainer.appendChild(qDiv);
-            });
+                inner.appendChild(qDiv);
+            }
 
-            // Buttons
-            const btnDiv = document.createElement("div");
-            btnDiv.style.marginTop = "20px";
-
-            const submitBtn = document.createElement("button");
-            submitBtn.textContent = "Submit";
-            submitBtn.className = "login-btn";
+            const btnDiv = document.createElement("div"); btnDiv.style.marginTop = "20px";
+            const submitBtn = document.createElement("button"); submitBtn.className = "login-btn"; submitBtn.textContent = "Submit"; 
             submitBtn.addEventListener("click", submitQuiz);
-
-            const backBtn = document.createElement("button");
-            backBtn.textContent = "Back";
-            backBtn.className = "back-btn";
-            backBtn.addEventListener("click", () => {
-                quizContainer.remove();
+            const backBtn = document.createElement("button"); backBtn.className = "back-btn"; backBtn.textContent = "Back";
+            backBtn.addEventListener("click", () => { 
+                quizContainer.remove(); 
+                if(leftMenu) leftMenu.style.display = "flex";
+                restoreModalState(); 
             });
-
-            btnDiv.appendChild(submitBtn);
+            btnDiv.appendChild(submitBtn); 
             btnDiv.appendChild(backBtn);
-            quizContainer.appendChild(btnDiv);
+            inner.appendChild(btnDiv);
 
+            quizContainer.appendChild(inner);
             document.body.appendChild(quizContainer);
+            centerOverlay(quizContainer);
 
-        } catch (err) {
-            alert("Error opening quiz: " + err.message);
-        }
+        } catch (err) { alert("Error opening quiz: " + err.message); }
     }
 
-    // -------------------- SUBMIT QUIZ --------------------
     async function submitQuiz() {
-        if (!studentRoll) return;
-
         const answers = {};
         quizContainer.querySelectorAll(".quiz-question").forEach(qDiv => {
-            const selected = qDiv.querySelector("input:checked");
-            const qName = qDiv.querySelector("input")?.name;
-            if (qName) answers[qName] = selected ? selected.parentElement.textContent.trim() : "";
+            const qId = qDiv.querySelector("input")?.name;
+            if (!qId) return;
+            const selected = Array.from(qDiv.querySelectorAll("input:checked")).map(i => i.value).join(",");
+            answers[qId] = selected;
         });
-
         const quizId = quizContainer.querySelector(".quiz-info div").textContent.split(":")[1].trim();
-
         try {
-            const res = await fetch("/results/submit", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ rollNumber: studentRoll, quizId, answers })
-            });
-
+            const res = await fetch("/results/submit", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rollNumber: studentRoll, quizId, answers }) });
             if (!res.ok) throw new Error(await res.text());
 
+            quizContainer.remove();
             createModal();
-            const modalHeader = modal.querySelector("#modalHeader");
-            const modalBody = modal.querySelector("#modalBody");
-            const modalFooter = modal.querySelector("#modalFooter");
-
-            modalHeader.textContent = "🎉 Quiz Submitted Successfully!";
-            modalBody.innerHTML = "<p>Your answers have been submitted successfully.</p>";
-            modalFooter.innerHTML = `<button class="login-btn" id="okBtn">OK</button>`;
+            modal.querySelector("#modalHeader").textContent = "✅ Quiz Submitted Successfully!";
+            modal.querySelector("#modalBody").innerHTML = "<p>Your answers have been submitted.</p>";
+            modal.querySelector("#modalFooter").innerHTML = `<button class="back-btn" id="submitOkBtn">OK</button>`;
             modal.classList.remove("hidden");
+            document.getElementById("submitOkBtn").addEventListener("click", () => {
+                if(leftMenu) leftMenu.style.display = "flex";
+                restoreModalState();
+            });
 
-            document.getElementById("okBtn").addEventListener("click", () => modal.classList.add("hidden"));
-
-        } catch (err) {
-            alert("Error submitting quiz: " + err.message);
-        }
+        } catch (err) { alert("Error submitting: " + err.message); }
     }
 
-    // -------------------- VIEW RESULT + VIEW KEY --------------------
+    // -------------------- VIEW RESULT --------------------
     viewResultBtn.addEventListener("click", () => {
         if (!studentRoll) return alert("Please login first.");
+        if(leftMenu) leftMenu.style.display = "none";
         createModal();
+        saveModalState();
+        fetchResult();
+    });
+
+    async function fetchResult() {
         const modalHeader = modal.querySelector("#modalHeader");
         const modalBody = modal.querySelector("#modalBody");
         const modalFooter = modal.querySelector("#modalFooter");
 
-        modalHeader.textContent = "View Quiz Result";
-        modalBody.innerHTML = `<input id="resultQuizId" placeholder="Enter Quiz ID" class="login-input"/>`;
-        modalFooter.innerHTML = `<button class="login-btn" id="fetchResultBtn">Fetch Result</button>`;
+        modalHeader.textContent = "Enter Quiz ID";
+        modalBody.innerHTML = `<input type="text" id="resultQuizId" placeholder="Quiz ID" />`;
+        modalFooter.innerHTML = `<button class="login-btn" id="fetchResultBtn">View Result</button>`;
         modal.classList.remove("hidden");
 
         document.getElementById("fetchResultBtn").addEventListener("click", async () => {
             const quizId = document.getElementById("resultQuizId").value.trim();
-            if (!quizId) return alert("Please enter a Quiz ID");
+            if (!quizId) return alert("Enter Quiz ID.");
 
             try {
                 const res = await fetch(`/results/student?rollNumber=${studentRoll}&quizId=${quizId}`);
                 if (!res.ok) throw new Error(await res.text());
                 const results = await res.json();
-                if (results.length === 0) return alert("No results found for this quiz.");
+                if (!results || results.length === 0) { modalBody.innerHTML = "<p>No results found.</p>"; return; }
 
-                const result = results[0];
-                modalHeader.textContent = "Quiz Result";
-
+                const r = results[0];
                 modalBody.innerHTML = `
-                    <table class="result-table">
-                        <tr><th>Quiz ID</th><td>${result.quiz.quizId}</td></tr>
-                        <tr><th>Quiz Name</th><td>${result.quiz.quizName}</td></tr>
-                        <tr><th>Roll Number</th><td>${result.student.studentRollNumber}</td></tr>
-                        <tr><th>Score</th><td>${result.score}</td></tr>
-                    </table>
+                    <p><strong>Roll Number:</strong> ${studentRoll}</p>
+                    <p><strong>Quiz ID:</strong> ${r.quiz.quizId}</p>
+                    <p><strong>Quiz Name:</strong> ${r.quiz.quizName}</p>
+                    <p><strong>Score:</strong> ${r.score}</p>
+                    <button class="login-btn" id="viewKeyBtnResult">View Answer Key</button>
                 `;
+                document.getElementById("viewKeyBtnResult").addEventListener("click", () => viewAnswerKey(quizId, studentRoll));
 
-                modalFooter.innerHTML = `
-                    <button class="login-btn" id="viewKeyBtn">View Key</button>
-                    <button class="login-btn" id="okResultBtn">OK</button>
-                `;
+            } catch (err) { alert("Error fetching result: " + err.message); }
+        });
+    }
 
-                document.getElementById("okResultBtn").addEventListener("click", () => modal.classList.add("hidden"));
+    async function viewAnswerKey(quizId, rollNo) {
+        try {
+            const res = await fetch(`/answerkey/${quizId}/${rollNo}`);
+            if (!res.ok) throw new Error(await res.text());
+            const keyData = await res.json();
 
-                // -------------------- VIEW KEY --------------------
-                document.getElementById("viewKeyBtn").addEventListener("click", async () => {
-                    try {
-                        const keyRes = await fetch(`/answerkey/${quizId}/${studentRoll}`);
-                        if (!keyRes.ok) throw new Error(await keyRes.text());
-                        const keyData = await keyRes.json();
+            saveModalState();
+            modal.classList.add("hidden");
+            quizContainer?.remove();
 
-                        modalHeader.textContent = "Answer Key";
-                        modalBody.innerHTML = `<div class="key-container"></div>`;
-                        const keyContainer = modalBody.querySelector(".key-container");
+            quizContainer = document.createElement("div");
+            quizContainer.className = "overlay-center";
 
-                        keyData.forEach((q, idx) => {
-                            const qDiv = document.createElement("div");
-                            qDiv.className = "quiz-question";
-                            qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
+            const inner = document.createElement("div");
+            inner.className = "key-container";
+            window.scrollTo({ top: 0, behavior: "auto" });
 
-                            const optsDiv = document.createElement("div");
-                            optsDiv.className = "quiz-options";
+            const header = document.createElement("div");
+            header.className = "quiz-header";
+            header.textContent = "Answer Key";
+            inner.appendChild(header);
 
-                            ["option1", "option2", "option3", "option4"].forEach(optKey => {
-                                const optText = q[optKey];
-                                if (!optText) return;
+            keyData.forEach((q, idx) => {
+                const qDiv = document.createElement("div");
+                qDiv.className = "quiz-question";
+                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
+                const optsDiv = document.createElement("div");
+                optsDiv.className = "quiz-options";
 
-                                const div = document.createElement("div");
-                                div.className = "option-card key-card";
+                ["option1","option2","option3","option4"].forEach(optKey => {
+                    if (!q[optKey]) return;
+                    const label = document.createElement("label"); label.className = "option-card";
+                    label.style.whiteSpace = "pre-wrap";
 
-                                if (optText === q.correctOption && optText === q.selectedOption) div.classList.add("correct-selected");
-                                else if (optText === q.correctOption) div.classList.add("correct");
-                                else if (optText === q.selectedOption) div.classList.add("wrong-selected");
-                                else div.classList.add("not-attempted");
+                    const isSelected = q.selectedOption?.split(",").includes(optKey);
+                    const isCorrect = q.correctOption?.split(",").includes(optKey);
 
-                                div.textContent = optText;
-                                optsDiv.appendChild(div);
-                            });
+                    if (isSelected && isCorrect) label.classList.add("correct-selected");
+                    else if (isCorrect) label.classList.add("correct");
+                    else if (isSelected) label.classList.add("wrong-selected");
 
-                            qDiv.appendChild(optsDiv);
-                            keyContainer.appendChild(qDiv);
-                        });
-
-                        modalFooter.innerHTML = `<button class="login-btn" id="closeKeyBtn">Close</button>`;
-                        document.getElementById("closeKeyBtn").addEventListener("click", () => modal.classList.add("hidden"));
-
-                    } catch (err) {
-                        alert("Error fetching answer key: " + err.message);
-                    }
+                    label.textContent = q[optKey];
+                    optsDiv.appendChild(label);
                 });
 
-            } catch (err) {
-                alert("Error fetching result: " + err.message);
-            }
-        });
-    });
+                qDiv.appendChild(optsDiv);
+                inner.appendChild(qDiv);
+            });
+
+            const closeBtn = document.createElement("button");
+            closeBtn.className = "back-btn";
+            closeBtn.textContent = "Close";
+            closeBtn.addEventListener("click", () => {
+                quizContainer.remove();
+                modal.classList.remove("hidden");
+                restoreModalState();
+            });
+            inner.appendChild(closeBtn);
+
+            quizContainer.appendChild(inner);
+            document.body.appendChild(quizContainer);
+            centerOverlay(quizContainer);
+
+        } catch (err) { alert("Error fetching answer key: " + err.message); }
+    }
+
+    // -------------------- Helper to center overlay --------------------
+    function centerOverlay(overlay) {
+        overlay.style.display = "flex";
+        overlay.style.justifyContent = "center";
+        overlay.style.alignItems = "center";
+
+        const inner = overlay.firstChild;
+        if (inner.scrollHeight > window.innerHeight * 0.9) {
+            overlay.style.alignItems = "flex-start";
+            overlay.style.paddingTop = "20px";
+            overlay.style.paddingBottom = "20px";
+        }
+    }
+
 })();

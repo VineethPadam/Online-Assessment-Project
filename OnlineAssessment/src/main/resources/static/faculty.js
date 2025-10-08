@@ -208,6 +208,7 @@
         <select id="filterDepartment">
           <option value="">Select Department</option>
           <option value="CSE">CSE</option>
+		  <option value="CST">CST</option>
           <option value="ECE">ECE</option>
           <option value="ME">ME</option>
         </select>

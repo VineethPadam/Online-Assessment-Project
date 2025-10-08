@@ -15,8 +15,8 @@ public class AdminInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        String defaultUsername = "admin";
-        String defaultPassword = "admin123"; // Change to a secure password
+        String defaultUsername = "quiz_admin_mits";
+        String defaultPassword = "MITS@Quiz2025!"; // Change to a secure password
 
         // Check if the admin already exists
         if (!adminRepo.existsById(defaultUsername)) {
