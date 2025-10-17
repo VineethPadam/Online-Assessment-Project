@@ -5,6 +5,7 @@
   const addQuizBtn = document.getElementById("addQuizBtn");
   const activateQuizBtn = document.getElementById("activateQuizBtn");
   const viewClassResultsBtn = document.getElementById("viewClassResultsBtn");
+  const publishResultBtn = document.getElementById("publishResultBtn");
   const facultyLogout = document.getElementById("facultyLogout");
 
   // Container for dynamically injected sections
@@ -127,12 +128,12 @@
          <option value="B">B</option>
          <option value="C">C</option>
          <option value="D">D</option>
-		 <option value="E">E</option>
-		 <option value="F">F</option>
-		 <option value="G">G</option>
-		 <option value="H">H</option>
-		 <option value="I">I</option>
-		 <option value="J">J</option>
+         <option value="E">E</option>
+         <option value="F">F</option>
+         <option value="G">G</option>
+         <option value="H">H</option>
+         <option value="I">I</option>
+         <option value="J">J</option>
        </select>
 
        <select id="actDepartment">
@@ -180,6 +181,69 @@
     );
   });
 
+  // ===== Publish / Unpublish Result =====
+  publishResultBtn.addEventListener("click", () => {
+    createModal(
+      "Publish / Unpublish Result",
+      `<input type="text" id="pubQuizId" placeholder="Quiz ID">
+
+       <select id="pubSection">
+         <option value="">Select Section</option>
+         <option value="A">A</option>
+         <option value="B">B</option>
+         <option value="C">C</option>
+         <option value="D">D</option>
+       </select>
+
+       <select id="pubDepartment">
+         <option value="">Select Department</option>
+         <option value="CSE">CSE</option>
+         <option value="ECE">ECE</option>
+       </select>
+
+       <select id="pubYear">
+         <option value="">Select Year</option>
+         <option value="1">1</option>
+         <option value="2">2</option>
+         <option value="3">3</option>
+         <option value="4">4</option>
+       </select>
+
+       <select id="pubStatus">
+         <option value="true">Publish</option>
+         <option value="false">Unpublish</option>
+       </select>`,
+      (modal, overlay) => {
+        const quizId = modal.querySelector("#pubQuizId").value.trim();
+        const section = modal.querySelector("#pubSection").value;
+        const department = modal.querySelector("#pubDepartment").value;
+        const year = modal.querySelector("#pubYear").value;
+        const publish = modal.querySelector("#pubStatus").value;
+
+        if (!quizId || !section || !department || !year) {
+          showModalMessage(modal, "Please select all fields", "error");
+          return;
+        }
+
+        fetch(`/quiz/${quizId}/publish-result?section=${section}&department=${department}&year=${year}&publish=${publish}`, {
+          method: "POST"
+        })
+        .then(async res => {
+          if (!res.ok) {
+            // Get error message from backend
+            const msg = await res.text();
+            showModalMessage(modal, msg, "error");
+          } else {
+            const data = await res.json();
+            showModalMessage(modal, "Result status updated successfully!", "success");
+            setTimeout(() => document.body.removeChild(overlay), 2000);
+          }
+        })
+        .catch(err => showModalMessage(modal, "Error: " + err, "error"));
+      }
+    );
+  });
+
   // ===== View Class Results =====
   viewClassResultsBtn.addEventListener("click", () => {
     facultyDashboard.classList.add("hidden");
@@ -197,18 +261,18 @@
           <option value="B">B</option>
           <option value="C">C</option>
           <option value="D">D</option>
-		  <option value="E">E</option>
-		  <option value="F">F</option>
-		  <option value="G">G</option>
-		  <option value="H">H</option>
-		  <option value="I">I</option>
-		  <option value="J">J</option>
+          <option value="E">E</option>
+          <option value="F">F</option>
+          <option value="G">G</option>
+          <option value="H">H</option>
+          <option value="I">I</option>
+          <option value="J">J</option>
         </select>
 
         <select id="filterDepartment">
           <option value="">Select Department</option>
           <option value="CSE">CSE</option>
-		  <option value="CST">CST</option>
+          <option value="CST">CST</option>
           <option value="ECE">ECE</option>
           <option value="ME">ME</option>
         </select>
@@ -287,6 +351,7 @@
     });
   });
 
+  
   // ===== Logout =====
   facultyLogout.addEventListener("click", () => {
     location.reload();

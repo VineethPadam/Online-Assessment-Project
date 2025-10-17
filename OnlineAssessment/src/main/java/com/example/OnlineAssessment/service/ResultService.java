@@ -3,7 +3,6 @@ package com.example.OnlineAssessment.service;
 import java.util.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import com.example.OnlineAssessment.entity.Options;
 import com.example.OnlineAssessment.entity.Quiz;
 import com.example.OnlineAssessment.entity.Result;
@@ -29,8 +28,12 @@ public class ResultService {
     @Autowired
     private OptionsRepo optionsRepo;
 
+    @Autowired
+    private QuizService quizService;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
+    // Evaluate and save student result
     public Result evaluateAndSaveResult(String rollNumber, String quizId, Map<String, String> answers) throws Exception {
         if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId)) {
             throw new RuntimeException("You have already attempted this quiz.");
@@ -50,17 +53,14 @@ public class ResultService {
 
             Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(questionId).orElse(null);
             if (correctOptionObj != null) {
-                // Parse correct options as list
                 List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
                         .map(String::trim)
                         .toList();
 
-                // Parse selected options as list (comma-separated for multiple selection)
                 List<String> selectedOptions = Arrays.stream(selectedOptionStr.split(","))
                         .map(String::trim)
                         .toList();
 
-                // ✅ Award point only if sets match exactly
                 if (correctOptions.size() == selectedOptions.size() && correctOptions.containsAll(selectedOptions)) {
                     score++;
                 }
@@ -76,16 +76,33 @@ public class ResultService {
         return resultRepo.save(result);
     }
 
-    public String getStudentAnswers(String rollNumber, String quizId) {
-        Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
-        return result != null ? result.getAnswers() : "{}";
+    // Fetch student answers only if results are published
+    public List<Result> getStudentResults(String rollNumber, String quizId) {
+        Student student = studentRepo.findByStudentRollNumber(rollNumber)
+                .orElseThrow(() -> new RuntimeException("Student not found"));
+
+        boolean published = quizService.areResultsPublished(
+                quizId,
+                student.getStudentSection(),
+                student.getDepartment(),
+                student.getStudentYear()
+        );
+
+        if (!published) {
+            throw new RuntimeException("Results for this quiz are not yet published for your batch.");
+        }
+
+        return resultRepo.findResultsByStudentAndQuiz(rollNumber, quizId);
     }
 
+    // Fetch all results by filter
     public List<Result> getResultsByFilter(String section, String department, String year, String quizId) {
         return resultRepo.findResultsBySectionDepartmentYearAndQuiz(section, department, year, quizId);
     }
 
-    public List<Result> getStudentResults(String rollNumber, String quizId) {
-        return resultRepo.findResultsByStudentAndQuiz(rollNumber, quizId);
+    // Fetch raw student answers (for faculty view)
+    public String getStudentAnswers(String rollNumber, String quizId) {
+        Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
+        return result != null ? result.getAnswers() : "{}";
     }
 }

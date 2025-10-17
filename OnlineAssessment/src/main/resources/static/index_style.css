@@ -30,14 +30,56 @@ body {
   box-shadow: 0 15px 30px rgba(0,0,0,0.15);
 }
 
-/* ---------- HEADER ---------- */
 .portal-header {
-  background-color: var(--primary-color);
-  color: #fff;
+  display: flex;
+  justify-content: space-between;  /* space between logos */
+  align-items: center;
   padding: 20px 30px;
-  border-radius: 20px;
+  border-radius: 25px;
   margin-bottom: 25px;
+  background-color: #fff;
+  border: 3px solid var(--primary-color);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 800px;
+  margin-left: auto;
+  margin-right: auto;
 }
+
+/* College Logo */
+.portal-header img.college-logo {
+  width: auto;      /* keep original size */
+  height: 80px;     /* fixed height */
+  object-fit: contain;
+  border-radius: 10px;
+}
+/* Quiz Logo */
+.portal-header img.quiz-logo {
+  width: auto;      /* keep original size */
+  height: 130px;     /* same height as college logo */
+  object-fit: contain;
+  border-radius: 10px;
+}
+
+.portal-header img.college-logo {
+  /* Keep existing size settings */
+  width: 80%;           /* keep size as you already set */
+  max-width: 100%;      /* never exceed container width */
+  height: auto;         /* maintain aspect ratio */
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;       /* center in header */
+  /* NO extra border here */
+  border-radius: 10px;  /* optional, for smooth edges */
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .portal-header img.college-logo {
+    width: 90%; /* slightly bigger on small screens */
+  }
+}
+
 
 .portal-header h1 {
   margin: 0;
@@ -139,5 +181,9 @@ body {
   .role-card {
     width: 90%;
     max-width: 300px;
+  }
+
+  .portal-header {
+    justify-content: center; /* center on small screens */
   }
 }

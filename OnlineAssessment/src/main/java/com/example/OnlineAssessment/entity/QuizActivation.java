@@ -11,13 +11,14 @@ public class QuizActivation {
 
     @ManyToOne
     @JoinColumn(name = "quiz_id")
-    private Quiz quiz; // Reference to Quiz
+    private Quiz quiz;
 
-    private String section;     // Section for which quiz is active
-    private String department;  // Department for which quiz is active
-    private int year;           // Year for which quiz is active
+    private String section;     
+    private String department;  
+    private int year;           
 
-    private boolean active = false; // Default inactive
+    private boolean active = false;     // quiz can be attempted
+    private boolean published = false;  // results published for this batch
 
     // Getters & Setters
     public int getId() { return id; }
@@ -37,4 +38,7 @@ public class QuizActivation {
 
     public boolean isActive() { return active; }
     public void setActive(boolean active) { this.active = active; }
+
+    public boolean isPublished() { return published; }
+    public void setPublished(boolean published) { this.published = published; }
 }
