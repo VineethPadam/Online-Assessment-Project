@@ -105,4 +105,8 @@ public class ResultService {
         Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
         return result != null ? result.getAnswers() : "{}";
     }
+ // ✅ Check if student has attempted
+    public boolean hasAttemptedQuiz(String rollNumber, String quizId) {
+        return resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId);
+    }
 }

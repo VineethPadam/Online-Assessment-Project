@@ -51,12 +51,12 @@ public class ResultController {
         return resultService.getStudentResults(rollNumber, quizId);
     }
 
-    // Check if student has already attempted a quiz
+ // ✅ Check if student has already attempted
     @GetMapping("/student/attempted")
     public boolean hasStudentAttempted(
             @RequestParam String rollNumber,
             @RequestParam String quizId) {
-        return resultService.getStudentResults(rollNumber, quizId).size() > 0;
+        return resultService.hasAttemptedQuiz(rollNumber, quizId);
     }
 
     // ✅ New endpoint: fetch student's submitted answers

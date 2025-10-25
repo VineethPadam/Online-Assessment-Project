@@ -9,14 +9,23 @@
 
     window.setStudentRoll = (roll) => studentRoll = roll;
 
-    // -------------------- HELPER --------------------
+    // -------------------- HELPERS --------------------
     function hashString(str) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
             hash = ((hash << 5) - hash) + str.charCodeAt(i);
-            hash |= 0; // Convert to 32bit integer
+            hash |= 0;
         }
         return hash;
+    }
+
+    function mulberry32(a) {
+        return function() {
+            let t = a += 0x6D2B79F5;
+            t = Math.imul(t ^ t >>> 15, t | 1);
+            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+            return ((t ^ t >>> 14) >>> 0) / 4294967296;
+        }
     }
 
     function shuffleArray(array, seed = null) {
@@ -27,15 +36,6 @@
             [arr[i], arr[j]] = [arr[j], arr[i]];
         }
         return arr;
-    }
-
-    function mulberry32(a) {
-        return function() {
-            let t = a += 0x6D2B79F5;
-            t = Math.imul(t ^ t >>> 15, t | 1);
-            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-            return ((t ^ t >>> 14) >>> 0) / 4294967296;
-        }
     }
 
     function createModal() {
@@ -151,35 +151,33 @@
             quizzes.forEach(q => {
                 const li = document.createElement("li");
                 li.textContent = `${q.quiz.quizId} - ${q.quiz.quizName}`;
-
                 li.addEventListener("click", async () => {
-                    if (!studentRoll) return;
-
                     try {
-                        const attemptRes = await fetch(`/results/student?rollNumber=${studentRoll}&quizId=${q.quiz.quizId}`);
-                        const attempts = await attemptRes.json();
+                        const attemptedRes = await fetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${q.quiz.quizId}`);
+                        const alreadyAttempted = await attemptedRes.json(); // boolean
 
-                        if (attempts && attempts.length > 0) {
-                            saveModalState();
-                            modalHeader.textContent = "⚠️ Quiz Already Attempted";
-                            modalBody.innerHTML = `<p>You have already attempted this quiz on ${new Date(attempts[0].submittedAt).toLocaleString()}.</p>`;
-                            modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
-                            modal.classList.remove("hidden");
+						if (alreadyAttempted) {
+						    saveModalState();
+						    modalHeader.textContent = "⚠️ Quiz Already Attempted";
+						    modalBody.innerHTML = `<p>You have already attempted this quiz.</p>`;
+						    modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
+						    document.getElementById("closeModalBtn").addEventListener("click", () => {
+						        modal.classList.add("hidden");  // hide modal
+						        if (leftMenu) leftMenu.style.display = "flex";  // show main menu again
+						    });
+						    return;
+						}
 
-                            document.getElementById("closeModalBtn").addEventListener("click", () => restoreModalState());
-                            return;
-                        }
 
+                        // Open quiz
                         openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section);
 
                     } catch (err) {
                         alert("Error checking attempts: " + err.message);
                     }
                 });
-
                 quizListUL.appendChild(li);
             });
-
             modalFooter.innerHTML = "";
 
         } catch (err) {
@@ -187,6 +185,7 @@
         }
     }
 
+    // -------------------- OPEN QUIZ --------------------
     async function openQuiz(quizId, quizName, dept, year, section) {
         if (!studentRoll) return;
         modal.classList.add("hidden");
@@ -197,7 +196,6 @@
             let questions = await res.json();
             if (!questions || questions.length === 0) return alert("No questions found");
 
-            // 🔹 Deterministic shuffle per student
             const seed = hashString(studentRoll + quizId);
             questions = shuffleArray(questions, seed);
 
@@ -207,7 +205,6 @@
 
             const inner = document.createElement("div");
             inner.className = "quiz-container";
-
             window.scrollTo({ top: 0, behavior: "auto" });
 
             const header = document.createElement("div"); 
@@ -227,7 +224,7 @@
             for (let idx = 0; idx < questions.length; idx++) {
                 const q = questions[idx];
                 const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
-                const isMultiple = (await multiRes.json());
+                const isMultiple = await multiRes.json();
 
                 const qDiv = document.createElement("div"); 
                 qDiv.className = "quiz-question";
@@ -239,13 +236,12 @@
                 ["option1","option2","option3","option4"].forEach(optKey => {
                     if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
                 });
+                opts = shuffleArray(opts, seed + idx);
 
-                opts = shuffleArray(opts, seed + idx); // shuffle options deterministically per question
                 opts.forEach(opt => {
                     const label = document.createElement("label"); 
                     label.className = "option-card";
                     label.style.whiteSpace = "pre-wrap";
-
                     const input = document.createElement("input"); 
                     input.type = isMultiple ? "checkbox" : "radio";
                     input.name = q.questionId; 
@@ -271,14 +267,16 @@
             submitBtn.className = "login-btn"; 
             submitBtn.textContent = "Submit"; 
             submitBtn.addEventListener("click", submitQuiz);
+
             const backBtn = document.createElement("button"); 
             backBtn.className = "back-btn"; 
             backBtn.textContent = "Back";
-            backBtn.addEventListener("click", () => { 
-                quizContainer.remove(); 
-                if(leftMenu) leftMenu.style.display = "flex";
-                restoreModalState(); 
-            });
+			backBtn.addEventListener("click", () => { 
+			    quizContainer.remove(); 
+			    if (leftMenu) leftMenu.style.display = "flex";
+			    modal.classList.add("hidden");  // hide modal fully
+			});
+
             btnDiv.appendChild(submitBtn); 
             btnDiv.appendChild(backBtn);
             inner.appendChild(btnDiv);
@@ -289,6 +287,8 @@
 
         } catch (err) { alert("Error opening quiz: " + err.message); }
     }
+
+    // -------------------- SUBMIT QUIZ --------------------
     async function submitQuiz() {
         const answers = {};
         quizContainer.querySelectorAll(".quiz-question").forEach(qDiv => {
@@ -308,7 +308,6 @@
             if (!res.ok) throw new Error(await res.text());
 
             quizContainer.remove();
-
             modal.querySelector("#modalHeader").textContent = "✅ Quiz Submitted Successfully!";
             modal.querySelector("#modalBody").innerHTML = "<p>Your answers have been submitted.</p>";
             modal.querySelector("#modalFooter").innerHTML = `<button class="back-btn" id="submitOkBtn">OK</button>`;
@@ -345,33 +344,13 @@
 
         document.getElementById("fetchResultBtn").addEventListener("click", async () => {
             const quizId = document.getElementById("resultQuizId").value.trim();
-            if (!quizId) {
-                modalHeader.textContent = "⚠️ Invalid Input";
-                modalBody.innerHTML = "<p>Please enter a Quiz ID.</p>";
-                modalFooter.innerHTML = `<button class="back-btn" id="modalOkBtn">OK</button>`;
-                document.getElementById("modalOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
-                return;
-            }
+            if (!quizId) return alert("Please enter a Quiz ID.");
 
             try {
                 const res = await fetch(`/results/student?rollNumber=${studentRoll}&quizId=${quizId}`);
-                
-                if (!res.ok) {
-                    modalHeader.textContent = "⚠️ Quiz Not Found";
-                    modalBody.innerHTML = "<p>Invalid Quiz ID/Result not published. Please check and try again.</p>";
-                    modalFooter.innerHTML = `<button class="back-btn" id="modalOkBtn">OK</button>`;
-                    document.getElementById("modalOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
-                    return;
-                }
-
+                if (!res.ok) throw new Error("Quiz not found");
                 const results = await res.json();
-                if (!results || results.length === 0) {
-                    modalHeader.textContent = "⚠️ Result Not Published";
-                    modalBody.innerHTML = "<p>The result is not yet published by the faculty.</p>";
-                    modalFooter.innerHTML = `<button class="back-btn" id="modalOkBtn">OK</button>`;
-                    document.getElementById("modalOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
-                    return;
-                }
+                if (!results || results.length === 0) return alert("Result not published yet");
 
                 const r = results[0];
                 modalHeader.textContent = "Quiz Result";
@@ -386,86 +365,86 @@
                 document.getElementById("viewKeyBtnResult").addEventListener("click", () => viewAnswerKey(quizId, studentRoll));
 
             } catch (err) {
-                modalHeader.textContent = "⚠️ Error";
-                modalBody.innerHTML = `<p>${err.message}</p>`;
-                modalFooter.innerHTML = `<button class="back-btn" id="modalOkBtn">OK</button>`;
-                document.getElementById("modalOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
+                alert("Error: " + err.message);
             }
         });
     }
 
-    async function viewAnswerKey(quizId, rollNo) {
-        try {
-            const res = await fetch(`/answerkey/${quizId}/${rollNo}`);
-            if (!res.ok) throw new Error(await res.text());
-            const keyData = await res.json();
+	async function viewAnswerKey(quizId, rollNo) {
+	    try {
+	        const res = await fetch(`/answerkey/${quizId}/${rollNo}`);
+	        if (!res.ok) throw new Error(await res.text());
+	        const keyData = await res.json();
 
-            saveModalState();
-            modal.classList.add("hidden");
-            quizContainer?.remove();
+	        saveModalState();
+	        modal.classList.add("hidden");
+	        quizContainer?.remove();
 
-            quizContainer = document.createElement("div");
-            quizContainer.className = "overlay-center";
+	        quizContainer = document.createElement("div");
+	        quizContainer.className = "overlay-center";
 
-            const inner = document.createElement("div");
-            inner.className = "key-container";
-            window.scrollTo({ top: 0, behavior: "auto" });
+	        const inner = document.createElement("div");
+	        inner.className = "key-container";
+	        window.scrollTo({ top: 0, behavior: "auto" });
 
-            const header = document.createElement("div");
-            header.className = "quiz-header";
-            header.textContent = "Answer Key";
-            inner.appendChild(header);
+	        const header = document.createElement("div");
+	        header.className = "quiz-header";
+	        header.textContent = "Answer Key";
+	        inner.appendChild(header);
 
-            keyData.forEach((q, idx) => {
-                const qDiv = document.createElement("div");
-                qDiv.className = "quiz-question";
-                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
-                const optsDiv = document.createElement("div");
-                optsDiv.className = "quiz-options";
+	        keyData.forEach((q, idx) => {
+	            const qDiv = document.createElement("div");
+	            qDiv.className = "quiz-question";
+	            qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
+	            const optsDiv = document.createElement("div");
+	            optsDiv.className = "quiz-options";
 
-                ["option1","option2","option3","option4"].forEach(optKey => {
-                    if (!q[optKey]) return;
-                    const label = document.createElement("label"); 
-                    label.className = "option-card";
-                    label.style.whiteSpace = "pre-wrap";
+	            ["option1","option2","option3","option4"].forEach(optKey => {
+	                if (!q[optKey]) return;
+	                const label = document.createElement("label"); 
+	                label.className = "option-card";
+	                label.style.whiteSpace = "pre-wrap";
 
-                    const isSelected = q.selectedOption?.split(",").includes(optKey);
-                    const isCorrect = q.correctOption?.split(",").includes(optKey);
+	                const isSelected = q.selectedOption?.split(",").includes(optKey);
+	                const isCorrect = q.correctOption?.split(",").includes(optKey);
 
-                    if (isSelected && isCorrect) label.classList.add("correct-selected");
-                    else if (isCorrect) label.classList.add("correct");
-                    else if (isSelected) label.classList.add("wrong-selected");
+	                if (isSelected && isCorrect) label.classList.add("correct-selected");
+	                else if (isCorrect) label.classList.add("correct");
+	                else if (isSelected) label.classList.add("wrong-selected");
 
-                    label.textContent = q[optKey];
-                    optsDiv.appendChild(label);
-                });
+	                label.textContent = q[optKey];
+	                optsDiv.appendChild(label);
+	            });
 
-                qDiv.appendChild(optsDiv);
-                inner.appendChild(qDiv);
-            });
+	            qDiv.appendChild(optsDiv);
+	            inner.appendChild(qDiv);
+	        });
 
-            const closeBtn = document.createElement("button");
-            closeBtn.className = "back-btn";
-            closeBtn.textContent = "Close";
-            closeBtn.addEventListener("click", () => {
-                quizContainer.remove();
-                modal.classList.remove("hidden");
-                restoreModalState();
-            });
-            inner.appendChild(closeBtn);
+	        const closeBtn = document.createElement("button");
+	        closeBtn.className = "back-btn";
+	        closeBtn.textContent = "Close";
+			closeBtn.addEventListener("click", () => {
+			    quizContainer.remove();
+			    modal.classList.add("hidden");  // Hide the modal entirely
+			    if (leftMenu) leftMenu.style.display = "flex";  // show left menu again
+			});
 
-            quizContainer.appendChild(inner);
-            document.body.appendChild(quizContainer);
-            centerOverlay(quizContainer);
+	        inner.appendChild(closeBtn);
 
-        } catch (err) { alert("Error fetching answer key: " + err.message); }
-    }
+	        quizContainer.appendChild(inner);
+	        document.body.appendChild(quizContainer);
+	        centerOverlay(quizContainer);
+
+	    } catch (err) { 
+	        alert("Error fetching answer key: " + err.message); 
+	    }
+	}
+
 
     function centerOverlay(overlay) {
         overlay.style.display = "flex";
         overlay.style.justifyContent = "center";
         overlay.style.alignItems = "center";
-
         const inner = overlay.firstChild;
         if (inner.scrollHeight > window.innerHeight * 0.9) {
             overlay.style.alignItems = "flex-start";
@@ -473,5 +452,4 @@
             overlay.style.paddingBottom = "20px";
         }
     }
-
 })();
