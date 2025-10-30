@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Faculty Help - MITS Assessment Portal</title>
+  <link rel="stylesheet" href="faculty_help.css" />
+</head>
+<body>
+  <div class="help-container">
+    <button class="close-btn" onclick="window.close()">×</button>
+    <h2>Faculty Help Guide</h2>
+
+    <ul class="help-list">
+
+      <!-- 🟢 UPLOAD STUDENT EXCEL -->
+      <li>
+        <div class="section-header">
+          <button class="demo-btn">Upload Student Excel</button>
+        </div>
+        <div class="section-body">
+          <p>Upload the student details for your course using an <b>.xlsx</b> file.</p>
+          <ul>
+            <li>The Excel file must be in the following format:</li>
+          </ul>
+
+          <div class="table-wrapper">
+            <table>
+              <tr>
+                <th>student_roll_number</th>
+                <th>student_name</th>
+                <th>student_section</th>
+                <th>student_year</th>
+                <th>department</th>
+                <th>student_email</th>
+                <th>Password (Date of Birth)</th>
+              </tr>
+              <tr>
+                <td>23691A05O2</td>
+                <td>Vineeth Padam</td>
+                <td>D</td>
+                <td>3</td>
+                <td>CSE</td>
+                <td>23691A05O2@mits.ac.in</td>
+                <td>04-07-2005</td>
+              </tr>
+              <tr>
+                <td>23691A05Q4</td>
+                <td>Yashwanth Reddy Kovvuru</td>
+                <td>D</td>
+                <td>3</td>
+                <td>CSE</td>
+                <td>23691A05Q4@mits.ac.in</td>
+                <td>18-10-2004</td>
+              </tr>
+            </table>
+          </div>
+        </div>
+      </li>
+
+      <!-- 🟣 ADD QUIZ SECTION -->
+      <li>
+        <div class="section-header">
+          <button class="demo-btn">Add Quiz</button>
+        </div>
+
+        <div class="section-body">
+          <p>Create new quizzes with questions and multiple options using the Add Quiz feature.</p>
+
+          <ol class="steps">
+            <li>Click on the <b>Add Quiz</b> button to start creating a new quiz.</li>
+            <li>Enter the <b>Quiz ID</b> in the required format:</li>
+          </ol>
+
+          <div class="example-box">
+            <p><b>Example Quiz IDs:</b></p>
+            <ul>
+              <li><b>2305-JAVA-01</b> → Same question paper for all sections in a department.</li>
+              <li><b>2305A-FSDII-01</b> → Different question papers for different sections.</li>
+            </ul>
+          </div>
+
+          <div class="explanation-box">
+            <h4>Explanation of Quiz ID Format:</h4>
+            <ul>
+              <li><b>23</b> – Joining year of the student batch.</li>
+              <li><b>05</b> – Department code.</li>
+              <li><b>JAVA / FSDII</b> – Subject name.</li>
+              <li><b>01</b> – Assessment number (01 for Assessment-1, 02 for Assessment-2, etc.).</li>
+              <li><b>A</b> – Section identifier (used only if different papers for each section).</li>
+            </ul>
+          </div>
+
+          <ol start="3" class="steps">
+            <li>After entering the Quiz ID, click <b>Submit</b>.</li>
+            <li>Choose the <b>Excel file</b> of the question paper to upload.</li>
+            <li>The Excel must contain the following columns:</li>
+          </ol>
+
+          <div class="table-wrapper">
+            <table>
+              <tr>
+                <th>Q_ID</th>
+                <th>TEXT</th>
+                <th>Option1</th>
+                <th>Option2</th>
+                <th>Option3</th>
+                <th>Option4</th>
+                <th>Correctoption</th>
+              </tr>
+              <tr>
+                <td>2305A-JAVA-01-01</td>
+                <td>Which language is platform independent?</td>
+                <td>Java</td>
+                <td>C</td>
+                <td>C++</td>
+                <td>Python</td>
+                <td>option1</td>
+              </tr>
+              <tr>
+                <td>2305A-JAVA-01-02</td>
+                <td>Select multiple OOP languages:</td>
+                <td>Python</td>
+                <td>Java</td>
+                <td>C</td>
+                <td>C++</td>
+                <td>option1,option2,option4</td>
+              </tr>
+            </table>
+          </div>
+
+          <div class="note-box">
+            <h4>Note:</h4>
+            <ul>
+              <li>For <b>single correct answers</b>, use format: <b>option1</b>.</li>
+              <li>For <b>multiple correct answers</b>, use format: <b>option1,option3</b> (no spaces between commas).</li>
+              <li>Each question ID should follow the pattern <b>2305A-JAVA-01-01</b> (Quiz ID + Question No).</li>
+            </ul>
+          </div>
+        </div>
+      </li>
+
+      <!-- 🟡 ACTIVATE QUIZ -->
+      <li>
+        <div class="section-header">
+          <button class="demo-btn">Activate Quiz</button>
+        </div>
+
+        <div class="section-body">
+          <p>
+            Activate the quiz for specific <b>Department</b>, <b>Year</b>, and <b>Section</b> so that only those students can attempt it.
+          </p>
+          <ul>
+            <li>Enter the <b>Quiz ID</b> you created earlier.</li>
+            <li>Select the corresponding <b>Department</b>, <b>Year</b>, and <b>Section</b>.</li>
+            <li>Click on the <b>Activate</b> button to enable the quiz for those students.</li>
+          </ul>
+          <div class="example-box">
+            <p>Example:</p>
+            <p><b>Quiz ID:</b> 2305A-JAVA-01 → Activated for Department: CSE, Year: 3, Section: A</p>
+          </div>
+        </div>
+      </li>
+
+      <!-- 🔵 VIEW CLASS RESULTS -->
+      <li>
+        <div class="section-header">
+          <button class="demo-btn">View Class Results</button>
+        </div>
+
+        <div class="section-body">
+          <p>
+            Faculty can view quiz performance and student scores after completion of the quiz.
+          </p>
+          <ul>
+            <li>Select the <b>Quiz ID</b>, <b>Department</b>, and <b>Section</b>.</li>
+            <li>Click <b>View Results</b> to display the marks of each student.</li>
+            <li>Click the <b>Download</b> button to export results in <b>Excel format (.xlsx)</b>.</li>
+          </ul>
+          <div class="example-box">
+            <p>Example Result Columns:</p>
+            <ul>
+              <li><b>student_roll_number</b></li>
+              <li><b>student_name</b></li>
+              <li><b>Quiz Id</b></li>
+              <li><b>Score</b></li>
+            </ul>
+          </div>
+        </div>
+      </li>
+
+      <!-- 🔴 PUBLISH RESULT -->
+      <li>
+        <div class="section-header">
+          <button class="demo-btn">Publish Result</button>
+        </div>
+
+        <div class="section-body">
+          <p>
+            Until results are published, <b>students cannot view their marks or answer keys</b>.
+          </p>
+          <ul>
+            <li>After verifying all submissions and marks, click <b>Publish Result</b>.</li>
+            <li>Once published, students can see their <b>scores and correct answers</b>.</li>
+            <li>Ensure the correct quiz is selected before publishing.</li>
+          </ul>
+        </div>
+		<!-- ✳️ FOOTER NOTE -->
+		    <div class="footer-note">
+		      We hope this guide helped you to efficiently upload student data, create and activate quizzes, and publish results using the <b>MITS Assessment Portal</b>.
+			  <p style="text-align: center;"><strong>Thank you......</strong></p>
+
+		    </div>
+		
+      </li>
+    </ul>
+  </div>
+</body>
+</html>

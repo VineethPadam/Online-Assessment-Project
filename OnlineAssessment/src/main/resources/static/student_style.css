@@ -128,3 +128,28 @@
     .quiz-info { grid-template-columns:1fr 1fr; }
     .option-card { flex:1 1 100%; }
 }
+/* -------------------- Disable Print for Quiz -------------------- */
+@media print {
+  .quiz-container,
+  .key-container,
+  .modal,
+  .overlay-center {
+    display: none !important;
+  }
+}
+/* --- Keep student details fixed while scrolling --- */
+.quiz-info {
+    position: sticky;
+    top: 0;
+    background: #f8f0ff;
+    z-index: 10;
+}
+
+/* The scrollable questions area */
+.quiz-scroll {
+    overflow-y: auto;
+    flex-grow: 1;
+    padding: 10px;
+    max-height: 65vh; /* Adjust as needed */
+}
+

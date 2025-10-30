@@ -187,3 +187,33 @@ body {
     justify-content: center; /* center on small screens */
   }
 }
+.dashboard-header {
+  display: flex;
+  justify-content: flex-end;  /* 🔹 Pushes help icon fully to the right */
+  align-items: center;
+  margin-bottom: 25px;
+  padding: 0 15px;
+  position: relative;
+}
+/* ---------- FINAL OVERRIDE: TEXT-ONLY HELP ICON ---------- */
+.help-icon {
+  all: unset;  /* 💥 Resets all previous properties */
+  font-size: 17px;
+  font-weight: 600;
+  color: #007bff;
+  cursor: pointer;
+  animation: blink 1.2s infinite;
+  transition: color 0.3s, transform 0.2s;
+  margin-right: 10px;
+}
+
+.help-icon:hover {
+  color: #ff6600;
+  transform: scale(1.1);
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+

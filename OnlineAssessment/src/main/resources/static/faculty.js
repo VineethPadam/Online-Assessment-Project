@@ -357,6 +357,14 @@
       facultyDashboard.classList.remove("hidden");
     });
   });
+  //==========HELP==============================
+  /*document.getElementById("facultyHelp")?.addEventListener("click", () => {
+    const helpWindow = window.open(
+      "faculty_help.html",
+      "FacultyHelp",
+      "width=700,height=500,resizable=yes,scrollbars=yes"
+    );
+  });*/
 
   
   // ===== Logout =====

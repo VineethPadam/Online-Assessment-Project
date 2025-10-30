@@ -7,6 +7,10 @@
     let modal = null;
     let lastModalContent = null;
 
+    // ✅ Added global control variables
+    let examActive = false;
+    let blurCount = 0;
+
     window.setStudentRoll = (roll) => studentRoll = roll;
 
     // -------------------- HELPERS --------------------
@@ -54,7 +58,7 @@
         document.body.appendChild(modal);
         modal.querySelector("#modalClose").addEventListener("click", () => {
             modal.classList.add("hidden");
-            if(leftMenu) leftMenu.style.display = "flex";
+            if (leftMenu) leftMenu.style.display = "flex";
         });
     }
 
@@ -74,13 +78,13 @@
         modal.querySelector("#modalFooter").innerHTML = lastModalContent.footer;
         modal.classList.remove("hidden");
         lastModalContent = null;
-        if(leftMenu) leftMenu.style.display = "flex";
+        if (leftMenu) leftMenu.style.display = "flex";
     }
 
     // -------------------- TAKE QUIZ --------------------
     takeQuizBtn.addEventListener("click", () => {
         if (!studentRoll) return alert("Please login first.");
-        if(leftMenu) leftMenu.style.display = "none";
+        if (leftMenu) leftMenu.style.display = "none";
         createModal();
         saveModalState();
         openTakeQuizModal();
@@ -139,7 +143,7 @@
                 modalFooter.innerHTML = `<button class="login-btn" id="modalOkBtn">OK</button>`;
                 document.getElementById("modalOkBtn").addEventListener("click", () => {
                     modal.classList.add("hidden");
-                    if(leftMenu) leftMenu.style.display = "flex";
+                    if (leftMenu) leftMenu.style.display = "flex";
                 });
                 return;
             }
@@ -154,22 +158,20 @@
                 li.addEventListener("click", async () => {
                     try {
                         const attemptedRes = await fetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${q.quiz.quizId}`);
-                        const alreadyAttempted = await attemptedRes.json(); // boolean
+                        const alreadyAttempted = await attemptedRes.json();
 
-						if (alreadyAttempted) {
-						    saveModalState();
-						    modalHeader.textContent = "⚠️ Quiz Already Attempted";
-						    modalBody.innerHTML = `<p>You have already attempted this quiz.</p>`;
-						    modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
-						    document.getElementById("closeModalBtn").addEventListener("click", () => {
-						        modal.classList.add("hidden");  // hide modal
-						        if (leftMenu) leftMenu.style.display = "flex";  // show main menu again
-						    });
-						    return;
-						}
+                        if (alreadyAttempted) {
+                            saveModalState();
+                            modalHeader.textContent = "⚠️ Quiz Already Attempted";
+                            modalBody.innerHTML = `<p>You have already attempted this quiz.</p>`;
+                            modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
+                            document.getElementById("closeModalBtn").addEventListener("click", () => {
+                                modal.classList.add("hidden");
+                                if (leftMenu) leftMenu.style.display = "flex";
+                            });
+                            return;
+                        }
 
-
-                        // Open quiz
                         openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section);
 
                     } catch (err) {
@@ -190,11 +192,21 @@
         if (!studentRoll) return;
         modal.classList.add("hidden");
 
+        // ✅ ENTER FULLSCREEN MODE
+        enterFullScreen();
+
         try {
             const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
             if (!res.ok) throw new Error(await res.text());
             let questions = await res.json();
             if (!questions || questions.length === 0) return alert("No questions found");
+
+            // ✅ Tab protection setup
+            examActive = true;
+            blurCount = 0;
+            setupTabProtection();
+			disableCopy(); // 🚫 Disable copy, paste, right-click during quiz
+
 
             const seed = hashString(studentRoll + quizId);
             questions = shuffleArray(questions, seed);
@@ -221,45 +233,52 @@
             });
             inner.appendChild(infoGrid);
 
-            for (let idx = 0; idx < questions.length; idx++) {
-                const q = questions[idx];
-                const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
-                const isMultiple = await multiRes.json();
+			const scrollArea = document.createElement("div");
+			scrollArea.className = "quiz-scroll";
 
-                const qDiv = document.createElement("div"); 
-                qDiv.className = "quiz-question";
-                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
-                const optsDiv = document.createElement("div"); 
-                optsDiv.className = "quiz-options";
+			for (let idx = 0; idx < questions.length; idx++) {
+			    const q = questions[idx];
+			    const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
+			    const isMultiple = await multiRes.json();
 
-                let opts = [];
-                ["option1","option2","option3","option4"].forEach(optKey => {
-                    if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
-                });
-                opts = shuffleArray(opts, seed + idx);
+			    const qDiv = document.createElement("div");
+			    qDiv.className = "quiz-question";
+			    qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
 
-                opts.forEach(opt => {
-                    const label = document.createElement("label"); 
-                    label.className = "option-card";
-                    label.style.whiteSpace = "pre-wrap";
-                    const input = document.createElement("input"); 
-                    input.type = isMultiple ? "checkbox" : "radio";
-                    input.name = q.questionId; 
-                    input.value = opt.key;
+			    const optsDiv = document.createElement("div");
+			    optsDiv.className = "quiz-options";
 
-                    input.addEventListener("change", () => {
-                        if (!isMultiple) optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
-                        label.classList.toggle("selected");
-                    });
+			    let opts = [];
+			    ["option1", "option2", "option3", "option4"].forEach(optKey => {
+			        if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
+			    });
+			    opts = shuffleArray(opts, seed + idx);
 
-                    label.appendChild(input); 
-                    label.appendChild(document.createTextNode(opt.text));
-                    optsDiv.appendChild(label);
-                });
+			    opts.forEach(opt => {
+			        const label = document.createElement("label");
+			        label.className = "option-card";
+			        const input = document.createElement("input");
+			        input.type = isMultiple ? "checkbox" : "radio";
+			        input.name = q.questionId;
+			        input.value = opt.key;
 
-                qDiv.appendChild(optsDiv);
-                inner.appendChild(qDiv);
-            }
+			        input.addEventListener("change", () => {
+			            if (!isMultiple)
+			                optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
+			            label.classList.toggle("selected");
+			        });
+
+			        label.appendChild(input);
+			        label.appendChild(document.createTextNode(opt.text));
+			        optsDiv.appendChild(label);
+			    });
+
+			    qDiv.appendChild(optsDiv);
+			    scrollArea.appendChild(qDiv);
+			}
+
+			inner.appendChild(scrollArea);
+
 
             const btnDiv = document.createElement("div"); 
             btnDiv.style.marginTop = "20px";
@@ -271,11 +290,46 @@
             const backBtn = document.createElement("button"); 
             backBtn.className = "back-btn"; 
             backBtn.textContent = "Back";
-			backBtn.addEventListener("click", () => { 
-			    quizContainer.remove(); 
-			    if (leftMenu) leftMenu.style.display = "flex";
-			    modal.classList.add("hidden");  // hide modal fully
+			backBtn.addEventListener("click", () => {
+			    // Create a confirmation overlay instead of alert
+			    const overlay = document.createElement("div");
+			    overlay.style.position = "fixed";
+			    overlay.style.top = "0";
+			    overlay.style.left = "0";
+			    overlay.style.width = "100%";
+			    overlay.style.height = "100%";
+			    overlay.style.background = "rgba(0,0,0,0.6)";
+			    overlay.style.display = "flex";
+			    overlay.style.flexDirection = "column";
+			    overlay.style.alignItems = "center";
+			    overlay.style.justifyContent = "center";
+			    overlay.style.zIndex = "10000";
+			    overlay.innerHTML = `
+			        <div style="background:white; padding:20px; border-radius:12px; text-align:center; width:350px; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
+			            <p style="font-size:16px; margin-bottom:20px;">⚠️ Are you sure you want to exit the quiz?<br><br>Your progress will be lost.</p>
+			            <div style="display:flex; justify-content:space-between; gap:10px;">
+			                <button id="continueExamBtn" class="login-btn" style="flex:1;">Continue Exam</button>
+			                <button id="exitExamBtn" class="back-btn" style="flex:1;">Submit & Exit</button>
+			            </div>
+			        </div>
+			    `;
+			    document.body.appendChild(overlay);
+
+			    // Continue Exam
+			    document.getElementById("continueExamBtn").addEventListener("click", () => {
+			        overlay.remove();
+			        enterFullScreen(); // Works fine because user clicked it
+			    });
+
+			    // Exit and Submit
+			    document.getElementById("exitExamBtn").addEventListener("click", () => {
+			        overlay.remove();
+			        examActive = false;
+			        removeTabProtection();
+			        submitQuiz();
+			    });
 			});
+
 
             btnDiv.appendChild(submitBtn); 
             btnDiv.appendChild(backBtn);
@@ -289,44 +343,138 @@
     }
 
     // -------------------- SUBMIT QUIZ --------------------
-    async function submitQuiz() {
-        const answers = {};
-        quizContainer.querySelectorAll(".quiz-question").forEach(qDiv => {
-            const qId = qDiv.querySelector("input")?.name;
-            if (!qId) return;
-            const selected = Array.from(qDiv.querySelectorAll("input:checked")).map(i => i.value).join(",");
-            answers[qId] = selected;
-        });
+	// -------------------- SUBMIT QUIZ --------------------
+	async function submitQuiz() {
+	    // ✅ Stop exam protection and fullscreen
+	    examActive = false;
+	    removeTabProtection();
+	    enableCopy(); // ✅ Re-enable copy/paste after quiz ends
 
-        const quizId = quizContainer.querySelector(".quiz-info div").textContent.split(":")[1].trim();
-        try {
-            const res = await fetch("/results/submit", { 
-                method: "POST", 
-                headers: { "Content-Type": "application/json" }, 
-                body: JSON.stringify({ rollNumber: studentRoll, quizId, answers }) 
-            });
-            if (!res.ok) throw new Error(await res.text());
+	    // ✅ Remove any leftover "continue exam" overlays
+	    document.querySelectorAll("#continueExamBtn, #exitExamBtn").forEach(btn => {
+	        const overlay = btn.closest("div[style*='position: fixed']");
+	        if (overlay) overlay.remove();
+	    });
 
-            quizContainer.remove();
-            modal.querySelector("#modalHeader").textContent = "✅ Quiz Submitted Successfully!";
-            modal.querySelector("#modalBody").innerHTML = "<p>Your answers have been submitted.</p>";
-            modal.querySelector("#modalFooter").innerHTML = `<button class="back-btn" id="submitOkBtn">OK</button>`;
-            modal.classList.remove("hidden");
+	    const answers = {};
+	    quizContainer?.querySelectorAll(".quiz-question").forEach(qDiv => {
+	        const qId = qDiv.querySelector("input")?.name;
+	        if (!qId) return;
+	        const selected = Array.from(qDiv.querySelectorAll("input:checked"))
+	            .map(i => i.value)
+	            .join(",");
+	        answers[qId] = selected;
+	        localStorage.removeItem("quizState");
+	    });
 
-            document.getElementById("submitOkBtn").addEventListener("click", () => {
-                if (leftMenu) leftMenu.style.display = "flex";
-                modal.classList.add("hidden");
-            });
+	    const quizId = quizContainer?.querySelector(".quiz-info div")?.textContent.split(":")[1].trim();
+	    try {
+	        const res = await fetch("/results/submit", {
+	            method: "POST",
+	            headers: { "Content-Type": "application/json" },
+	            body: JSON.stringify({ rollNumber: studentRoll, quizId, answers })
+	        });
+	        if (!res.ok) throw new Error(await res.text());
 
-        } catch (err) {
-            alert("Error submitting: " + err.message);
+	        quizContainer?.remove();
+	        if (document.fullscreenElement) document.exitFullscreen();
+
+	        // ✅ Show only final success modal
+	        modal.querySelector("#modalHeader").textContent = "✅ Quiz Submitted Successfully!";
+	        modal.querySelector("#modalBody").innerHTML = "<p>Your answers have been submitted.</p>";
+	        modal.querySelector("#modalFooter").innerHTML = `<button class="back-btn" id="submitOkBtn">OK</button>`;
+	        modal.classList.remove("hidden");
+
+	        document.getElementById("submitOkBtn").addEventListener("click", () => {
+	            if (leftMenu) leftMenu.style.display = "flex";
+	            modal.classList.add("hidden");
+	        });
+
+	    } catch (err) {
+	        alert("Error submitting: " + err.message);
+	    }
+	}
+
+
+    // -------------------- TAB PROTECTION --------------------
+    function setupTabProtection() {
+        removeTabProtection();
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleWindowBlur);
+    }
+
+    function removeTabProtection() {
+        document.removeEventListener("visibilitychange", handleVisibilityChange);
+        window.removeEventListener("blur", handleWindowBlur);
+    }
+
+    function handleVisibilityChange() {
+        if (document.hidden && examActive) {
+            blurCount++;
+            if (blurCount >= 2) {
+                alert("🚨 You switched tabs too many times! Submitting quiz...");
+                examActive = false;
+                removeTabProtection();
+                submitQuiz();
+            } else {
+                alert(`⚠️ Warning ${blurCount}/2: Don’t switch tabs or minimize.`);
+            }
         }
     }
+
+    function handleWindowBlur() {
+        if (!examActive) return;
+        setTimeout(() => {
+            if (!document.hidden && examActive) return;
+            blurCount++;
+            if (blurCount >= 5) {
+                alert("🚨 You switched tabs too many times! Submitting quiz...");
+                examActive = false;
+                removeTabProtection();
+                submitQuiz();
+            }
+        }, 300);
+    }
+
+	// -------------------- COPY / PASTE PROTECTION --------------------
+	function disableCopy() {
+	    document.addEventListener("copy", blockEvent);
+	    document.addEventListener("cut", blockEvent);
+	    document.addEventListener("paste", blockEvent);
+	    document.addEventListener("contextmenu", blockEvent);
+	    document.addEventListener("selectstart", blockEvent);
+	    document.addEventListener("keydown", blockKeyShortcuts);
+	}
+
+	function enableCopy() {
+	    document.removeEventListener("copy", blockEvent);
+	    document.removeEventListener("cut", blockEvent);
+	    document.removeEventListener("paste", blockEvent);
+	    document.removeEventListener("contextmenu", blockEvent);
+	    document.removeEventListener("selectstart", blockEvent);
+	    document.removeEventListener("keydown", blockKeyShortcuts);
+	}
+
+	function blockEvent(e) {
+	    e.preventDefault();
+	    return false;
+	}
+
+	function blockKeyShortcuts(e) {
+	    if (
+	        (e.ctrlKey && ["c","x","v","u","s"].includes(e.key.toLowerCase())) ||
+	        (e.metaKey && ["c","x","v","u","s"].includes(e.key.toLowerCase())) ||
+	        e.key === "PrintScreen"
+	    ) {
+	        e.preventDefault();
+	        return false;
+	    }
+	}
 
     // -------------------- VIEW RESULT --------------------
     viewResultBtn.addEventListener("click", () => {
         if (!studentRoll) return alert("Please login first.");
-        if(leftMenu) leftMenu.style.display = "none";
+        if (leftMenu) leftMenu.style.display = "none";
         createModal();
         saveModalState();
         fetchResult();
@@ -370,86 +518,140 @@
         });
     }
 
+    // -------------------- VIEW ANSWER KEY --------------------
 	async function viewAnswerKey(quizId, rollNo) {
-	    try {
-	        const res = await fetch(`/answerkey/${quizId}/${rollNo}`);
-	        if (!res.ok) throw new Error(await res.text());
-	        const keyData = await res.json();
+	        try {
+	            const res = await fetch(`/answerkey/${quizId}/${rollNo}`);
+	            if (!res.ok) throw new Error(await res.text());
+	            const keyData = await res.json();
 
-	        saveModalState();
-	        modal.classList.add("hidden");
-	        quizContainer?.remove();
+	            saveModalState();
+	            modal.classList.add("hidden");
+	            quizContainer?.remove();
 
-	        quizContainer = document.createElement("div");
-	        quizContainer.className = "overlay-center";
+	            quizContainer = document.createElement("div");
+	            quizContainer.className = "overlay-center";
 
-	        const inner = document.createElement("div");
-	        inner.className = "key-container";
-	        window.scrollTo({ top: 0, behavior: "auto" });
+	            const inner = document.createElement("div");
+	            inner.className = "key-container";
+	            window.scrollTo({ top: 0, behavior: "auto" });
 
-	        const header = document.createElement("div");
-	        header.className = "quiz-header";
-	        header.textContent = "Answer Key";
-	        inner.appendChild(header);
+	            const header = document.createElement("div");
+	            header.className = "quiz-header";
+	            header.textContent = "Answer Key";
+	            inner.appendChild(header);
 
-	        keyData.forEach((q, idx) => {
-	            const qDiv = document.createElement("div");
-	            qDiv.className = "quiz-question";
-	            qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
-	            const optsDiv = document.createElement("div");
-	            optsDiv.className = "quiz-options";
+	            keyData.forEach((q, idx) => {
+	                const qDiv = document.createElement("div");
+	                qDiv.className = "quiz-question";
+	                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
+	                const optsDiv = document.createElement("div");
+	                optsDiv.className = "quiz-options";
 
-	            ["option1","option2","option3","option4"].forEach(optKey => {
-	                if (!q[optKey]) return;
-	                const label = document.createElement("label"); 
-	                label.className = "option-card";
-	                label.style.whiteSpace = "pre-wrap";
+	                ["option1","option2","option3","option4"].forEach(optKey => {
+	                    if (!q[optKey]) return;
+	                    const label = document.createElement("label"); 
+	                    label.className = "option-card";
+	                    label.style.whiteSpace = "pre-wrap";
 
-	                const isSelected = q.selectedOption?.split(",").includes(optKey);
-	                const isCorrect = q.correctOption?.split(",").includes(optKey);
+	                    const isSelected = q.selectedOption?.split(",").includes(optKey);
+	                    const isCorrect = q.correctOption?.split(",").includes(optKey);
 
-	                if (isSelected && isCorrect) label.classList.add("correct-selected");
-	                else if (isCorrect) label.classList.add("correct");
-	                else if (isSelected) label.classList.add("wrong-selected");
+	                    if (isSelected && isCorrect) label.classList.add("correct-selected");
+	                    else if (isCorrect) label.classList.add("correct");
+	                    else if (isSelected) label.classList.add("wrong-selected");
 
-	                label.textContent = q[optKey];
-	                optsDiv.appendChild(label);
+	                    label.textContent = q[optKey];
+	                    optsDiv.appendChild(label);
+	                });
+
+	                qDiv.appendChild(optsDiv);
+	                inner.appendChild(qDiv);
 	            });
 
-	            qDiv.appendChild(optsDiv);
-	            inner.appendChild(qDiv);
-	        });
+            const backBtn = document.createElement("button");
+            backBtn.className = "back-btn";
+            backBtn.textContent = "Back";
+            backBtn.addEventListener("click", () => {
+                quizContainer.remove();
+                restoreModalState();
+            });
 
-	        const closeBtn = document.createElement("button");
-	        closeBtn.className = "back-btn";
-	        closeBtn.textContent = "Close";
-			closeBtn.addEventListener("click", () => {
-			    quizContainer.remove();
-			    modal.classList.add("hidden");  // Hide the modal entirely
-			    if (leftMenu) leftMenu.style.display = "flex";  // show left menu again
-			});
+            inner.appendChild(backBtn);
+            quizContainer.appendChild(inner);
+            document.body.appendChild(quizContainer);
+            centerOverlay(quizContainer);
 
-	        inner.appendChild(closeBtn);
-
-	        quizContainer.appendChild(inner);
-	        document.body.appendChild(quizContainer);
-	        centerOverlay(quizContainer);
-
-	    } catch (err) { 
-	        alert("Error fetching answer key: " + err.message); 
-	    }
-	}
-
-
-    function centerOverlay(overlay) {
-        overlay.style.display = "flex";
-        overlay.style.justifyContent = "center";
-        overlay.style.alignItems = "center";
-        const inner = overlay.firstChild;
-        if (inner.scrollHeight > window.innerHeight * 0.9) {
-            overlay.style.alignItems = "flex-start";
-            overlay.style.paddingTop = "20px";
-            overlay.style.paddingBottom = "20px";
+        } catch (err) {
+            alert("Error loading answer key: " + err.message);
         }
     }
+
+    // -------------------- FULLSCREEN & CENTERING --------------------
+    function enterFullScreen() {
+        const el = document.documentElement;
+        if (el.requestFullscreen) el.requestFullscreen();
+        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+        else if (el.msRequestFullscreen) el.msRequestFullscreen();
+    }
+	
+
+    function centerOverlay(el) {
+        el.style.position = "fixed";
+        el.style.top = "50%";
+        el.style.left = "50%";
+        el.style.transform = "translate(-50%, -50%)";
+        el.style.zIndex = "9999";
+        el.style.width = "90%";
+        el.style.height = "90%";
+        el.style.overflowY = "auto";
+        el.style.backgroundColor = "#fff";
+        el.style.padding = "20px";
+        el.style.borderRadius = "10px";
+    }
+	document.addEventListener("fullscreenchange", () => {
+	    if (examActive && !document.fullscreenElement) {
+	        // Create overlay confirmation UI
+	        const overlay = document.createElement("div");
+	        overlay.style.position = "fixed";
+	        overlay.style.top = "0";
+	        overlay.style.left = "0";
+	        overlay.style.width = "100%";
+	        overlay.style.height = "100%";
+	        overlay.style.background = "rgba(0,0,0,0.6)";
+	        overlay.style.display = "flex";
+	        overlay.style.flexDirection = "column";
+	        overlay.style.alignItems = "center";
+	        overlay.style.justifyContent = "center";
+	        overlay.style.zIndex = "10000";
+	        overlay.innerHTML = `
+	            <div style="background:white; padding:20px; border-radius:12px; text-align:center; width:350px; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
+	                <p style="font-size:16px; margin-bottom:20px;">⚠️ You exited fullscreen mode.<br><br>If you leave now, your quiz will be submitted.</p>
+	                <div style="display:flex; justify-content:space-between; gap:10px;">
+	                    <button id="continueExamBtn" class="login-btn" style="flex:1;">Continue Exam</button>
+	                    <button id="exitExamBtn" class="back-btn" style="flex:1;">Submit & Exit</button>
+	                </div>
+	            </div>
+	        `;
+	        document.body.appendChild(overlay);
+
+	        // ✅ User clicks to continue exam
+	        document.getElementById("continueExamBtn").addEventListener("click", () => {
+	            overlay.remove();
+	            enterFullScreen(); // Works because it's a user click
+	        });
+
+	        // 🚫 User clicks to exit exam
+	        document.getElementById("exitExamBtn").addEventListener("click", () => {
+	            overlay.remove();
+	            examActive = false;
+	            removeTabProtection();
+	            submitQuiz();
+	        });
+	    }
+	});
+
+
+
 })();

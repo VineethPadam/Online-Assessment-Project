@@ -36,6 +36,11 @@ roleCards.forEach(card => {
         if(selectedRole === "admin") adminFields.style.display = "block";
 
         loginTitle.textContent = `${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)} Login`;
+
+        // 👇 Add this line to scroll smoothly to the login box
+        setTimeout(() => {
+            loginSection.scrollIntoView({ behavior: "smooth", block: "start" });
+        }, 150);
     });
 });
 
@@ -92,6 +97,10 @@ loginBtn.addEventListener("click", async () => {
             loggedInUser = await res.json();
             loginError.style.color = "green";
             loginError.textContent = "Login Successful!";
+			
+			localStorage.setItem("role", selectedRole);
+			localStorage.setItem("user", JSON.stringify(loggedInUser));
+
 
             // -------------------- SET STUDENT ROLL FOR STUDENT.JS --------------------
             if(selectedRole === "student") {
@@ -138,6 +147,26 @@ function showDashboard(){
 function logout(){
     loggedInUser = null;
     selectedRole = null;
+    localStorage.removeItem("role");
+    localStorage.removeItem("user");
     dashboard.classList.add("hidden");
     roleSelection.style.display = "block"; // show roles again
 }
+window.addEventListener("load", () => {
+    const savedRole = localStorage.getItem("role");
+    const savedUser = localStorage.getItem("user");
+
+    if(savedRole && savedUser) {
+        selectedRole = savedRole;
+        loggedInUser = JSON.parse(savedUser);
+
+        // If it's student, reapply roll number
+        if(selectedRole === "student" && loggedInUser.studentRollNumber) {
+            window.setStudentRoll(loggedInUser.studentRollNumber);
+        }
+
+        roleSelection.style.display = "none";
+        showDashboard();
+    }
+});
+

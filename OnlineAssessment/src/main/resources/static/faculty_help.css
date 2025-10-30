@@ -1,0 +1,199 @@
+body {
+  font-family: "Segoe UI", sans-serif;
+  background-color: #f8fbff;
+  margin: 0;
+  padding: 20px;
+}
+
+/* --- MAIN CONTAINER --- */
+.help-container {
+  background: white;
+  padding: 30px 40px;
+  border-radius: 12px;
+  max-width: 900px;
+  margin: 20px auto;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  position: relative;
+}
+
+/* --- CLOSE BUTTON --- */
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 18px;
+  font-size: 24px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: #666;
+  transition: color 0.3s ease;
+}
+.close-btn:hover {
+  color: #6a0dad;
+}
+
+/* --- HEADING --- */
+h2 {
+  color: #6a0dad;
+  text-align: center;
+  margin-top: 0;
+  margin-bottom: 25px;
+}
+
+/* --- LIST --- */
+.help-list {
+  list-style-type: none;
+  padding: 0;
+  color: #333;
+}
+
+.help-list li {
+  margin-bottom: 25px;
+  line-height: 1.6;
+}
+
+/* --- SECTION HEADER --- */
+.section-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.demo-btn {
+  background-color: #6a0dad;
+  color: #fff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: default;
+  box-shadow: 0 2px 6px rgba(106, 13, 173, 0.3);
+}
+
+/* --- SECTION BODY --- */
+.section-body p {
+  margin-bottom: 10px;
+  color: #444;
+}
+.section-body ul, .section-body ol {
+  margin-left: 25px;
+  color: #333;
+}
+
+/* --- EXAMPLE BOX --- */
+.example-box {
+  background-color: #f7f3ff;
+  border-left: 5px solid #6a0dad;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+.example-box p {
+  margin: 0 0 5px 0;
+  font-weight: 600;
+  color: #6a0dad;
+}
+
+/* --- EXPLANATION BOX --- */
+.explanation-box {
+  background: #f9f9ff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  padding: 12px 18px;
+  margin-bottom: 12px;
+}
+.explanation-box h4 {
+  color: #6a0dad;
+  margin-bottom: 8px;
+  font-size: 16px;
+}
+
+/* --- TABLE --- */
+.table-wrapper {
+  overflow-x: auto;
+  margin-top: 10px;
+}
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 10px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  min-width: 700px;
+}
+.table-wrapper th, .table-wrapper td {
+  padding: 10px 12px;
+  border: 1px solid #ddd;
+  font-size: 14px;
+  text-align: center;
+}
+.table-wrapper th {
+  background: #6a0dad;
+  color: #fff;
+}
+.table-wrapper tr:nth-child(even) td {
+  background: #f3e9ff;
+}
+
+/* --- NOTE BOX --- */
+.note-box {
+  background: #fff8e6;
+  border-left: 5px solid #ff9900;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+.note-box h4 {
+  color: #d97706;
+  margin: 0 0 5px 0;
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+  .help-container {
+    padding: 20px;
+  }
+  .demo-btn {
+    font-size: 12px;
+    padding: 6px 12px;
+  }
+  .table-wrapper table {
+    font-size: 12px;
+    min-width: 600px;
+  }
+}
+/* --- PRINT SETTINGS --- */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact !important; /* For Chrome, Edge, Safari */
+    print-color-adjust: exact !important;         /* For Firefox */
+    background-color: #f8fbff !important;
+    color: #000 !important;
+  }
+
+  .help-container {
+    background: white !important;
+    box-shadow: none !important;
+  }
+
+  .table-wrapper th {
+    background: #6a0dad !important;
+    color: white !important;
+  }
+
+  .table-wrapper tr:nth-child(even) td {
+    background: #f3e9ff !important;
+  }
+
+  .example-box {
+    background: #f7f3ff !important;
+    border-left: 5px solid #6a0dad !important;
+  }
+
+  .note-box {
+    background: #fff8e6 !important;
+    border-left: 5px solid #ff9900 !important;
+  }
+}
+
