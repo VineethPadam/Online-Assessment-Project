@@ -56,9 +56,9 @@ body {
 /* Quiz Logo */
 .portal-header img.quiz-logo {
   width: auto;      /* keep original size */
-  height: 130px;     /* same height as college logo */
+  height: 140px;     /* same height as college logo */
   object-fit: contain;
-  border-radius: 10px;
+  border-radius: 15px;
 }
 
 .portal-header img.college-logo {

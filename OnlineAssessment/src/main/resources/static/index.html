@@ -9,6 +9,8 @@
 <link rel="stylesheet" href="student_style.css">
 <link rel="stylesheet" href="faculty_style.css">
 <link rel="stylesheet" href="admin_style.css">
+<link rel="stylesheet" href="faculty-forgot-password.css">
+
 </head>
 <body>
 
@@ -16,8 +18,8 @@
 
   <!-- College Header with Logo -->
   <div class="portal-header">
-    <img src="Images/mitslogo.png" alt="MITS Logo" class="college-logo">
-	<img src="Images/quizlogo.png" alt="Quiz Logo" class="quiz-logo">
+    <img src="Images/MITS_College_Name.png" alt="MITS Logo" class="college-logo">
+	<img src="Images/MITS_PORTAL_LOGO.png" alt="Quiz Logo" class="quiz-logo">
     <div class="college-title">
     </div>
   </div>
@@ -51,17 +53,24 @@
     <h3 class="login-title" id="loginTitle"></h3>
     <div id="loginError"></div>
 
-    <!-- Student Fields -->
-    <div id="studentFields">
-      <input type="text" id="studentRoll" placeholder="Roll Number" class="login-input">
-      <input type="password" id="studentPassword" placeholder="Password" class="login-input">
-    </div>
+	<!-- Student Fields -->
+	<div id="studentFields">
+	  <input type="text" id="studentRoll" placeholder="Roll Number" class="login-input">
+	  <input type="password" id="studentPassword" placeholder="Password" class="login-input">
+	  <button id="studentForgotPasswordBtn" class="back-btn" type="button">
+	    Forgot Password?
+	  </button>
+	</div>
 
-    <!-- Faculty Fields -->
-    <div id="facultyFields">
-      <input type="email" id="facultyEmail" placeholder="Email" class="login-input">
-      <input type="password" id="facultyPassword" placeholder="Password" class="login-input">
-    </div>
+	<!-- Faculty Fields -->
+	<div id="facultyFields">
+	  <input type="email" id="facultyEmail" placeholder="Email" class="login-input">
+	  <input type="password" id="facultyPassword" placeholder="Password" class="login-input">
+	  <button id="facultyForgotPasswordBtn" class="back-btn" type="button">
+	    Forgot Password?
+	  </button>
+	</div>
+
 
     <!-- Admin Fields -->
     <div id="adminFields">
@@ -117,5 +126,9 @@
 <script src="student.js"></script>
 <script src="faculty.js"></script>
 <script src="admin.js"></script>
+<script src="faculty-forgot-password.js"></script>
+<script src="student_forgot_password.js"></script>
+
+
 </body>
 </html>

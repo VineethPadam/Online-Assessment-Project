@@ -8,4 +8,5 @@ public interface studentRepo extends JpaRepository<Student, String> {
 
     Optional<Student> findByStudentRollNumberAndPassword(String rollNumber, String password);
     Optional<Student> findByStudentRollNumber(String studentRollNumber);
+    
 }

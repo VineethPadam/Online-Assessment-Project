@@ -77,12 +77,13 @@
     box-shadow:0 6px 25px rgba(0,0,0,0.35);
     max-height:90vh;
     overflow-y:auto;
-    width:90%;
-    max-width:950px;
-    margin:auto;
+    width:100%;
+    max-width:1550px;
+    margin:20px auto;
     display:flex;
     flex-direction: column;
-    align-items: stretch;
+	max-height: 90vh;
+    
 }
 
 /* Header and Info */
@@ -152,4 +153,249 @@
     padding: 10px;
     max-height: 65vh; /* Adjust as needed */
 }
+/* ---------- Fullscreen Quiz Layout (Updated for True Fullscreen) ---------- */
+.quiz-container {
+    width: 100%;
+    max-width: 1500px;
+	height: 100vh; 
+    margin: 20px auto;
+    background: #fff;
+    border-radius: 16px;
+    padding: 20px 25px;
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    overflow: hidden;
+}
 
+/* Header */
+.quiz-header {
+    background: linear-gradient(90deg, #6a0dad, #8b36ff);
+    color: #fff;
+    text-align: center;
+    font-size: 26px;
+    padding: 12px 0;
+    font-weight: 700;
+    border-radius: 10px;
+    margin-bottom: 15px;
+}
+
+/* Info bar (below header) */
+.quiz-info {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    background: #f6e9ff;
+    border: 2px solid #6a0dad;
+    border-radius: 12px;
+    padding: 10px 15px;
+    gap: 10px;
+    font-weight: 600;
+    color: #4a0072;
+    margin-bottom: 18px;
+}
+.quiz-info div {
+    background: #fff;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid #6a0dad;
+}
+
+/* ---------- Body Split Layout ---------- */
+.quiz-body {
+    display: flex;
+    gap: 15px;
+    flex: 1;
+    height: calc(100vh - 230px); /* ✅ fixed height (full screen minus header/info) */
+    overflow: hidden;            /* ✅ prevents the outer box from growing */
+}
+
+
+
+/* Left: Question area */
+.question-area {
+    flex: 0 0 70%;
+    display: flex;
+    flex-direction: column;
+    border-radius: 12px;
+    background: #ffffff;
+    box-shadow: 0 0 15px rgba(90, 0, 140, 0.2);
+    height: 100%;
+    overflow: hidden;
+}
+
+/* Make the scrollable part separate */
+
+.question-scroll {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 20px 25px;
+    scroll-behavior: smooth;
+    max-height: calc(100vh - 290px);
+	padding-bottom: 70px !important;
+}
+
+/* Fix buttons at bottom */
+.quiz-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background: #fff;
+    border-top: 1px solid #ccc;
+    display: flex;
+    justify-content: space-between; /* pushes groups to left & right */
+    align-items: center;
+    padding: 10px 25px;
+    z-index: 3000;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
+}
+
+/* Right: Question navigation panel */
+.question-nav {
+    flex: 0 0 28%;
+    background: #fff9ff;
+    border: 2px solid #6a0dad;
+    border-radius: 12px;
+    padding: 15px;
+    overflow-y: auto;   /* ✅ enables scrolling */
+    max-height: calc(100vh - 230px); /* ✅ fits full screen */
+    box-sizing: border-box;
+	padding-bottom: 70px !important; 
+}
+
+
+.question-nav h3 {
+    text-align: center;
+    color: #6a0dad;
+    font-weight: bold;
+    margin-bottom: 12px;
+}
+
+/* Navigation grid */
+.question-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr); /* exactly 4 columns */
+    gap: 10px; /* optional: more spacing between buttons */
+}
+
+.nav-btn {
+    background: #fdf5ff;
+    border: 2px solid #6a0dad;
+    border-radius: 8px;
+    padding: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.25s;
+    text-align: center;
+}
+.nav-btn:hover { background: #6a0dad; color: white; }
+.nav-btn.active { background: #6a0dad; color: white; }
+.nav-btn.answered { background: #28a745; color: white; }
+
+/* ---------- Options Styling ---------- */
+.option-card {
+    display: block;
+    border: 2px solid #aaa;
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin: 6px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: 600;
+}
+.option-card:hover { background: #f3e6ff; }
+.option-card.selected {
+    background-color: #e6d4ff;
+    border-color: #6a0dad;
+}
+
+/* ---------- Control Buttons ---------- */
+.quiz-controls button {
+    background-color: #6a0dad;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 20px;         /* ✅ small, neat size */
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    min-width: 60px;
+    transition: all 0.25s ease;
+}
+
+.prev-btn {
+    background-color: #7f8c8d;
+	padding: 8px 5px;   /* smaller height + less width */
+	font-size: 14px;     
+	min-width: 50px;
+}
+.next-btn {
+    background-color: #6a0dad;
+	padding: 8px 5px;   /* smaller height + less width */
+	font-size: 14px;     
+	min-width: 50px;
+}
+.submit-btn {
+    background-color: #28a745;
+	padding: 8px 5px;   /* smaller height + less width */
+	font-size: 14px;     
+	min-width: 50px;
+}
+
+/* Hover states */
+.prev-btn:hover {
+    background-color: #636e72;
+}
+.next-btn:hover {
+    background-color: #580b9a;
+}
+.submit-btn:hover {
+    background-color: #218838;
+}
+.quiz-controls button:hover {
+    transform: translateY(-1px);
+    opacity: 0.9;
+}
+
+/* ---------- Scrollbars (optional aesthetic) ---------- */
+.question-area::-webkit-scrollbar,
+.question-nav::-webkit-scrollbar {
+    width: 8px;
+}
+.question-area::-webkit-scrollbar-thumb,
+.question-nav::-webkit-scrollbar-thumb {
+    background: #b580ff;
+    border-radius: 8px;
+}
+/* ---- group styling ---- */
+.left-buttons {
+    display: flex;
+    gap: 100px;
+    margin-left: 15%;   /* aligns “Prev/Next” with start of question panel */
+}
+
+.right-buttons {
+    display: flex;
+    gap: 10px;
+    margin-right: 2%;   /* keeps Submit slightly inside right edge */
+}
+
+/* ---- optional button sizing ---- */
+.prev-btn,
+.next-btn,
+.submit-btn {
+    padding: 6px 14px;      /* smaller buttons */
+    font-size: 14px;
+    border-radius: 8px;
+    background: #6200ea;
+    color: white;
+    border: none;
+    cursor: pointer;
+}
+.prev-btn:hover,
+.next-btn:hover,
+.submit-btn:hover {
+    background: #7b1fa2;
+}

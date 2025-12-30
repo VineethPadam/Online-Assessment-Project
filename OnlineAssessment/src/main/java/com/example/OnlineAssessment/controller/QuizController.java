@@ -10,8 +10,10 @@ import org.springframework.web.bind.annotation.*;
 import com.example.OnlineAssessment.entity.Questions;
 import com.example.OnlineAssessment.entity.Quiz;
 import com.example.OnlineAssessment.entity.QuizActivation;
+import com.example.OnlineAssessment.entity.Student;
 import com.example.OnlineAssessment.service.QuestionService;
 import com.example.OnlineAssessment.service.QuizService;
+import com.example.OnlineAssessment.service.StudentService;
 
 @RestController
 @RequestMapping("/quiz")
@@ -40,18 +42,38 @@ public class QuizController {
             @RequestParam boolean active) {
         return quizService.activateQuiz(quizId, section, department, year, active);
     }
-
+    
+    @Autowired
+    StudentService studentService;
     // ✅ Get all active quizzes for a student
     @GetMapping("/active")
-    public List<QuizActivation> getActiveQuizzesForStudent(
+    public ResponseEntity<?> getActiveQuizzesForStudent(
+            @RequestParam String rollNumber,
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year) {
 
-        List<QuizActivation> activeQuizzes = quizService.getActiveQuizzesForStudent(section, department, year);
-        
-        return activeQuizzes;
+        Student student = studentService.getByRollNumber(rollNumber);
+
+        // 🔐 Credential validation
+        if (!student.getStudentSection().equalsIgnoreCase(section)
+                || !student.getDepartment().equalsIgnoreCase(department)
+                || student.getStudentYear() != year) {
+
+            return ResponseEntity
+                    .status(HttpStatus.UNAUTHORIZED)
+                    .body("Invalid credentials");
+        }
+
+        return ResponseEntity.ok(
+                quizService.getActiveQuizzesForStudent(
+                        student.getStudentSection(),
+                        student.getDepartment(),
+                        student.getStudentYear()
+                )
+        );
     }
+
 
     // ✅ Fetch questions for a student only if quiz is active
     @GetMapping("/{quizId}/questions/for-student")

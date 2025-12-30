@@ -23,4 +23,10 @@ public class StudentService {
     public Student saveStudent(Student student) {
         return studentRepo.save(student);
     }
+    
+    public Student getByRollNumber(String rollNumber) {
+        return studentRepo.findById(rollNumber)
+                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+    }
+
 }

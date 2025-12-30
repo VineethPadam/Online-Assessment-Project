@@ -133,7 +133,17 @@
         const modalFooter = modal.querySelector("#modalFooter");
 
         try {
-            const res = await fetch(`/quiz/active?department=${dept}&year=${year}&section=${section}`);
+			const res = await fetch(
+			  `/quiz/active?rollNumber=${studentRoll}&department=${dept}&year=${year}&section=${section}`
+			);
+			
+			if (res.status === 401) {
+			    alert("Invalid credentials");
+			    modal.classList.add("hidden");
+			    if (leftMenu) leftMenu.style.display = "flex";
+			    return;
+			}
+			
             if (!res.ok) throw new Error(await res.text());
             const quizzes = await res.json();
 
@@ -188,161 +198,201 @@
     }
 
     // -------------------- OPEN QUIZ --------------------
-    async function openQuiz(quizId, quizName, dept, year, section) {
-        if (!studentRoll) return;
-        modal.classList.add("hidden");
+	async function openQuiz(quizId, quizName, dept, year, section) {
+	    if (!studentRoll) return;
+	    modal.classList.add("hidden");
+	    enterFullScreen();
 
-        // ✅ ENTER FULLSCREEN MODE
-        enterFullScreen();
+	    try {
+	        const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
+	        if (!res.ok) throw new Error(await res.text());
+	        let questions = await res.json();
+	        if (!questions || questions.length === 0) return alert("No questions found");
 
-        try {
-            const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
-            if (!res.ok) throw new Error(await res.text());
-            let questions = await res.json();
-            if (!questions || questions.length === 0) return alert("No questions found");
+	        examActive = true;
+	        blurCount = 0;
+	        setupTabProtection();
+	        disableCopy();
 
-            // ✅ Tab protection setup
-            examActive = true;
-            blurCount = 0;
-            setupTabProtection();
-			disableCopy(); // 🚫 Disable copy, paste, right-click during quiz
+	        const seed = hashString(studentRoll + quizId);
+	        questions = shuffleArray(questions, seed);
 
+	        quizContainer?.remove();
+	        quizContainer = document.createElement("div");
+	        quizContainer.className = "overlay-center";
 
-            const seed = hashString(studentRoll + quizId);
-            questions = shuffleArray(questions, seed);
+	        const inner = document.createElement("div");
+	        inner.className = "quiz-container";
+	        window.scrollTo({ top: 0, behavior: "auto" });
 
-            quizContainer?.remove();
-            quizContainer = document.createElement("div");
-            quizContainer.className = "overlay-center";
+	        // HEADER
+	        const header = document.createElement("div");
+	        header.className = "quiz-header";
+	        header.textContent = "MITS Online Quiz";
+	        inner.appendChild(header);
 
-            const inner = document.createElement("div");
-            inner.className = "quiz-container";
-            window.scrollTo({ top: 0, behavior: "auto" });
+	        const infoGrid = document.createElement("div");
+	        infoGrid.className = "quiz-info";
+	        [["Quiz ID", quizId], ["Quiz Name", quizName], ["Roll Number", studentRoll], ["Year", year], ["Department", dept], ["Section", section]].forEach(([k, v]) => {
+	            const div = document.createElement("div");
+	            div.innerHTML = `<strong>${k}:</strong> ${v}`;
+	            infoGrid.appendChild(div);
+	        });
+	        inner.appendChild(infoGrid);
 
-            const header = document.createElement("div"); 
-            header.className = "quiz-header"; 
-            header.textContent = "MITS Online Quiz"; 
-            inner.appendChild(header);
+	        // MAIN BODY (LEFT + RIGHT)
+	        const bodyDiv = document.createElement("div");
+	        bodyDiv.className = "quiz-body";
 
-            const infoGrid = document.createElement("div"); 
-            infoGrid.className = "quiz-info";
-            [["Quiz ID", quizId], ["Quiz Name", quizName], ["Roll Number", studentRoll], ["Year", year], ["Department", dept], ["Section", section]].forEach(([k, v]) => {
-                const div = document.createElement("div"); 
-                div.innerHTML = `<strong>${k}:</strong> ${v}`; 
-                infoGrid.appendChild(div);
-            });
-            inner.appendChild(infoGrid);
+	        // LEFT SIDE - Question Area
+			// LEFT SIDE - Question Area
+			const questionArea = document.createElement("div");
+			questionArea.className = "question-area";
 
-			const scrollArea = document.createElement("div");
-			scrollArea.className = "quiz-scroll";
-
-			for (let idx = 0; idx < questions.length; idx++) {
-			    const q = questions[idx];
-			    const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
-			    const isMultiple = await multiRes.json();
-
-			    const qDiv = document.createElement("div");
-			    qDiv.className = "quiz-question";
-			    qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
-
-			    const optsDiv = document.createElement("div");
-			    optsDiv.className = "quiz-options";
-
-			    let opts = [];
-			    ["option1", "option2", "option3", "option4"].forEach(optKey => {
-			        if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
-			    });
-			    opts = shuffleArray(opts, seed + idx);
-
-			    opts.forEach(opt => {
-			        const label = document.createElement("label");
-			        label.className = "option-card";
-			        const input = document.createElement("input");
-			        input.type = isMultiple ? "checkbox" : "radio";
-			        input.name = q.questionId;
-			        input.value = opt.key;
-
-			        input.addEventListener("change", () => {
-			            if (!isMultiple)
-			                optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
-			            label.classList.toggle("selected");
-			        });
-
-			        label.appendChild(input);
-			        label.appendChild(document.createTextNode(opt.text));
-			        optsDiv.appendChild(label);
-			    });
-
-			    qDiv.appendChild(optsDiv);
-			    scrollArea.appendChild(qDiv);
-			}
-
-			inner.appendChild(scrollArea);
+			const questionScroll = document.createElement("div");
+			questionScroll.className = "question-scroll";
+			questionArea.appendChild(questionScroll);
 
 
-            const btnDiv = document.createElement("div"); 
-            btnDiv.style.marginTop = "20px";
-            const submitBtn = document.createElement("button"); 
-            submitBtn.className = "login-btn"; 
-            submitBtn.textContent = "Submit"; 
-            submitBtn.addEventListener("click", submitQuiz);
+	        // RIGHT SIDE - Navigation Panel
+	        const navPanel = document.createElement("div");
+	        navPanel.className = "question-nav";
+	        navPanel.innerHTML = `<h3>Question Panel</h3>`;
+	        const navGrid = document.createElement("div");
+	        navGrid.className = "question-grid";
+	        navPanel.appendChild(navGrid);
 
-            const backBtn = document.createElement("button"); 
-            backBtn.className = "back-btn"; 
-            backBtn.textContent = "Back";
-			backBtn.addEventListener("click", () => {
-			    // Create a confirmation overlay instead of alert
-			    const overlay = document.createElement("div");
-			    overlay.style.position = "fixed";
-			    overlay.style.top = "0";
-			    overlay.style.left = "0";
-			    overlay.style.width = "100%";
-			    overlay.style.height = "100%";
-			    overlay.style.background = "rgba(0,0,0,0.6)";
-			    overlay.style.display = "flex";
-			    overlay.style.flexDirection = "column";
-			    overlay.style.alignItems = "center";
-			    overlay.style.justifyContent = "center";
-			    overlay.style.zIndex = "10000";
-			    overlay.innerHTML = `
-			        <div style="background:white; padding:20px; border-radius:12px; text-align:center; width:350px; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
-			            <p style="font-size:16px; margin-bottom:20px;">⚠️ Are you sure you want to exit the quiz?<br><br>Your progress will be lost.</p>
-			            <div style="display:flex; justify-content:space-between; gap:10px;">
-			                <button id="continueExamBtn" class="login-btn" style="flex:1;">Continue Exam</button>
-			                <button id="exitExamBtn" class="back-btn" style="flex:1;">Submit & Exit</button>
-			            </div>
-			        </div>
-			    `;
-			    document.body.appendChild(overlay);
+	        let currentIndex = 0;
+	        const questionDivs = [];
 
-			    // Continue Exam
-			    document.getElementById("continueExamBtn").addEventListener("click", () => {
-			        overlay.remove();
-			        enterFullScreen(); // Works fine because user clicked it
-			    });
+	        for (let idx = 0; idx < questions.length; idx++) {
+	            const q = questions[idx];
+	            const multiRes = await fetch(`/quiz/questions/${q.questionId}/is-multiple`);
+	            const isMultiple = await multiRes.json();
 
-			    // Exit and Submit
-			    document.getElementById("exitExamBtn").addEventListener("click", () => {
-			        overlay.remove();
-			        examActive = false;
-			        removeTabProtection();
-			        submitQuiz();
-			    });
-			});
+	            const qDiv = document.createElement("div");
+	            qDiv.className = "quiz-question";
+	            qDiv.style.display = idx === 0 ? "block" : "none";
+	            qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
+
+	            const optsDiv = document.createElement("div");
+	            optsDiv.className = "quiz-options";
+
+	            let opts = [];
+	            ["option1", "option2", "option3", "option4"].forEach(optKey => {
+	                if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
+	            });
+	            opts = shuffleArray(opts, seed + idx);
+
+	            opts.forEach(opt => {
+	                const label = document.createElement("label");
+	                label.className = "option-card";
+	                const input = document.createElement("input");
+	                input.type = isMultiple ? "checkbox" : "radio";
+	                input.name = q.questionId;
+	                input.value = opt.key;
+
+	                input.addEventListener("change", () => {
+	                    if (!isMultiple)
+	                        optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
+	                    label.classList.toggle("selected");
+
+	                    // Mark answered in panel
+	                    const btn = navGrid.querySelector(`[data-idx="${idx}"]`);
+	                    if (btn) btn.classList.add("answered");
+	                });
+
+	                label.appendChild(input);
+	                label.appendChild(document.createTextNode(opt.text));
+	                optsDiv.appendChild(label);
+	            });
+
+	            qDiv.appendChild(optsDiv);
+				questionScroll.appendChild(qDiv);
+	            questionDivs.push(qDiv);
+
+	            // Nav Button
+	            const navBtn = document.createElement("button");
+	            navBtn.textContent = idx + 1;
+	            navBtn.dataset.idx = idx;
+	            navBtn.className = "nav-btn";
+	            navBtn.addEventListener("click", () => {
+	                questionDivs.forEach(div => (div.style.display = "none"));
+	                questionDivs[idx].style.display = "block";
+	                currentIndex = idx;
+	                highlightNavButton();
+	            });
+	            navGrid.appendChild(navBtn);
+	        }
+
+	        function highlightNavButton() {
+	            navGrid.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
+	            const activeBtn = navGrid.querySelector(`[data-idx="${currentIndex}"]`);
+	            if (activeBtn) activeBtn.classList.add("active");
+	        }
+	        highlightNavButton();
+
+	        // CONTROL BUTTONS
+	        const btnDiv = document.createElement("div");
+	        btnDiv.className = "quiz-controls";
+
+	        const prevBtn = document.createElement("button");
+	        prevBtn.className = "back-btn";
+	        prevBtn.textContent = "Previous";
+	        prevBtn.addEventListener("click", () => {
+	            if (currentIndex > 0) {
+	                questionDivs[currentIndex].style.display = "none";
+	                currentIndex--;
+	                questionDivs[currentIndex].style.display = "block";
+	                highlightNavButton();
+	            }
+	        });
+
+	        const nextBtn = document.createElement("button");
+	        nextBtn.className = "login-btn";
+	        nextBtn.textContent = "Next";
+	        nextBtn.addEventListener("click", () => {
+	            if (currentIndex < questionDivs.length - 1) {
+	                questionDivs[currentIndex].style.display = "none";
+	                currentIndex++;
+	                questionDivs[currentIndex].style.display = "block";
+	                highlightNavButton();
+	            }
+	        });
+
+	        const submitBtn = document.createElement("button");
+	        submitBtn.className = "login-btn";
+	        submitBtn.textContent = "Submit";
+	        submitBtn.addEventListener("click", submitQuiz);
+
+			// ---- create button groups ----
+			const leftGroup = document.createElement("div");
+			leftGroup.className = "left-buttons";
+			leftGroup.appendChild(prevBtn);
+			leftGroup.appendChild(nextBtn);
+
+			const rightGroup = document.createElement("div");
+			rightGroup.className = "right-buttons";
+			rightGroup.appendChild(submitBtn);
+
+			// ---- add groups to main control bar ----
+			btnDiv.appendChild(leftGroup);
+			btnDiv.appendChild(rightGroup);
+			questionArea.appendChild(btnDiv);
 
 
-            btnDiv.appendChild(submitBtn); 
-            btnDiv.appendChild(backBtn);
-            inner.appendChild(btnDiv);
+	        bodyDiv.appendChild(questionArea);
+	        bodyDiv.appendChild(navPanel);
+	        inner.appendChild(bodyDiv);
+	        quizContainer.appendChild(inner);
+	        document.body.appendChild(quizContainer);
+	        centerOverlay(quizContainer);
 
-            quizContainer.appendChild(inner);
-            document.body.appendChild(quizContainer);
-            centerOverlay(quizContainer);
+	    } catch (err) {
+	        alert("Error opening quiz: " + err.message);
+	    }
+	}
 
-        } catch (err) { alert("Error opening quiz: " + err.message); }
-    }
-
-    // -------------------- SUBMIT QUIZ --------------------
 	// -------------------- SUBMIT QUIZ --------------------
 	async function submitQuiz() {
 	    // ✅ Stop exam protection and fullscreen
