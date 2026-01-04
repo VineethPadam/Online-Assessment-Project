@@ -22,8 +22,14 @@
           <p>Upload the student details for your course using an <b>.xlsx</b> file.</p>
           <ul>
             <li>The Excel file must be in the following format:</li>
+			<li>			<a href="/model_sheets/Student_Data_Templet.xlsx" 
+			           class="faculty-btn blinking" 
+			           download>
+			           Download Student Data Template
+			        </a>
+			</li>
           </ul>
-
+			
           <div class="table-wrapper">
             <table>
               <tr>
@@ -33,7 +39,6 @@
                 <th>student_year</th>
                 <th>department</th>
                 <th>student_email</th>
-                <th>Password (Date of Birth)</th>
               </tr>
               <tr>
                 <td>23691A05O2</td>
@@ -42,7 +47,6 @@
                 <td>3</td>
                 <td>CSE</td>
                 <td>23691A05O2@mits.ac.in</td>
-                <td>04-07-2005</td>
               </tr>
               <tr>
                 <td>23691A05Q4</td>
@@ -51,11 +55,30 @@
                 <td>3</td>
                 <td>CSE</td>
                 <td>23691A05Q4@mits.ac.in</td>
-                <td>18-10-2004</td>
               </tr>
             </table>
           </div>
         </div>
+		<!-- Reference Video for Upload Student Data -->
+		<div class="video-container" style="text-align:center; margin:20px 0;">
+		    <h3 style="color:#1976d2; margin-bottom:10px;">Reference Video</h3>
+		    <video id="uploadStudentVideo" width="600" height="340" controls style="border: 2px solid #1976d2; border-radius: 10px;">
+		        <source src="/Reference_video/Upload%20student%20data.mp4" type="video/mp4">
+		        Your browser does not support the video tag.
+		    </video>
+		    <p style="font-size:14px; color:#555; margin-top:8px;">
+		        Watch this reference video for guidance on uploading student data.
+		    </p>
+		</div>
+
+		<script>
+		    // Stop video after it finishes playing
+		    const video = document.getElementById('uploadStudentVideo');
+		    video.addEventListener('ended', () => {
+		        video.pause(); // ensure it stops at the end
+		    });
+		</script>
+
       </li>
 
       <!-- 🟣 ADD QUIZ SECTION -->
@@ -97,11 +120,19 @@
             <li>The Excel must contain the following columns:</li>
           </ol>
 
+		  <div class="download-template">
+		    <p>Download the Excel template for questions:</p>
+			<a href="/model_sheets/Question%20paper%20model.xlsx" 
+			   class="faculty-btn blinking" 
+			   download>
+			   Download Question Paper Template
+			</a>
+
+		  </div>
           <div class="table-wrapper">
             <table>
               <tr>
-                <th>Q_ID</th>
-                <th>TEXT</th>
+                <th>Question TEXT</th>
                 <th>Option1</th>
                 <th>Option2</th>
                 <th>Option3</th>
@@ -109,7 +140,6 @@
                 <th>Correctoption</th>
               </tr>
               <tr>
-                <td>2305A-JAVA-01-01</td>
                 <td>Which language is platform independent?</td>
                 <td>Java</td>
                 <td>C</td>
@@ -118,7 +148,6 @@
                 <td>option1</td>
               </tr>
               <tr>
-                <td>2305A-JAVA-01-02</td>
                 <td>Select multiple OOP languages:</td>
                 <td>Python</td>
                 <td>Java</td>
@@ -134,10 +163,44 @@
             <ul>
               <li>For <b>single correct answers</b>, use format: <b>option1</b>.</li>
               <li>For <b>multiple correct answers</b>, use format: <b>option1,option3</b> (no spaces between commas).</li>
-              <li>Each question ID should follow the pattern <b>2305A-JAVA-01-01</b> (Quiz ID + Question No).</li>
+			  <li>Make Sure that the  <b>correct option </b> should be  <b>named </b> as  <b>option1, option2, option3, option4 </b>only  <b>(All Should be Lower Case)</b>.</li>
+			  <li>You Should  <b>not keep </b> as <b> A B C D or any other </b>.</li>
             </ul>
           </div>
         </div>
+		<!-- Add Quiz Reference Video -->
+		<div class="video-container" style="text-align:center; margin:25px 0;">
+		    
+		    <!-- Title -->
+		    <h3 style="color:#1976d2; margin-bottom:12px;">
+		        Reference Video – Add Quiz
+		    </h3>
+
+		    <!-- Video -->
+		    <video id="addQuizVideo"
+		           width="600"
+		           height="340"
+		           controls
+		           style="border:2px solid #1976d2; border-radius:10px;">
+		        
+		        <source src="/Reference_video/Add%20quiz%20Reference%20Video.mp4" type="video/mp4">
+		        Your browser does not support the video tag.
+		    </video>
+
+		    <!-- Note -->
+		    <p style="font-size:14px; color:#555; margin-top:8px;">
+		        This video explains how to add a quiz and upload the question paper Excel.
+		    </p>
+		</div>
+
+		<script>
+		    // Ensure video stops after finishing (no repeat)
+		    const addQuizVideo = document.getElementById("addQuizVideo");
+		    addQuizVideo.addEventListener("ended", () => {
+		        addQuizVideo.pause();
+		    });
+		</script>
+
       </li>
 
       <!-- 🟡 ACTIVATE QUIZ -->
@@ -152,12 +215,12 @@
           </p>
           <ul>
             <li>Enter the <b>Quiz ID</b> you created earlier.</li>
-            <li>Select the corresponding <b>Department</b>, <b>Year</b>, and <b>Section</b>.</li>
+            <li>Select the corresponding <b>Department</b>, <b>Year</b>, <b>Section</b> and <b>Time</b>(If Required).</li>
             <li>Click on the <b>Activate</b> button to enable the quiz for those students.</li>
           </ul>
           <div class="example-box">
             <p>Example:</p>
-            <p><b>Quiz ID:</b> 2305A-JAVA-01 → Activated for Department: CSE, Year: 3, Section: A</p>
+            <p><b>Quiz ID:</b> 2305A-JAVA-01 → Activated for Department: CSE, Year: 3, Section: A with Duration : 30 Min</p>
           </div>
         </div>
       </li>

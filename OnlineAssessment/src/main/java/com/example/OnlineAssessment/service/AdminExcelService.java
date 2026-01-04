@@ -38,7 +38,7 @@ public class AdminExcelService {
                 String name = getCellValueAsString(row.getCell(1));
                 String email = getCellValueAsString(row.getCell(2));
                 String department = getCellValueAsString(row.getCell(3));
-                String password = getCellValueAsString(row.getCell(4));
+                //String password = getCellValueAsString(row.getCell(4));
 
                 if (facultyId.isEmpty()) continue;
 
@@ -51,7 +51,10 @@ public class AdminExcelService {
                 if (!name.isEmpty()) faculty.setFacultyName(name);
                 if (!email.isEmpty()) faculty.setEmail(email);
                 if (!department.isEmpty()) faculty.setDepartment(department);
-                if (!password.isEmpty()) faculty.setPassword(password);
+                
+                if (faculty.getPassword() == null) {
+                    faculty.setPassword(facultyId);
+                }
 
                 facultyRepo.save(faculty);
             }
@@ -77,7 +80,6 @@ public class AdminExcelService {
             header.createCell(1).setCellValue("Name");
             header.createCell(2).setCellValue("Email");
             header.createCell(3).setCellValue("Department");
-            header.createCell(4).setCellValue("Password");
 
             int rowNum = 1;
             for (Faculty f : facultyList) {
@@ -86,7 +88,6 @@ public class AdminExcelService {
                 row.createCell(1).setCellValue(f.getFacultyName());
                 row.createCell(2).setCellValue(f.getEmail());
                 row.createCell(3).setCellValue(f.getDepartment());
-                row.createCell(4).setCellValue(f.getPassword());
             }
 
             workbook.write(bos);

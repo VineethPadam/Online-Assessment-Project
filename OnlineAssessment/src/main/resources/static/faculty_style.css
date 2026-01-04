@@ -208,3 +208,8 @@
   color: #333;
 }
 
+.modal-message.error {
+  color: red;
+  font-weight: 600;
+}
+

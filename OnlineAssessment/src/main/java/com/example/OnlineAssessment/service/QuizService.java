@@ -18,12 +18,18 @@ public class QuizService {
     private QuizActivationRepo quizActivationRepo;
 
     // Create a new quiz if it doesn't exist
+ // ✅ Create a new quiz ONLY if quizId is unique
     public Quiz createQuiz(String quizId, String quizName) {
-        for (Quiz q : quizRepo.findAll()) {
-            if (q.getQuizId().equalsIgnoreCase(quizId) || q.getQuizName().equalsIgnoreCase(quizName)) {
-                return q; // Return existing quiz
-            }
+        // Check if quizId already exists
+        if (quizRepo.existsById(quizId)) {
+            throw new RuntimeException("Quiz ID already exists! Please choose a unique Quiz ID.");
         }
+
+        // Optional: Check if quizName is unique
+        if (quizRepo.findByQuizNameIgnoreCase(quizName) != null) {
+            throw new RuntimeException("Quiz Name already exists! Please choose a unique name.");
+        }
+
         Quiz quiz = new Quiz();
         quiz.setQuizId(quizId);
         quiz.setQuizName(quizName);
@@ -31,11 +37,15 @@ public class QuizService {
     }
 
     // Activate or deactivate a quiz for a specific batch
-    public QuizActivation activateQuiz(String quizId, String section, String department, int year, boolean active) {
+    public QuizActivation activateQuiz(String quizId, String section,
+            String department, int year, boolean active, int durationMinutes) {
+
         Quiz quiz = quizRepo.findById(quizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
-        QuizActivation qa = quizActivationRepo.findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
+        QuizActivation qa = quizActivationRepo
+                .findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
+
         if (qa == null) {
             qa = new QuizActivation();
             qa.setQuiz(quiz);
@@ -43,7 +53,10 @@ public class QuizService {
             qa.setDepartment(department);
             qa.setYear(year);
         }
+
         qa.setActive(active);
+        qa.setDurationMinutes(durationMinutes);
+
         return quizActivationRepo.save(qa);
     }
 

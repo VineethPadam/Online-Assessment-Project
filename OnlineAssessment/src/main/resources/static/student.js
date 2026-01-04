@@ -10,6 +10,8 @@
     // ✅ Added global control variables
     let examActive = false;
     let blurCount = 0;
+    let timerInterval = null;
+	let isSubmitted = false;
 
     window.setStudentRoll = (roll) => studentRoll = roll;
 
@@ -100,6 +102,7 @@
             <select id="quizDept">
                 <option value="">Select Department</option>
                 <option value="CSE">CSE</option>
+				<option value="CST">CST</option>
                 <option value="ECE">ECE</option>
                 <option value="EEE">EEE</option>
                 <option value="MECH">MECH</option>
@@ -182,7 +185,40 @@
                             return;
                         }
 
-                        openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section);
+                        // Show confirmation modal
+                        saveModalState();
+                        modalHeader.textContent = "Confirm Quiz Start";
+                        modalBody.innerHTML = `<p>Would you like to take the quiz: <strong>${q.quiz.quizName}</strong>?</p>
+                                               <p style="color: #ff6600; font-weight: bold;">Note: Once you proceed, a 30-second preparation countdown will begin.</p>`;
+                        modalFooter.innerHTML = `<button class="back-btn" id="cancelQuizBtn">Cancel</button>
+                                                 <button class="login-btn" id="proceedQuizBtn">Proceed</button>`;
+
+                        document.getElementById("cancelQuizBtn").addEventListener("click", () => {
+                            modal.classList.add("hidden");
+                            if (leftMenu) leftMenu.style.display = "flex";
+                        });
+
+                        document.getElementById("proceedQuizBtn").addEventListener("click", () => {
+                            // Request full screen immediately on user click
+                            enterFullScreen();
+                            
+                            // Start 30-second countdown
+                            modalHeader.textContent = "Preparation Time";
+                            modalBody.innerHTML = `<p>Get ready! The quiz will start in:</p>
+                                                   <div style="font-size: 48px; font-weight: bold; color: #ff6600; text-align: center;" id="countdownTimer">30</div>`;
+                            modalFooter.innerHTML = "";
+
+                            let countdown = 30;
+                            const countdownInterval = setInterval(() => {
+                                countdown--;
+                                document.getElementById("countdownTimer").textContent = countdown;
+                                if (countdown <= 0) {
+                                    clearInterval(countdownInterval);
+                                    modal.classList.add("hidden");
+                                    openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section, q.durationMinutes);
+                                }
+                            }, 1000);
+                        });
 
                     } catch (err) {
                         alert("Error checking attempts: " + err.message);
@@ -198,10 +234,10 @@
     }
 
     // -------------------- OPEN QUIZ --------------------
-	async function openQuiz(quizId, quizName, dept, year, section) {
+	async function openQuiz(quizId, quizName, dept, year, section, durationMinutes) {
 	    if (!studentRoll) return;
 	    modal.classList.add("hidden");
-	    enterFullScreen();
+	    // enterFullScreen(); // Moved to proceed button click
 
 	    try {
 	        const res = await fetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
@@ -211,6 +247,8 @@
 
 	        examActive = true;
 	        blurCount = 0;
+			isSubmitted = false;
+
 	        setupTabProtection();
 	        disableCopy();
 
@@ -223,13 +261,34 @@
 
 	        const inner = document.createElement("div");
 	        inner.className = "quiz-container";
-	        window.scrollTo({ top: 0, behavior: "auto" });
 
 	        // HEADER
 	        const header = document.createElement("div");
 	        header.className = "quiz-header";
 	        header.textContent = "MITS Online Quiz";
 	        inner.appendChild(header);
+
+	        // TIMER
+	        let timerDiv = null;
+	        //let timerInterval = null;
+	        if (durationMinutes > 0) {
+	            timerDiv = document.createElement("div");
+	            timerDiv.className = "quiz-timer";
+	            timerDiv.textContent = `Time Remaining: ${durationMinutes}:00`;
+	            inner.appendChild(timerDiv);
+
+	            let remainingSeconds = durationMinutes * 60;
+	            timerInterval = setInterval(() => {
+	                remainingSeconds--;
+	                const mins = Math.floor(remainingSeconds / 60);
+	                const secs = remainingSeconds % 60;
+	                timerDiv.textContent = `Time Remaining: ${mins}:${secs.toString().padStart(2, '0')}`;
+	                if (remainingSeconds <= 0) {
+	                    clearInterval(timerInterval);
+	                    submitQuiz();
+	                }
+	            }, 1000);
+	        }
 
 	        const infoGrid = document.createElement("div");
 	        infoGrid.className = "quiz-info";
@@ -386,7 +445,6 @@
 	        inner.appendChild(bodyDiv);
 	        quizContainer.appendChild(inner);
 	        document.body.appendChild(quizContainer);
-	        centerOverlay(quizContainer);
 
 	    } catch (err) {
 	        alert("Error opening quiz: " + err.message);
@@ -396,7 +454,13 @@
 	// -------------------- SUBMIT QUIZ --------------------
 	async function submitQuiz() {
 	    // ✅ Stop exam protection and fullscreen
+		if (isSubmitted) return;   // 🔒 STOP DOUBLE SUBMIT
+		    isSubmitted = true;
 	    examActive = false;
+	    if (timerInterval) {
+	        clearInterval(timerInterval);
+	        timerInterval = null;
+	    }
 	    removeTabProtection();
 	    enableCopy(); // ✅ Re-enable copy/paste after quiz ends
 
@@ -630,7 +694,6 @@
             inner.appendChild(backBtn);
             quizContainer.appendChild(inner);
             document.body.appendChild(quizContainer);
-            centerOverlay(quizContainer);
 
         } catch (err) {
             alert("Error loading answer key: " + err.message);
@@ -646,20 +709,6 @@
         else if (el.msRequestFullscreen) el.msRequestFullscreen();
     }
 	
-
-    function centerOverlay(el) {
-        el.style.position = "fixed";
-        el.style.top = "50%";
-        el.style.left = "50%";
-        el.style.transform = "translate(-50%, -50%)";
-        el.style.zIndex = "9999";
-        el.style.width = "90%";
-        el.style.height = "90%";
-        el.style.overflowY = "auto";
-        el.style.backgroundColor = "#fff";
-        el.style.padding = "20px";
-        el.style.borderRadius = "10px";
-    }
 	document.addEventListener("fullscreenchange", () => {
 	    if (examActive && !document.fullscreenElement) {
 	        // Create overlay confirmation UI

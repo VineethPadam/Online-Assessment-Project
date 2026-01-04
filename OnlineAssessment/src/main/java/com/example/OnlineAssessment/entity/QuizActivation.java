@@ -20,6 +20,8 @@ public class QuizActivation {
     private boolean active = false;     // quiz can be attempted
     private boolean published = false;  // results published for this batch
 
+    private int durationMinutes = 0;    // exam duration in minutes
+
     // Getters & Setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
@@ -41,4 +43,7 @@ public class QuizActivation {
 
     public boolean isPublished() { return published; }
     public void setPublished(boolean published) { this.published = published; }
+
+    public int getDurationMinutes() { return durationMinutes; }
+    public void setDurationMinutes(int durationMinutes) { this.durationMinutes = durationMinutes; }
 }

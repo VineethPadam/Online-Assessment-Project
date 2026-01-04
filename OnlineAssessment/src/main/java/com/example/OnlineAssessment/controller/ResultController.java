@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.entity.Result;
@@ -22,16 +23,23 @@ public class ResultController {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     // Submit quiz result
+ // ✅ SAFE SUBMIT (IDEMPOTENT)
     @PostMapping("/submit")
-    public Result submitResult(@RequestBody Map<String, Object> payload) throws Exception {
+    public ResponseEntity<Result> submitResult(@RequestBody Map<String, Object> payload) throws Exception {
+
         String rollNumber = (String) payload.get("rollNumber");
         String quizId = (String) payload.get("quizId");
 
         @SuppressWarnings("unchecked")
-        Map<String, String> answers = (Map<String, String>) (Map<?, ?>) payload.get("answers");
+        Map<String, String> answers =
+                (Map<String, String>) (Map<?, ?>) payload.get("answers");
 
-        return resultService.evaluateAndSaveResult(rollNumber, quizId, answers);
+        // ✅ This method will now handle duplicate submissions safely
+        Result result = resultService.evaluateAndSaveResult(rollNumber, quizId, answers);
+
+        return ResponseEntity.ok(result);
     }
+
 
     // Get results by filter
     @GetMapping("/filter")

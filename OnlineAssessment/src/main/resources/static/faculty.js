@@ -73,6 +73,7 @@
   });
 
   // ===== Add Quiz =====
+  // ===== Add Quiz =====
   addQuizBtn.addEventListener("click", () => {
     createModal(
       "Add Quiz - Step 1",
@@ -86,35 +87,51 @@
           showModalMessage(modal, "Please enter all details", "error");
           return;
         }
-        document.body.removeChild(overlay);
 
-        // Step 2 - Upload Questions
-        createModal(
-          `Upload Questions Excel for ${quizName}`,
-          `<input type="file" id="quizExcelFile" accept=".xlsx,.xls">`,
-          (modal2, overlay2) => {
-            const fileInput = modal2.querySelector("#quizExcelFile");
-            if (!fileInput.files[0]) {
-              showModalMessage(modal2, "Please select a file!", "error");
-              return;
+        // ✅ Call backend to create quiz
+        fetch(`/quiz/create?quizId=${quizId}&quizName=${encodeURIComponent(quizName)}`, {
+          method: "POST"
+        })
+          .then(async res => {
+            if (!res.ok) {
+              // Backend returned an error (like duplicate quizId)
+              const msg = await res.text();
+              showModalMessage(modal, msg, "error"); // show inside modal
+            } else {
+              const data = await res.json();
+              // Proceed to Step 2 - Upload questions
+              document.body.removeChild(overlay);
+
+              createModal(
+                `Upload Questions Excel for ${quizName}`,
+                `<input type="file" id="quizExcelFile" accept=".xlsx,.xls">`,
+                (modal2, overlay2) => {
+                  const fileInput = modal2.querySelector("#quizExcelFile");
+                  if (!fileInput.files[0]) {
+                    showModalMessage(modal2, "Please select a file!", "error");
+                    return;
+                  }
+                  const formData = new FormData();
+                  formData.append("file", fileInput.files[0]);
+                  formData.append("quizName", quizName);
+                  formData.append("quizId", quizId);
+
+                  fetch("/upload/questions", { method: "POST", body: formData })
+                    .then(res => res.text())
+                    .then(data => {
+                      showModalMessage(modal2, data, "success");
+                      setTimeout(() => document.body.removeChild(overlay2), 2000);
+                    })
+                    .catch(err => showModalMessage(modal2, "Error: " + err, "error"));
+                }
+              );
             }
-            const formData = new FormData();
-            formData.append("file", fileInput.files[0]);
-            formData.append("quizName", quizName);
-            formData.append("quizId", quizId);
-
-            fetch("/upload/questions", { method: "POST", body: formData })
-              .then(res => res.text())
-              .then(data => {
-                showModalMessage(modal2, data, "success");
-                setTimeout(() => document.body.removeChild(overlay2), 2000);
-              })
-              .catch(err => showModalMessage(modal2, "Error: " + err, "error"));
-          }
-        );
+          })
+          .catch(err => showModalMessage(modal, "Error: " + err, "error"));
       }
     );
   });
+
 
   // ===== Activate / Deactivate Quiz =====
   activateQuizBtn.addEventListener("click", () => {
@@ -151,6 +168,8 @@
          <option value="4">4</option>
        </select>
 
+       <input type="number" id="actDuration" placeholder="Duration in minutes (0 for no limit)" min="0">
+
        <select id="actStatus">
          <option value="true">Activate</option>
          <option value="false">Deactivate</option>
@@ -160,6 +179,7 @@
         const section = modal.querySelector("#actSection").value;
         const department = modal.querySelector("#actDepartment").value;
         const year = modal.querySelector("#actYear").value;
+        const durationMinutes = parseInt(modal.querySelector("#actDuration").value) || 0;
         const active = modal.querySelector("#actStatus").value;
 
         if (!quizId || !section || !department || !year) {
@@ -167,16 +187,23 @@
           return;
         }
 
-        fetch(
-          `/quiz/activate?quizId=${quizId}&section=${section}&department=${department}&year=${year}&active=${active}`,
-          { method: "POST" }
-        )
-          .then(res => res.json())
-          .then(() => {
-            showModalMessage(modal, "Quiz updated successfully!", "success");
-            setTimeout(() => document.body.removeChild(overlay), 2000);
-          })
-          .catch(err => showModalMessage(modal, "Error: " + err, "error"));
+		fetch(
+		  `/quiz/activate?quizId=${quizId}&section=${section}&department=${department}&year=${year}&active=${active}&durationMinutes=${durationMinutes}`,
+		  { method: "POST" }
+		)
+		.then(async res => {
+		  const message = await res.text();
+
+		  if (!res.ok) {
+		    // ❌ Invalid Quiz ID
+		    showModalMessage(modal, message, "error");
+		  } else {
+		    // ✅ Quiz activated
+		    showModalMessage(modal, message, "success");
+		    setTimeout(() => document.body.removeChild(overlay), 2000);
+		  }
+		})
+		.catch(err => showModalMessage(modal, "Error: " + err, "error"));
       }
     );
   });
@@ -232,21 +259,22 @@
           return;
         }
 
-        fetch(`/quiz/${quizId}/publish-result?section=${section}&department=${department}&year=${year}&publish=${publish}`, {
-          method: "POST"
-        })
-        .then(async res => {
-          if (!res.ok) {
-            // Get error message from backend
-            const msg = await res.text();
-            showModalMessage(modal, msg, "error");
-          } else {
-            const data = await res.json();
-            showModalMessage(modal, "Result status updated successfully!", "success");
-            setTimeout(() => document.body.removeChild(overlay), 2000);
-          }
-        })
-        .catch(err => showModalMessage(modal, "Error: " + err, "error"));
+		fetch(
+		  `/quiz/${quizId}/publish-result?section=${section}&department=${department}&year=${year}&publish=${publish}`,
+		  { method: "POST" }
+		)
+		.then(async res => {
+		  const message = await res.text();
+
+		  if (!res.ok) {
+		    // ❌ Invalid Quiz ID or Not Activated
+		    showModalMessage(modal, message, "error");
+		  } else {
+		    // ✅ Published / Unpublished
+		    showModalMessage(modal, message, "success");
+		  }
+		})
+		.catch(err => showModalMessage(modal, "Error: " + err, "error"));
       }
     );
   });

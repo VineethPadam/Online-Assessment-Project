@@ -98,8 +98,8 @@ loginBtn.addEventListener("click", async () => {
             loginError.style.color = "green";
             loginError.textContent = "Login Successful!";
 			
-			localStorage.setItem("role", selectedRole);
-			localStorage.setItem("user", JSON.stringify(loggedInUser));
+			sessionStorage.setItem("role", selectedRole);
+			sessionStorage.setItem("user", JSON.stringify(loggedInUser));
 
 
             // -------------------- SET STUDENT ROLL FOR STUDENT.JS --------------------
@@ -147,14 +147,16 @@ function showDashboard(){
 function logout(){
     loggedInUser = null;
     selectedRole = null;
-    localStorage.removeItem("role");
-    localStorage.removeItem("user");
+    //sessionStorage.removeItem("role");
+    //sessionStorage.removeItem("user");
+	sessionStorage.clear();
+
     dashboard.classList.add("hidden");
     roleSelection.style.display = "block"; // show roles again
 }
 window.addEventListener("load", () => {
-    const savedRole = localStorage.getItem("role");
-    const savedUser = localStorage.getItem("user");
+    const savedRole = sessionStorage.getItem("role");
+    const savedUser = sessionStorage.getItem("user");
 
     if(savedRole && savedUser) {
         selectedRole = savedRole;

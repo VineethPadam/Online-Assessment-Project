@@ -41,16 +41,21 @@ public class ExcelUploadController {
     }
 
     @PostMapping("/questions")
-    public ResponseEntity<String> uploadQuestions(@RequestParam("file") MultipartFile file,
-                                                  @RequestParam("quizName") String quizName,
-                                                  @RequestParam("quizId") String quizId){
-        try{
-            questionExcelService.uploadQuestions(file, quizName, quizId);
-            return ResponseEntity.ok("Questions and Options uploaded successfully");
-        } catch(Exception e){
+    public ResponseEntity<String> uploadQuestions(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("quizId") String quizId) {
+
+        try {
+            questionExcelService.uploadQuestions(file, quizId);
+            return ResponseEntity.ok("Questions uploaded successfully");
+        } catch (RuntimeException e) {
+            // business rule errors (quiz not exist, already uploaded)
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body("Error: " + e.getMessage());
+                    .body("Internal server error");
         }
     }
 

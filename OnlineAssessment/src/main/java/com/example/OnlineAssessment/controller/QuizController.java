@@ -28,20 +28,40 @@ public class QuizController {
 
     // ✅ Create a new quiz
     @PostMapping("/create")
-    public Quiz createQuiz(@RequestParam String quizId, @RequestParam String quizName) {
-        return quizService.createQuiz(quizId, quizName);
+    public ResponseEntity<?> createQuiz(@RequestParam String quizId, @RequestParam String quizName) {
+        try {
+            Quiz quiz = quizService.createQuiz(quizId, quizName);
+            return ResponseEntity.ok(quiz);
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
     }
+
 
     // ✅ Activate or deactivate quiz for a specific section/department/year
     @PostMapping("/activate")
-    public QuizActivation activateQuiz(
+    public ResponseEntity<?> activateQuiz(
             @RequestParam String quizId,
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year,
-            @RequestParam boolean active) {
-        return quizService.activateQuiz(quizId, section, department, year, active);
+            @RequestParam boolean active,
+            @RequestParam(defaultValue = "0") int durationMinutes) {
+
+        try {
+            @SuppressWarnings("unused")
+			QuizActivation activation = quizService.activateQuiz(
+                    quizId, section, department, year, active, durationMinutes);
+
+            return ResponseEntity.ok("Quiz activated successfully");
+
+        } catch (RuntimeException e) {
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid Quiz ID");
+        }
     }
+
     
     @Autowired
     StudentService studentService;
@@ -101,19 +121,29 @@ public class QuizController {
         return questionService.isMultiple(questionId);
     }
     @PostMapping("/{quizId}/publish-result")
-    public ResponseEntity<?> publishResult(
+    public ResponseEntity<String> publishResult(
             @PathVariable String quizId,
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year,
             @RequestParam boolean publish) {
+
         try {
-            QuizActivation result = quizService.publishResults(quizId, section, department, year, publish);
-            return ResponseEntity.ok(result);
+            quizService.publishResults(quizId, section, department, year, publish);
+
+            return ResponseEntity.ok(
+                    publish
+                            ? "Result published successfully"
+                            : "Result unpublished successfully"
+            );
+
         } catch (RuntimeException e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(e.getMessage());
         }
     }
+
 
 
 }
