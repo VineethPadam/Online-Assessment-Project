@@ -56,7 +56,11 @@
 	<!-- Student Fields -->
 	<div id="studentFields">
 	  <input type="text" id="studentRoll" placeholder="Roll Number" class="login-input">
-	  <input type="password" id="studentPassword" placeholder="Password" class="login-input">
+	  <div class="password-wrapper">
+	    <input type="password" id="studentPassword" placeholder="Password" class="login-input" autocomplete="new-password">
+	    <span class="toggle-password" data-target="studentPassword">👁️</span>
+	  </div>
+
 	  <button id="studentForgotPasswordBtn" class="back-btn" type="button">
 	    Forgot Password?
 	  </button>
@@ -65,7 +69,11 @@
 	<!-- Faculty Fields -->
 	<div id="facultyFields">
 	  <input type="email" id="facultyEmail" placeholder="Email" class="login-input">
-	  <input type="password" id="facultyPassword" placeholder="Password" class="login-input">
+	  <div class="password-wrapper">
+	    <input type="password" id="facultyPassword" placeholder="Password" class="login-input">
+	    <span class="toggle-password" data-target="facultyPassword">👁️</span>
+	  </div>
+
 	  <button id="facultyForgotPasswordBtn" class="back-btn" type="button">
 	    Forgot Password?
 	  </button>
@@ -75,7 +83,11 @@
     <!-- Admin Fields -->
     <div id="adminFields">
       <input type="text" id="adminUsername" placeholder="Username" class="login-input">
-      <input type="password" id="adminPassword" placeholder="Password" class="login-input">
+	  <div class="password-wrapper">
+	    <input type="password" id="adminPassword" placeholder="Password" class="login-input">
+	    <span class="toggle-password" data-target="adminPassword">👁️</span>
+	  </div>
+
     </div>
 
     <button id="loginBtn" class="login-btn">Login</button>
@@ -121,9 +133,9 @@
   </div>
   <!-- ✅ FOOTER INSIDE PORTAL BOX -->
     <div class="portal-footer">
-      Developed by <strong>Vineeth</strong> & <strong>Yaswanth</strong>,
+      Developed by <strong>Vineeth sai</strong> & <strong>Yaswanth Reddy</strong>,
       Dept of CSE (2023–2027 Batch) |
-      Mentor <strong>Mr. Anandaraj</strong>
+      Mentor <strong>Mr. B Anandaraj Asst.Prof</strong>
     </div>
 </div>
 

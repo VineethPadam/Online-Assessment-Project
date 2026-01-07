@@ -254,4 +254,9 @@ body {
     padding: 12px 14px;
   }
 }
+/* ===== Faculty name color in dashboard ===== */
+#dashboard #welcomeMsg .faculty-name {
+  color: #800000;   /* maroon red */
+  font-weight: bold;
+}
 
