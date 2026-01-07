@@ -19,6 +19,7 @@
       </div>
     `;
 
+    
     document.body.appendChild(backdrop);
 
     const modal = document.getElementById("adminModal");
