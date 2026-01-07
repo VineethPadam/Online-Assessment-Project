@@ -94,6 +94,7 @@ loginBtn.addEventListener("click", async () => {
         });
 
         if(res.ok){
+			
             loggedInUser = await res.json();
             loginError.style.color = "green";
             loginError.textContent = "Login Successful!";
@@ -103,9 +104,10 @@ loginBtn.addEventListener("click", async () => {
 
 
             // -------------------- SET STUDENT ROLL FOR STUDENT.JS --------------------
-            if(selectedRole === "student") {
-                window.setStudentRoll(loggedInUser.studentRollNumber);
-            }
+			if(selectedRole === "student") {
+			    window.setStudentRoll(loggedInUser.rollNumber);
+			}
+	
 
             setTimeout(() => {
                 loginSection.classList.remove("show");
@@ -126,8 +128,19 @@ loginBtn.addEventListener("click", async () => {
 
 // -------------------- SHOW DASHBOARD --------------------
 function showDashboard(){
-    dashboard.classList.remove("hidden");
-    welcomeMsg.textContent = `Welcome ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`;
+	    dashboard.classList.remove("hidden");
+
+		if (selectedRole === "student") {
+		    welcomeMsg.innerHTML = `Welcome <span class="student-name">${loggedInUser.name}</span>`;
+		} 
+		else if (selectedRole === "faculty") {
+		    welcomeMsg.innerHTML = `Welcome <span class="faculty-name">${loggedInUser.facultyName}</span>`;
+		} 
+		else {
+		    welcomeMsg.textContent =
+		      `Welcome ${selectedRole.charAt(0).toUpperCase() + selectedRole.slice(1)}`;
+		}
+
 
     studentDashboard.classList.add("hidden");
     facultyDashboard.classList.add("hidden");
@@ -163,13 +176,27 @@ window.addEventListener("load", () => {
         loggedInUser = JSON.parse(savedUser);
 
         // If it's student, reapply roll number
-        if(selectedRole === "student" && loggedInUser.studentRollNumber) {
-            window.setStudentRoll(loggedInUser.studentRollNumber);
-        }
+		if(selectedRole === "student" && loggedInUser.rollNumber) {
+		    window.setStudentRoll(loggedInUser.rollNumber);
+		}
+
 
         roleSelection.style.display = "none";
         showDashboard();
     }
+});
+document.addEventListener("click", function (e) {
+  if (e.target.classList.contains("toggle-password")) {
+    const inputId = e.target.dataset.target;
+    const input = document.getElementById(inputId);
+
+    if (input.type === "password") {
+      input.type = "text";
+    } else {
+      input.type = "password";
+      e.target.classList.remove("active");
+    }
+  }
 });
 
 

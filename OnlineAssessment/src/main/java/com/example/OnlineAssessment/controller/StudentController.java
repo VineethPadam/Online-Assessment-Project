@@ -1,12 +1,16 @@
 package com.example.OnlineAssessment.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.entity.Student;
 import com.example.OnlineAssessment.service.StudentService;
+import java.util.Map;
+import java.util.HashMap;
+
 
 @RestController
 @RequestMapping("/student")
@@ -24,9 +28,14 @@ public class StudentController {
                 student.getPassword()
         );
 
-        if(s != null){
-            return ResponseEntity.ok(s);
-        } else {
+        if (s != null) {
+            Map<String, String> response = new HashMap<>();
+            response.put("rollNumber", s.getStudentRollNumber());
+            response.put("name", s.getStudentName()); // 👈 student name
+
+            return ResponseEntity.ok(response);
+        }
+        else {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                                  .body("Invalid Credentials");
         }
