@@ -1,6 +1,9 @@
 package com.example.OnlineAssessment.entity;
 
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
@@ -16,6 +19,7 @@ public class Faculty {
     private String password;  // optional if login requires password
 
     @OneToMany
+    @JsonIgnore
     private List<Quiz> quizzes;  // faculty quizzes
 
     // Getters & Setters

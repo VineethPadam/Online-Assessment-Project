@@ -470,3 +470,146 @@
 	    z-index: 10;
 	    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.05);
 	}
+	@media(max-width: 768px) {
+
+	    /* Header smaller */
+	    .quiz-header {
+	        font-size: 20px;
+	        padding: 8px 0;
+	    }
+
+	    /* Student info compact */
+	    .quiz-info {
+	        flex-wrap: wrap;
+	        font-size: 12px;
+	        gap: 6px;
+	        padding: 6px 10px;
+	        margin-bottom: 12px;
+	    }
+	    .quiz-info div {
+	        padding: 4px 8px;
+	    }
+
+	    /* Body stacked */
+	    .quiz-body {
+	        flex-direction: column;
+	        padding: 0 10px 10px 10px;
+	    }
+
+	    /* Question area full width */
+	    .question-area {
+	        width: 100%;
+	        flex: 1 1 auto;
+	    }
+
+	    /* Options smaller */
+	    .option-card {
+	        flex: 1 1 100%;  /* single column */
+	        font-size: 13px;
+	        padding: 6px 8px;
+	    }
+
+	    /* Question navigation: horizontal scroll */
+	    .question-nav {
+	        width: 100%;
+	        flex-direction: row;
+	        overflow-x: auto;
+	        overflow-y: hidden;
+	        padding: 8px 5px;
+	        gap: 6px;
+	        white-space: nowrap;
+	        background: #fff9ff;
+	        border: 2px solid #6a0dad;
+	        border-radius: 8px;
+	        align-items: center;
+	        justify-content: flex-start;
+	    }
+	    .question-grid {
+	        display: flex;
+	        flex-direction: row;
+	        gap: 6px;
+	    }
+	    .nav-btn {
+	        min-width: 32px;
+	        min-height: 32px;
+	        font-size: 12px;
+	        padding: 4px;
+	        border-radius: 6px;
+	    }
+
+	    /* Quiz controls fixed at bottom */
+	    .quiz-controls {
+	        position: fixed;      /* ✅ ensures always visible */
+	        bottom: 0;
+	        left: 0;
+	        width: 100%;
+	        padding: 6px 10px;
+	        gap: 8px;
+	        display: flex;
+	        justify-content: space-between;
+	        align-items: center;
+	        background: #fff;
+	        box-shadow: 0 -2px 6px rgba(0,0,0,0.1);
+	        z-index: 9999;
+	    }
+
+	    /* Left/right buttons */
+	    .left-buttons { display: flex; gap: 6px; }
+	    .right-buttons { display: flex; gap: 6px; }
+
+	    .left-buttons button,
+	    .right-buttons button {
+	        padding: 6px 10px;
+	        font-size: 13px;
+	        min-width: 50px;
+	    }
+
+	    /* Add bottom padding to question scroll to avoid overlap */
+	    .question-scroll { padding-bottom: 60px; }
+	}
+
+	/* Online / Offline base style */
+	.net-status {
+	    font-size: 14px;
+	    font-weight: 700;
+	    padding: 6px 12px;
+	    border-radius: 20px;
+	    display: inline-flex;
+	    align-items: center;
+	    gap: 6px;
+	}
+
+	/* ONLINE – Green highlight */
+	.net-status.online {
+	    background-color: #e6ffea;
+	    color: #1e7e34;
+	    border: 2px solid #28a745;
+	    box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
+	}
+
+	/* OFFLINE – Red highlight */
+	.net-status.offline {
+	    background-color: #ffe6e6;
+	    color: #b30000;
+	    border: 2px solid #dc3545;
+	    box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
+	}
+	.quiz-header {
+	    position: relative;        /* IMPORTANT */
+	    text-align: center;        /* Centers MITS Online Quiz */
+	}
+
+	.quiz-title {
+	    display: block;
+	}
+
+	#networkStatus {
+	    position: absolute;
+	    right: 20px;               /* Moves ONLINE to right corner */
+	    top: 50%;
+	    transform: translateY(-50%);
+	}
+	.nav-btn.disabled {
+	    opacity: 0.5;
+	    cursor: not-allowed;
+	}

@@ -12,6 +12,23 @@
     let blurCount = 0;
     let timerInterval = null;
 	let isSubmitted = false;
+	
+	let submitBtn = null;        // global reference
+	let halfTimeReached = false;
+
+	let prevBtnRef = null;
+	let nextBtnRef = null;
+	let navButtons = [];
+
+	
+	let remainingSeconds = 0;  // Track remaining seconds globally
+	
+	let examPaused = false; 
+	let lastNetworkState = null; // true=online, false=offline
+    // New flag
+	let hasShownOfflineAlert = false;
+	let hasShownOnlineAlert = false;
+
 
     window.setStudentRoll = (roll) => studentRoll = roll;
 
@@ -248,6 +265,8 @@
 	        examActive = true;
 	        blurCount = 0;
 			isSubmitted = false;
+			halfTimeReached = false;
+
 
 	        setupTabProtection();
 	        disableCopy();
@@ -263,11 +282,17 @@
 	        inner.className = "quiz-container";
 
 	        // HEADER
-	        const header = document.createElement("div");
-	        header.className = "quiz-header";
-	        header.textContent = "MITS Online Quiz";
-	        inner.appendChild(header);
+			const header = document.createElement("div");
+			header.className = "quiz-header";
+			header.innerHTML = `
+			  <span>MITS Online Quiz</span>
+			  <span id="networkStatus" class="net-status online">● ONLINE</span>
+			`;
+			inner.appendChild(header);
+			// Initial network check ONLY after quiz UI is rendered
+			setTimeout(updateNetworkStatus, 500);
 
+	
 	        // TIMER
 	        let timerDiv = null;
 	        //let timerInterval = null;
@@ -277,18 +302,40 @@
 	            timerDiv.textContent = `Time Remaining: ${durationMinutes}:00`;
 	            inner.appendChild(timerDiv);
 
-	            let remainingSeconds = durationMinutes * 60;
-	            timerInterval = setInterval(() => {
-	                remainingSeconds--;
-	                const mins = Math.floor(remainingSeconds / 60);
-	                const secs = remainingSeconds % 60;
-	                timerDiv.textContent = `Time Remaining: ${mins}:${secs.toString().padStart(2, '0')}`;
-	                if (remainingSeconds <= 0) {
-	                    clearInterval(timerInterval);
-	                    submitQuiz();
-	                }
-	            }, 1000);
-	        }
+				remainingSeconds = durationMinutes * 60;
+				const totalSeconds = remainingSeconds;
+				const halfTimeSeconds = Math.floor(totalSeconds / 2);
+
+
+				function startTimer() {
+				    timerInterval = setInterval(() => {
+				        if (examPaused) return; // pause timer if offline
+
+				        remainingSeconds--;
+
+						const elapsedSeconds = totalSeconds - remainingSeconds;
+
+						if (!halfTimeReached && elapsedSeconds >= halfTimeSeconds) {
+						    halfTimeReached = true;
+						    if (submitBtn) {
+						        submitBtn.disabled = false;
+						        submitBtn.textContent = "Submit";
+						    }
+						}
+
+				        const mins = Math.floor(remainingSeconds / 60);
+				        const secs = remainingSeconds % 60;
+				        timerDiv.textContent = `Time Remaining: ${mins}:${secs.toString().padStart(2,'0')}`;
+
+				        if (remainingSeconds <= 0) {
+				            clearInterval(timerInterval);
+				            submitQuiz();
+				        }
+				    }, 1000);
+				}
+
+				startTimer();
+			}
 
 	        const infoGrid = document.createElement("div");
 	        infoGrid.className = "quiz-info";
@@ -372,10 +419,12 @@
 
 	            // Nav Button
 	            const navBtn = document.createElement("button");
+				navButtons.push(navBtn);
 	            navBtn.textContent = idx + 1;
 	            navBtn.dataset.idx = idx;
 	            navBtn.className = "nav-btn";
-	            navBtn.addEventListener("click", () => {
+	            navBtn.addEventListener("click", (e) => {
+					if (examPaused) return offlineClickGuard(e);
 	                questionDivs.forEach(div => (div.style.display = "none"));
 	                questionDivs[idx].style.display = "block";
 	                currentIndex = idx;
@@ -396,9 +445,11 @@
 	        btnDiv.className = "quiz-controls";
 
 	        const prevBtn = document.createElement("button");
+			prevBtnRef = prevBtn;
 	        prevBtn.className = "back-btn";
 	        prevBtn.textContent = "Previous";
-	        prevBtn.addEventListener("click", () => {
+	        prevBtn.addEventListener("click", (e) => {
+				if (examPaused) return offlineClickGuard(e);
 	            if (currentIndex > 0) {
 	                questionDivs[currentIndex].style.display = "none";
 	                currentIndex--;
@@ -408,9 +459,11 @@
 	        });
 
 	        const nextBtn = document.createElement("button");
+			nextBtnRef = nextBtn;
 	        nextBtn.className = "login-btn";
 	        nextBtn.textContent = "Next";
-	        nextBtn.addEventListener("click", () => {
+	        nextBtn.addEventListener("click", (e) => {
+				if (examPaused) return offlineClickGuard(e);
 	            if (currentIndex < questionDivs.length - 1) {
 	                questionDivs[currentIndex].style.display = "none";
 	                currentIndex++;
@@ -419,10 +472,12 @@
 	            }
 	        });
 
-	        const submitBtn = document.createElement("button");
-	        submitBtn.className = "login-btn";
-	        submitBtn.textContent = "Submit";
-	        submitBtn.addEventListener("click", submitQuiz);
+			submitBtn = document.createElement("button");
+			submitBtn.className = "login-btn";
+			submitBtn.textContent = "Submit (Available after half time)";
+			submitBtn.disabled = true;                 // 🔒 disable initially
+			submitBtn.addEventListener("click", submitQuiz);
+
 
 			// ---- create button groups ----
 			const leftGroup = document.createElement("div");
@@ -448,6 +503,13 @@
 
 	    } catch (err) {
 	        alert("Error opening quiz: " + err.message);
+	    }
+	}
+	function offlineClickGuard(e) {
+	    if (examPaused) {
+	        e.preventDefault();
+	        alert("⚠️ You are offline. Please wait for internet connection.");
+	        return false;
 	    }
 	}
 
@@ -523,6 +585,8 @@
     }
 
     function handleVisibilityChange() {
+		if (examPaused) return; // 🚫 DO NOTHING WHEN OFFLINE
+
         if (document.hidden && examActive) {
             blurCount++;
             if (blurCount >= 2) {
@@ -537,6 +601,8 @@
     }
 
     function handleWindowBlur() {
+		if (examPaused) return; // 🚫 DO NOTHING WHEN OFFLINE
+
         if (!examActive) return;
         setTimeout(() => {
             if (!document.hidden && examActive) return;
@@ -751,6 +817,122 @@
 	    }
 	});
 
+	// -------------------- NETWORK STATUS --------------------
+	async function updateNetworkStatus() {
+	    const statusEl = document.getElementById("networkStatus");
+	    if (!statusEl) return;
+
+	    let hasInternet = false;
+
+	    try {
+	        const controller = new AbortController();
+	        const timeout = setTimeout(() => controller.abort(), 3000);
+
+	        const res = await fetch("/ping", {
+	            method: "GET",
+	            cache: "no-store",
+	            signal: controller.signal
+	        });
+
+	        clearTimeout(timeout);
+	        hasInternet = res.ok;
+	    } catch (e) {
+	        hasInternet = false;
+	    }
+
+	    // prevent flickering
+	    if (hasInternet === lastNetworkState) return;
+	    lastNetworkState = hasInternet;
+
+	    if (hasInternet) {
+	        statusEl.textContent = "● ONLINE";
+	        statusEl.classList.remove("offline");
+	        statusEl.classList.add("online");
+
+	        if (examActive && examPaused) {
+	            examPaused = false;
+	            enableExamControls();
+
+				if (!hasShownOnlineAlert) {
+				    alert("✅ Internet restored. Quiz resumed.");
+				    hasShownOnlineAlert = true;
+				    hasShownOfflineAlert = false;
+				}
+	        }
+
+	    } else {
+	        statusEl.textContent = "● OFFLINE";
+	        statusEl.classList.remove("online");
+	        statusEl.classList.add("offline");
+
+	        if (examActive && !examPaused) {
+	            examPaused = true;
+	            disableExamControls();
+				if (!hasShownOfflineAlert) {
+				     alert("⚠️ Internet lost. Quiz paused.");
+				     hasShownOfflineAlert = true;
+				     hasShownOnlineAlert = false;
+				}
+	        }
+	    }
+	}
 
 
+	function disableExamControls() {
+	    if (prevBtnRef) prevBtnRef.disabled = true;
+	    if (nextBtnRef) nextBtnRef.disabled = true;
+	    if (submitBtn) submitBtn.disabled = true;
+
+	    navButtons.forEach(btn => {
+	        btn.disabled = true;
+	        btn.classList.add("disabled");
+	    });
+	}
+
+	function enableExamControls() {
+	    if (prevBtnRef) prevBtnRef.disabled = false;
+	    if (nextBtnRef) nextBtnRef.disabled = false;
+
+	    if (submitBtn && halfTimeReached) {
+	        submitBtn.disabled = false;
+	    }
+
+	    navButtons.forEach(btn => {
+	        btn.disabled = false;
+	        btn.classList.remove("disabled");
+	    });
+	}
+
+	
+	async function checkRealInternet() {
+	    try {
+	        const controller = new AbortController();
+	        const timeout = setTimeout(() => controller.abort(), 4000);
+
+	        // ping your backend (VERY IMPORTANT)
+			const res = await fetch(`${window.location.origin}/ping`, {
+	            method: "GET",
+	            cache: "no-store",
+	            signal: controller.signal
+	        });
+
+	        clearTimeout(timeout);
+	        return res.ok;
+	    } catch (e) {
+	        return false;
+	    }
+	}
+
+
+
+	
+	// -------------------- PERIODIC NETWORK CHECK --------------------
+	setInterval(() => {
+	    if (examActive) {
+	        updateNetworkStatus();
+	    }
+	}, 5000); // check every 5 seconds
+
+
+	
 })();

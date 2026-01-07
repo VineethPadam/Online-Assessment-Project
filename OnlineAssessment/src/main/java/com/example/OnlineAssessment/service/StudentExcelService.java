@@ -38,7 +38,7 @@ public class StudentExcelService {
                 s.setStudentYear(Integer.parseInt(formatter.formatCellValue(row.getCell(3)).trim()));
                 s.setDepartment(formatter.formatCellValue(row.getCell(4)).trim());
                 s.setStudentEmail(formatter.formatCellValue(row.getCell(5)).trim());
-                s.setPassword("Rest@2k25");
+                s.setPassword("Reset@2025");
 
                 studentService.saveStudent(s);
             }
