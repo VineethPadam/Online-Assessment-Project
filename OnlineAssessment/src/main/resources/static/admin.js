@@ -61,7 +61,7 @@
         const formData = new FormData();
         formData.append("file", file);
 
-        fetch("/upload/faculty", {
+        authFetch("/upload/faculty", {
             method: "POST",
             body: formData
         })
@@ -79,7 +79,7 @@
 
     // ------------------ DOWNLOAD FILE ------------------
     downloadFacultyBtn.addEventListener("click", () => {
-        fetch("/upload/faculty/download")
+        authFetch("/upload/faculty/download")
         .then(res => res.blob())
         .then(blob => {
             const url = window.URL.createObjectURL(blob);

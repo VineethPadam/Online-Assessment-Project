@@ -36,7 +36,7 @@
 
             openOtpModal(roll);
 
-            fetch(`/password/student/send-otp?roll=${encodeURIComponent(roll)}`, { method: "POST" })
+            authFetch(`/password/student/send-otp?roll=${encodeURIComponent(roll)}`, { method: "POST" })
                 .catch(() => alert("Failed to send OTP."));
         });
     }
@@ -68,7 +68,7 @@
             if (!otp || !newPassword) return alert("Enter OTP and new password.");
 
             try {
-                const res = await fetch(`/password/student/reset?roll=${encodeURIComponent(roll)}&otp=${otp}&newPassword=${newPassword}`, { method: "POST" });
+                const res = await authFetch(`/password/student/reset?roll=${encodeURIComponent(roll)}&otp=${otp}&newPassword=${newPassword}`, { method: "POST" });
                 if (!res.ok) throw new Error(await res.text());
 
                 header.textContent = "✅ Password Reset Successful";

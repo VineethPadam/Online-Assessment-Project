@@ -1,16 +1,16 @@
 package com.example.OnlineAssessment.controller;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.HashMap;
+import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.entity.Student;
+import com.example.OnlineAssessment.security.JwtUtil;
 import com.example.OnlineAssessment.service.StudentService;
-import java.util.Map;
-import java.util.HashMap;
-
 
 @RestController
 @RequestMapping("/student")
@@ -20,26 +20,35 @@ public class StudentController {
     @Autowired
     private StudentService studentService;
 
-    // Student login
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @PostMapping("/validate")
-    public ResponseEntity<?> validateStudent(@RequestBody Student student){
+    public ResponseEntity<?> validateStudent(@RequestBody Student student) {
+
         Student s = studentService.validateStudent(
                 student.getStudentRollNumber(),
                 student.getPassword()
         );
 
         if (s != null) {
-            Map<String, String> response = new HashMap<>();
+
+            String token = jwtUtil.generateToken(
+                    s.getStudentRollNumber(),
+                    "STUDENT"
+            );
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
             response.put("rollNumber", s.getStudentRollNumber());
-            response.put("name", s.getStudentName()); // 👈 student name
+            response.put("name", s.getStudentName());
+            response.put("role", "STUDENT");
 
             return ResponseEntity.ok(response);
         }
-        else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                 .body("Invalid Credentials");
-        }
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body("Invalid Credentials");
     }
-    
-    
 }

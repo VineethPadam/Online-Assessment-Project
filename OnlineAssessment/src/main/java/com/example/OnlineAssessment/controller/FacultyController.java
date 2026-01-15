@@ -1,11 +1,16 @@
 package com.example.OnlineAssessment.controller;
 
-import com.example.OnlineAssessment.entity.Faculty;
-import com.example.OnlineAssessment.service.FacultyService;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import com.example.OnlineAssessment.entity.Faculty;
+import com.example.OnlineAssessment.security.JwtUtil;
+import com.example.OnlineAssessment.service.FacultyService;
 
 @RestController
 @RequestMapping("/faculty")
@@ -15,22 +20,31 @@ public class FacultyController {
     @Autowired
     private FacultyService facultyService;
 
-    // ✅ Faculty login
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @PostMapping("/validate")
-    public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty){
+    public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty) {
+
         Faculty f = facultyService.validateFaculty(
                 faculty.getEmail(),
                 faculty.getPassword()
         );
 
-        if(f != null){
-            return ResponseEntity.ok(f);
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                                 .body("Invalid Credentials");
-        }
-    }
+        if (f != null) {
 
-    // ✅ Optional: View all activations (faculty can check which quizzes are active)
-    // You can implement this by calling a QuizService method returning all QuizActivation entries
+            String token = jwtUtil.generateToken(f.getEmail(), "FACULTY");
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("token", token);
+            response.put("email", f.getEmail());
+            response.put("role", "FACULTY");
+
+            return ResponseEntity.ok(response);
+        }
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body("Invalid Credentials");
+    }
 }

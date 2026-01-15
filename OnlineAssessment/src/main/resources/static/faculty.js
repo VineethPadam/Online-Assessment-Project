@@ -61,7 +61,7 @@
         const formData = new FormData();
         formData.append("file", fileInput.files[0]);
 
-        fetch("/upload/students", { method: "POST", body: formData })
+        authFetch("/upload/students", { method: "POST", body: formData })
           .then(res => res.text())
           .then(data => {
             showModalMessage(modal, data, "success");
@@ -72,7 +72,6 @@
     );
   });
 
-  // ===== Add Quiz =====
   // ===== Add Quiz =====
   addQuizBtn.addEventListener("click", () => {
     createModal(
@@ -89,7 +88,7 @@
         }
 
         // ✅ Call backend to create quiz
-        fetch(`/quiz/create?quizId=${quizId}&quizName=${encodeURIComponent(quizName)}`, {
+        authFetch(`/quiz/create?quizId=${quizId}&quizName=${encodeURIComponent(quizName)}`, {
           method: "POST"
         })
           .then(async res => {
@@ -116,7 +115,7 @@
                   formData.append("quizName", quizName);
                   formData.append("quizId", quizId);
 
-                  fetch("/upload/questions", { method: "POST", body: formData })
+                  authFetch("/upload/questions", { method: "POST", body: formData })
                     .then(res => res.text())
                     .then(data => {
                       showModalMessage(modal2, data, "success");
@@ -187,7 +186,7 @@
           return;
         }
 
-		fetch(
+		authFetch(
 		  `/quiz/activate?quizId=${quizId}&section=${section}&department=${department}&year=${year}&active=${active}&durationMinutes=${durationMinutes}`,
 		  { method: "POST" }
 		)
@@ -259,7 +258,7 @@
           return;
         }
 
-		fetch(
+		authFetch(
 		  `/quiz/${quizId}/publish-result?section=${section}&department=${department}&year=${year}&publish=${publish}`,
 		  { method: "POST" }
 		)
@@ -351,7 +350,7 @@
       const yearVal = section.querySelector("#filterYear").value;
       const quizIdVal = section.querySelector("#filterQuizId").value.trim();
 
-      fetch(
+      authFetch(
         `/results/filter?section=${sectionVal}&department=${departmentVal}&year=${yearVal}&quizId=${quizIdVal}`
       )
         .then(res => res.json())

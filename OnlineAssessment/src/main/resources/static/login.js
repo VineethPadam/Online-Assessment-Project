@@ -95,19 +95,31 @@ loginBtn.addEventListener("click", async () => {
 
         if(res.ok){
 			
-            loggedInUser = await res.json();
-            loginError.style.color = "green";
-            loginError.textContent = "Login Successful!";
-			
-			sessionStorage.setItem("role", selectedRole);
-			sessionStorage.setItem("user", JSON.stringify(loggedInUser));
+			const responseData = await res.json();
+
+			    // 1️⃣ Save JWT token
+			    sessionStorage.setItem("token", responseData.token);
+
+			    // 2️⃣ Remove token from user object
+			    delete responseData.token;
+
+			    // 3️⃣ Save user & role
+			    loggedInUser = responseData;
+			    sessionStorage.setItem("user", JSON.stringify(loggedInUser));
+			    sessionStorage.setItem("role", selectedRole);
+
+			    loginError.style.color = "green";
+			    loginError.textContent = "Login Successful!";
 
 
             // -------------------- SET STUDENT ROLL FOR STUDENT.JS --------------------
-			if(selectedRole === "student") {
+			if (
+			    selectedRole === "student" &&
+			    typeof window.setStudentRoll === "function"
+			) {
 			    window.setStudentRoll(loggedInUser.rollNumber);
 			}
-	
+
 
             setTimeout(() => {
                 loginSection.classList.remove("show");
@@ -176,7 +188,11 @@ window.addEventListener("load", () => {
         loggedInUser = JSON.parse(savedUser);
 
         // If it's student, reapply roll number
-		if(selectedRole === "student" && loggedInUser.rollNumber) {
+		if (
+		    selectedRole === "student" &&
+		    loggedInUser.rollNumber &&
+		    typeof window.setStudentRoll === "function"
+		) {
 		    window.setStudentRoll(loggedInUser.rollNumber);
 		}
 
@@ -198,5 +214,7 @@ document.addEventListener("click", function (e) {
     }
   }
 });
+
+
 
 

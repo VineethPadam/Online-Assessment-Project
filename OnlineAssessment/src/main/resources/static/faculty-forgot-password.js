@@ -40,7 +40,7 @@
             openOtpModal(email);
 
             try {
-                await fetch(`/password/faculty/send-otp?email=${encodeURIComponent(email)}`, { method: "POST" });
+                await authFetch(`/password/faculty/send-otp?email=${encodeURIComponent(email)}`, { method: "POST" });
             } catch (err) {
                 alert("Failed to send OTP: " + err.message);
             }
@@ -74,7 +74,7 @@
             if (!otp || !newPassword) return alert("Enter OTP and new password.");
 
             try {
-                const res = await fetch(`/password/faculty/reset?email=${encodeURIComponent(email)}&otp=${otp}&newPassword=${newPassword}`, { method: "POST" });
+                const res = await authFetch(`/password/faculty/reset?email=${encodeURIComponent(email)}&otp=${otp}&newPassword=${newPassword}`, { method: "POST" });
                 if (!res.ok) throw new Error(await res.text());
 
                 header.textContent = "✅ Password Reset Successful";
