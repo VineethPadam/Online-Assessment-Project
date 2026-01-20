@@ -44,7 +44,7 @@ public class FacultyController {
         }
 
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
+                .status(HttpStatus.BAD_REQUEST)
                 .body("Invalid Credentials");
     }
 }

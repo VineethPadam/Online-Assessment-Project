@@ -48,7 +48,8 @@ public class StudentController {
         }
 
         return ResponseEntity
-                .status(HttpStatus.UNAUTHORIZED)
-                .body("Invalid Credentials");
+                .status(HttpStatus.BAD_REQUEST)  // ✅ 400 instead of 401
+                .body("Invalid student roll number or password");
+
     }
 }

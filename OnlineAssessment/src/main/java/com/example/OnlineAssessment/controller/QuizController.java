@@ -80,9 +80,9 @@ public class QuizController {
                 || !student.getDepartment().equalsIgnoreCase(department)
                 || student.getStudentYear() != year) {
 
-            return ResponseEntity
-                    .status(HttpStatus.UNAUTHORIZED)
-                    .body("Invalid credentials");
+        	return ResponseEntity
+        	        .status(HttpStatus.BAD_REQUEST)  // ✅ 400 instead of 401
+        	        .body("Invalid student details for section/year/department");
         }
 
         return ResponseEntity.ok(

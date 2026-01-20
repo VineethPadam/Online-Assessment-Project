@@ -20,7 +20,7 @@ public interface ResultRepo extends JpaRepository<Result, Integer> {
     List<Result> findResultsBySectionDepartmentYearAndQuiz(
         @Param("section") String section,
         @Param("department") String department,
-        @Param("year") String year,
+        @Param("year") int year,
         @Param("quizId") String quizId
     );
 
@@ -49,4 +49,73 @@ public interface ResultRepo extends JpaRepository<Result, Integer> {
         String studentRollNumber,
         String quizId
     );
+    @Query("""
+            SELECT r FROM Result r
+            JOIN FETCH r.student s
+            JOIN FETCH r.quiz q
+            WHERE q.quizId = :quizId
+            ORDER BY r.score DESC, r.submissionTime ASC
+        """)
+        List<Result> findRankedByQuiz(@Param("quizId") String quizId);
+
+        @Query("""
+            SELECT r FROM Result r
+            JOIN FETCH r.student s
+            JOIN FETCH r.quiz q
+            WHERE q.quizId = :quizId
+            AND s.department = :department
+            ORDER BY r.score DESC, r.submissionTime ASC
+        """)
+        List<Result> findRankedByQuizAndDepartment(
+                @Param("quizId") String quizId,
+                @Param("department") String department
+        );
+
+        @Query("""
+            SELECT r FROM Result r
+            JOIN FETCH r.student s
+            JOIN FETCH r.quiz q
+            WHERE q.quizId = :quizId
+            AND s.department = :department
+            AND s.studentSection = :section
+            AND s.studentYear = :year
+            ORDER BY r.score DESC, r.submissionTime ASC
+        """)
+        List<Result> findRankedByQuizDepartmentSectionYear(
+                @Param("quizId") String quizId,
+                @Param("department") String department,
+                @Param("section") String section,
+                @Param("year") int year
+        );
+        @Query("""
+        	    SELECT r FROM Result r
+        	    JOIN FETCH r.student s
+        	    JOIN FETCH r.quiz q
+        	    WHERE q.quizId = :quizId
+        	    AND s.department = :department
+        	    AND s.studentSection = :section
+        	    ORDER BY r.score DESC, r.submissionTime ASC
+        	""")
+        	List<Result> findRankedByQuizDepartmentSection(
+        	        @Param("quizId") String quizId,
+        	        @Param("department") String department,
+        	        @Param("section") String section
+        	);
+        
+        @Query("""
+        	    SELECT r FROM Result r
+        	    JOIN FETCH r.student s
+        	    JOIN FETCH r.quiz q
+        	    WHERE q.quizId = :quizId
+        	    AND s.department = :department
+        	    AND s.studentYear = :year
+        	    ORDER BY r.score DESC, r.submissionTime ASC
+        	""")
+        	List<Result> findRankedByQuizDepartmentYear(
+        	        @Param("quizId") String quizId,
+        	        @Param("department") String department,
+        	        @Param("year") int year
+        	);
+
+    
 }

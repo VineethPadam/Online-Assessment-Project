@@ -109,39 +109,50 @@
 	        openTakeQuizModal();
 	    });
 	
-	    function openTakeQuizModal() {
-	        const modalHeader = modal.querySelector("#modalHeader");
-	        const modalBody = modal.querySelector("#modalBody");
-	        const modalFooter = modal.querySelector("#modalFooter");
-	
-	        modalHeader.textContent = "Select Department, Year, Section";
-	        modalBody.innerHTML = `
-	            <select id="quizDept">
-	                <option value="">Select Department</option>
-	                <option value="CSE">CSE</option>
-					<option value="CST">CST</option>
-	                <option value="ECE">ECE</option>
-	                <option value="EEE">EEE</option>
-	                <option value="MECH">MECH</option>
-	            </select>
-	            <select id="quizYear">
-	                <option value="">Select Year</option>
-	                <option value="1">1</option>
-	                <option value="2">2</option>
-	                <option value="3">3</option>
-	                <option value="4">4</option>
-	            </select>
-	            <select id="quizSection">
-	                <option value="">Select Section</option>
-	                ${["A","B","C","D","E","F","G","H","I","J"].map(s=>`<option value="${s}">${s}</option>`).join("")}
-	            </select>
-	        `;
-	        modalFooter.innerHTML = `<button class="login-btn" id="fetchQuizzesBtn">Fetch Quizzes</button>`;
-	        modal.classList.remove("hidden");
-	
-	        document.getElementById("fetchQuizzesBtn").addEventListener("click", fetchQuizzes);
-	    }
-	
+		async function openTakeQuizModal() {
+		    const modalHeader = modal.querySelector("#modalHeader");
+		    const modalBody = modal.querySelector("#modalBody");
+		    const modalFooter = modal.querySelector("#modalFooter");
+
+		    modalHeader.textContent = "Select Department, Year, Section";
+
+		    // Fetch departments from backend
+		    let deptOptions = `<option value="">Select Department</option>`;
+		    try {
+		        const res = await authFetch("/departments");
+		        if (res.ok) {
+		            const depts = await res.json();
+		            depts.forEach(d => {
+		                deptOptions += `<option value="${d.name}">${d.name}</option>`;
+		            });
+		        }
+		    } catch (err) {
+		        console.error("Failed to load departments:", err);
+		    }
+
+		    modalBody.innerHTML = `
+		        <select id="quizDept">
+		            ${deptOptions}
+		        </select>
+		        <select id="quizYear">
+		            <option value="">Select Year</option>
+		            <option value="1">1</option>
+		            <option value="2">2</option>
+		            <option value="3">3</option>
+		            <option value="4">4</option>
+		        </select>
+		        <select id="quizSection">
+		            <option value="">Select Section</option>
+		            ${["A","B","C","D","E","F","G","H","I","J"].map(s=>`<option value="${s}">${s}</option>`).join("")}
+		        </select>
+		    `;
+
+		    modalFooter.innerHTML = `<button class="login-btn" id="fetchQuizzesBtn">Fetch Quizzes</button>`;
+		    modal.classList.remove("hidden");
+
+		    document.getElementById("fetchQuizzesBtn").addEventListener("click", fetchQuizzes);
+		}
+
 	    async function fetchQuizzes() {
 	        const dept = document.getElementById("quizDept").value;
 	        const year = document.getElementById("quizYear").value;
@@ -157,7 +168,7 @@
 				  `/quiz/active?rollNumber=${studentRoll}&department=${dept}&year=${year}&section=${section}`
 				);
 				
-				if (res.status === 401) {
+				if (res.status === 400) {
 				    alert("Invalid credentials");
 				    modal.classList.add("hidden");
 				    if (leftMenu) leftMenu.style.display = "flex";

@@ -21,16 +21,35 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
-                // Allow index.html
-                .requestMatchers("/", "/index.html","/faculty_help.html").permitAll()
-                // Allow all static file types in the static folder
-                .requestMatchers("/*.css", "/*.js", "/*.png", "/*.jpg", "/*.jpeg", 
-                	"/*.gif", "/*.ico", "/Images/**","/model_sheets/**","/Reference_video/**").permitAll()
-                // Public auth endpoints
-                .requestMatchers("/auth/**", "/student/validate", "/faculty/validate","/admin/validate", "/ping").permitAll()
-                // All other endpoints require JWT
-                .anyRequest().authenticated()
-            )
+            	    // Public pages
+            	    .requestMatchers("/", "/index.html", "/faculty_help.html").permitAll()
+
+            	    // Static files
+            	    .requestMatchers(
+            	        "/*.css", "/*.js", "/*.png", "/*.jpg", "/*.jpeg",
+            	        "/*.gif", "/*.ico",
+            	        "/Images/**", "/model_sheets/**", "/Reference_video/**"
+            	    ).permitAll()
+
+            	    // Auth endpoints (login etc.)
+            	    .requestMatchers(
+            	        "/auth/**",
+            	        "/student/validate",
+            	        "/faculty/validate",
+            	        "/admin/validate",
+            	        "/ping",
+            	        "/password/student/**",   // <-- add this
+            	        "/password/faculty/**"
+            	    ).permitAll()
+
+            	    // ✅ All /departments endpoints require JWT but any role
+            	    .requestMatchers("/departments/**").authenticated()
+
+            	    // Everything else secured
+            	    .anyRequest().authenticated()
+            	)
+
+
             .sessionManagement(session -> session
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             );

@@ -17,18 +17,22 @@ async function authFetch(url, options = {}) {
 
     const headers = {
         ...(options.headers || {}),
-        ...(token ? { Authorization: "Bearer " + token } : {})
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
     };
 
-    const response = await fetch(url, {
-        ...options,
-        headers
-    });
+    let response;
+    try {
+        response = await fetch(url, { ...options, headers });
+    } catch (err) {
+        console.error("Network error:", err);
+        throw err;
+    }
 
-    if (response.status === 401 || response.status === 403) {
+    if (response.status === 401) {
         showSessionExpiredModal();
-        throw new Error("Session expired");
+        return Promise.reject("Session expired");
     }
 
     return response;
 }
+

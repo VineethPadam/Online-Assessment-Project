@@ -335,3 +335,45 @@ body {
 
 /* ========================================================= */
 
+.role-card {
+  flex: 1 1 30%;
+  max-width: 220px;
+  background-color: var(--card-bg);
+  border-radius: 20px;
+  padding: 25px;
+  box-shadow: 0 12px 25px var(--card-shadow);
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.4s ease;
+}
+
+.role-card:hover {
+  transform: translateY(-8px) scale(1.05);
+  background: var(--card-hover);
+  color: #fff;
+}
+
+.role-card .icon {
+  font-size: 50px;
+  margin-bottom: 15px;
+}
+
+.role-card h3 {
+  margin: 10px 0 8px;
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.role-card p {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 0;
+}
+
+/* Logout special card */
+.logout-btn {
+  background: #f44336 !important;
+  color: #fff !important;
+}
+
+

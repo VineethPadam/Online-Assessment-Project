@@ -40,7 +40,7 @@ public class AdminController {
             return ResponseEntity.ok(response);
         }
 
-        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body("Invalid Credentials");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Credentials");
     }
 
 }

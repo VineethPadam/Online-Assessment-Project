@@ -12,6 +12,7 @@ import com.example.OnlineAssessment.repositories.QuizRepo;
 import com.example.OnlineAssessment.repositories.ResultRepo;
 import com.example.OnlineAssessment.repositories.studentRepo;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ResultService {
@@ -33,8 +34,10 @@ public class ResultService {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    // Evaluate and save student result
-    public Result evaluateAndSaveResult(String rollNumber, String quizId, Map<String, String> answers) throws Exception {
+    // ================== Evaluate and save student result ==================
+    public Result evaluateAndSaveResult(String rollNumber, String quizId,
+                                        Map<String, String> answers) throws Exception {
+
         if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId)) {
             throw new RuntimeException("You have already attempted this quiz.");
         }
@@ -48,20 +51,20 @@ public class ResultService {
         int score = 0;
 
         for (Map.Entry<String, String> entry : answers.entrySet()) {
-            String questionId = entry.getKey();
-            String selectedOptionStr = entry.getValue();
+            Options correctOptionObj =
+                    optionsRepo.findByQuestion_QuestionId(entry.getKey()).orElse(null);
 
-            Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(questionId).orElse(null);
             if (correctOptionObj != null) {
-                List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
-                        .map(String::trim)
-                        .toList();
+                List<String> correctOptions =
+                        Arrays.stream(correctOptionObj.getCorrectOption().split(","))
+                              .map(String::trim).toList();
 
-                List<String> selectedOptions = Arrays.stream(selectedOptionStr.split(","))
-                        .map(String::trim)
-                        .toList();
+                List<String> selectedOptions =
+                        Arrays.stream(entry.getValue().split(","))
+                              .map(String::trim).toList();
 
-                if (correctOptions.size() == selectedOptions.size() && correctOptions.containsAll(selectedOptions)) {
+                if (correctOptions.size() == selectedOptions.size()
+                        && correctOptions.containsAll(selectedOptions)) {
                     score++;
                 }
             }
@@ -71,12 +74,13 @@ public class ResultService {
         result.setStudent(student);
         result.setQuiz(quiz);
         result.setScore(score);
+        result.setSubmissionTime(java.time.LocalDateTime.now());
         result.setAnswers(objectMapper.writeValueAsString(answers));
 
         return resultRepo.save(result);
     }
 
-    // Fetch student answers only if results are published
+    // ================== Fetch student results if published ==================
     public List<Result> getStudentResults(String rollNumber, String quizId) {
         Student student = studentRepo.findByStudentRollNumber(rollNumber)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
@@ -95,18 +99,80 @@ public class ResultService {
         return resultRepo.findResultsByStudentAndQuiz(rollNumber, quizId);
     }
 
-    // Fetch all results by filter
-    public List<Result> getResultsByFilter(String section, String department, String year, String quizId) {
+    // ================== Fetch all results by filter ==================
+    public List<Result> getResultsByFilter(String section, String department, int year, String quizId) {
         return resultRepo.findResultsBySectionDepartmentYearAndQuiz(section, department, year, quizId);
     }
 
-    // Fetch raw student answers (for faculty view)
+    // ================== Fetch raw student answers ==================
     public String getStudentAnswers(String rollNumber, String quizId) {
         Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
         return result != null ? result.getAnswers() : "{}";
     }
- // ✅ Check if student has attempted
+
+    // ================== Check if student has attempted ==================
     public boolean hasAttemptedQuiz(String rollNumber, String quizId) {
         return resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId);
+    }
+
+    // ================== Get ranked results with all filters ==================
+    @Transactional(readOnly = true)
+    public List<Result> getRankedResults(String quizId,
+                                         String department,
+                                         String section,
+                                         Integer year,
+                                         String sortBy) {
+
+        List<Result> results;
+
+        boolean hasDepartment = department != null && !department.isBlank();
+        boolean hasSection = section != null && !section.isBlank();
+        boolean hasYear = year != null && year > 0;
+
+        if (!hasDepartment && !hasSection && !hasYear) {
+            results = resultRepo.findRankedByQuiz(quizId);
+
+        } else if (hasDepartment && !hasSection && !hasYear) {
+            results = resultRepo.findRankedByQuizAndDepartment(quizId, department);
+
+        } else if (hasDepartment && hasSection && !hasYear) {
+            results = resultRepo.findRankedByQuizDepartmentSection(quizId, department, section);
+
+        } else if (hasDepartment && !hasSection && hasYear) {
+            results = resultRepo.findRankedByQuizDepartmentYear(quizId, department, year);
+
+        } else if (hasDepartment && hasSection && hasYear) {
+            results = resultRepo.findRankedByQuizDepartmentSectionYear(quizId, department, section, year);
+
+        } else {
+            throw new RuntimeException("Invalid filter combination");
+        }
+
+        // ===== Assign ranks, calculate total marks, pass/fail =====
+        int rankCounter = 1;
+        for (int i = 0; i < results.size(); i++) {
+            Result r = results.get(i);
+
+            int totalMarks = r.getQuiz().getQuestions().size();
+            r.setTotalMarks(totalMarks);
+
+            r.setPassFail(((double) r.getScore() / totalMarks) * 100 >= 40 ? "Pass" : "Fail");
+
+            if (i > 0 && r.getScore() == results.get(i - 1).getScore()) {
+                r.setRank(results.get(i - 1).getRank());
+            } else {
+                r.setRank(rankCounter);
+            }
+            rankCounter++;
+        }
+
+        // ===== Sort final results =====
+        if ("roll".equalsIgnoreCase(sortBy)) {
+            results.sort(Comparator.comparing(r -> r.getStudent().getStudentRollNumber()));
+        } else {
+            results.sort(Comparator.comparing(Result::getRank));
+        }
+
+        return results;
     }
 }

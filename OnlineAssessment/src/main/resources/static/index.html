@@ -99,38 +99,89 @@
     <h3 id="welcomeMsg"></h3>
 
     <!-- Student Dashboard -->
-    <div id="studentDashboard" class="dashboard-cards hidden">
-      <div class="role-card" id="takeQuizBtn">Take Quiz 🎯</div>
-      <div class="role-card" id="viewResultBtn">View My Result 📊</div>
-      <div class="role-card logout-btn" id="studentLogout">Logout 🔒</div>
-    </div>
-
-    <!-- Faculty Dashboard -->
-	<div id="facultyDashboard" class="hidden">
-	  <div class="dashboard-header">
-	    <div class="help-icon" title="Help" id="facultyHelp"><a href="faculty_help.html" target="_blank">Help?</a></div>
+	<div id="studentDashboard" class="dashboard-cards hidden">
+	  <div class="role-card" id="takeQuizBtn">
+	    <div class="icon">🎯</div>
+	    <h3>Take Quiz</h3>
+	    <p>Start and attempt quizzes assigned to you</p>
 	  </div>
-	   
-
-	  <div class="dashboard-cards">
-	    <div id="uploadStudentBtn" class="role-card">Upload Student Excel 📁</div>
-	    <div id="addQuizBtn" class="role-card">Add Quiz ➕</div>
-	    <div id="activateQuizBtn" class="role-card">Activate Quiz ✅</div>
-	    <div id="viewClassResultsBtn" class="role-card">View Class Results 📋</div>
-	    <div id="publishResultBtn" class="role-card">Publish Result 📝</div>
-	    <div class="role-card logout-btn" id="facultyLogout">Logout 🔒</div>
+	  <div class="role-card" id="viewResultBtn">
+	    <div class="icon">📊</div>
+	    <h3>View Result</h3>
+	    <p>Check your past quiz results</p>
+	  </div>
+	  <div class="role-card logout-btn" id="studentLogout">
+	    <div class="icon">🔒</div>
+	    <h3>Logout</h3>
 	  </div>
 	</div>
 
 
-    <!-- Admin Dashboard -->
-    <div id="adminDashboard" class="dashboard-cards hidden">
-      <div class="role-card" id="uploadFacultyBtn">Upload/Update Faculty Details 📤</div>
-      <div class="role-card" id="downloadFacultyBtn">Download Faculty Details 📥</div>
-      <div class="role-card logout-btn" id="adminLogout">Logout 🔒</div>
-    </div>
+	<!-- Faculty Dashboard -->
+	<div id="facultyDashboard" class="hidden">
+	  
+	  <div class="dashboard-cards">
+	    <div class="role-card" id="uploadStudentBtn">
+	      <div class="icon">📁</div>
+	      <h3>Upload Student Excel</h3>
+	      <p>Upload or update student details quickly.</p>
+	    </div>
+	    <div class="role-card" id="addQuizBtn">
+	      <div class="icon">➕</div>
+	      <h3>Add Quiz</h3>
+	      <p>Create new quizzes and upload questions.</p>
+	    </div>
+	    <div class="role-card" id="activateQuizBtn">
+	      <div class="icon">✅</div>
+	      <h3>Activate Quiz</h3>
+	      <p>Set quizzes live for students to attempt.</p>
+	    </div>
+	    <div class="role-card" id="viewClassResultsBtn">
+	      <div class="icon">📋</div>
+	      <h3>View Class Results</h3>
+	      <p>Check student performance and rankings.</p>
+	    </div>
+	    <div class="role-card" id="publishResultBtn">
+	      <div class="icon">📝</div>
+	      <h3>Publish Result</h3>
+	      <p>Make quiz results visible to students.</p>
+	    </div>
+	    <div class="role-card logout-btn" id="facultyLogout">
+	      <div class="icon">🔒</div>
+	      <h3>Logout</h3>
+	      <p>Sign out from your account.</p>
+	    </div>
+	  </div>
+	</div>
 
-  </div>
+	<!-- Admin Dashboard -->
+	<div id="adminDashboard" class="hidden">
+	  <div class="dashboard-cards">
+	    <div class="role-card" id="uploadFacultyBtn">
+	      <div class="icon">📤</div>
+	      <h3>Upload/Update Faculty</h3>
+	      <p>Manage faculty data efficiently.</p>
+	    </div>
+	    <div class="role-card" id="downloadFacultyBtn">
+	      <div class="icon">📥</div>
+	      <h3>Download Faculty Details</h3>
+	      <p>Export faculty records in Excel format.</p>
+	    </div>
+		<!-- ✅ New Card: Manage Departments -->
+		    <div class="role-card" id="manageDepartmentsBtn">
+		      <div class="icon">🏛️</div>
+		      <h3>Manage Departments</h3>
+		      <p>Add or remove departments dynamically.</p>
+		    </div>
+
+	    <div class="role-card logout-btn" id="adminLogout">
+	      <div class="icon">🔒</div>
+	      <h3>Logout</h3>
+	      <p>Sign out from your account.</p>
+	    </div>
+	  </div>
+	</div>
+
   <!-- ✅ FOOTER INSIDE PORTAL BOX -->
     <div class="portal-footer">
       Developed by <strong>Vineeth sai</strong> & <strong>Yaswanth Reddy</strong>,
@@ -157,6 +208,9 @@
 <script src="admin.js"></script>
 <script src="faculty-forgot-password.js"></script>
 <script src="student_forgot_password.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+
 
 
 </body>

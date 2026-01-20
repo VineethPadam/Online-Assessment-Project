@@ -23,12 +23,21 @@ public class ResultExcelController {
      */
     @GetMapping("/download")
     public ResponseEntity<byte[]> downloadClassResults(
-            @RequestParam(required = false) String section,
+            @RequestParam(required = false) String quizId,
             @RequestParam(required = false) String department,
-            @RequestParam(required = false) String year,
-            @RequestParam(required = false) String quizId) {
+            @RequestParam(required = false) String section,
+            @RequestParam(required = false) String year) {
         try {
-            byte[] excelData = resultExcelService.generateClassResultsExcel(section, department, year, quizId);
+            // Convert year to Integer safely
+            Integer yearInt = null;
+            if (year != null && !year.isBlank()) {
+                yearInt = Integer.parseInt(year);
+            }
+
+            // Call service with correct order
+            byte[] excelData = resultExcelService.generateClassResultsExcel(
+                    quizId, department, section, yearInt
+            );
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(
@@ -38,9 +47,13 @@ public class ResultExcelController {
 
             return new ResponseEntity<>(excelData, headers, HttpStatus.OK);
 
+        } catch (NumberFormatException nfe) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(null); // year param is invalid
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
         }
     }
+
 }

@@ -47,7 +47,7 @@ public class ResultController {
     public List<Result> getResultsByFilter(
             @RequestParam String section,
             @RequestParam String department,
-            @RequestParam String year,
+            @RequestParam Integer year,
             @RequestParam String quizId) {
         return resultService.getResultsByFilter(section, department, year, quizId);
     }
@@ -78,6 +78,18 @@ public class ResultController {
         Map<String, String> answersMap = objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {});
         return answersMap;
     }
+    @GetMapping("/faculty/ranking")
+    public List<Result> getFacultyRanking(
+            @RequestParam String quizId,
+            @RequestParam(required = false) String department,
+            @RequestParam(required = false) String section,
+            @RequestParam(required = false) Integer year,
+            @RequestParam(defaultValue = "rank") String sortBy) {
+
+        return resultService.getRankedResults(
+                quizId, department, section, year, sortBy);
+    }
+
  
 
 }
