@@ -1,0 +1,154 @@
+/* ---------- BOARD MODALS & TABLES (Appended) ---------- */
+.close-btn {
+    position: absolute;
+    right: 20px;
+    top: 15px;
+    font-size: 24px;
+    cursor: pointer;
+    background: none;
+    border: none;
+    color: #666;
+}
+
+.close-btn:hover {
+    color: #d32f2f;
+}
+
+/* Backdrop */
+#adminModalBackdrop,
+#deptModalBackdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 3000;
+    backdrop-filter: blur(5px);
+    transition: opacity 0.3s ease;
+}
+
+#adminModalBackdrop.hidden,
+#deptModalBackdrop.hidden {
+    display: none;
+    opacity: 0;
+}
+
+#adminModalBackdrop.visible,
+#deptModalBackdrop.visible {
+    display: flex;
+    opacity: 1;
+}
+
+/* Modal Box */
+#adminModal,
+#deptModal {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    position: relative;
+    animation: modalPop 0.3s ease-out;
+}
+
+@keyframes modalPop {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+#adminModal h3,
+#deptModal h3 {
+    margin-top: 0;
+    color: var(--primary-purple);
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+/* Inputs & Buttons in Modals */
+#facultyFileInput,
+#newDeptName {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+}
+
+#uploadFileBtn,
+#addDeptBtn {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary-purple);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+#uploadFileBtn:hover,
+#addDeptBtn:hover {
+    background: #5a0b9e;
+}
+
+#uploadMsg,
+#deptMsg {
+    margin-top: 15px;
+    font-size: 0.9rem;
+    text-align: center;
+    min-height: 20px;
+}
+
+/* Department Table */
+#deptTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+}
+
+#deptTable th,
+#deptTable td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+}
+
+#deptTable th {
+    background: #f8f9fa;
+    color: #555;
+    font-weight: 600;
+}
+
+#deptTable tr:hover {
+    background: #fdf5ff;
+}
+
+.deleteDeptBtn {
+    background: #ffdede;
+    color: #d32f2f;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: background 0.2s;
+}
+
+.deleteDeptBtn:hover {
+    background: #ffcdd2;
+}

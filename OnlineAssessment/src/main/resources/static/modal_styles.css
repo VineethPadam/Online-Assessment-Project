@@ -1,0 +1,135 @@
+/* ---------- UNIFIED MODAL UTILS (For JS created modals) ---------- */
+.faculty-modal {
+    position: fixed;
+    z-index: 5000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.faculty-modal.hidden {
+    display: none;
+}
+
+.faculty-modal-content {
+    background: white;
+    padding: 30px;
+    border-radius: 12px;
+    width: 500px;
+    max-width: 90%;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    position: relative;
+    animation: modalPop 0.3s ease-out;
+}
+
+.faculty-modal-header {
+    font-size: 1.4rem;
+    color: var(--primary-purple);
+    margin-bottom: 20px;
+    font-weight: 700;
+    text-align: center;
+    border-bottom: 2px solid #f3e5f5;
+    padding-bottom: 10px;
+}
+
+.faculty-modal-body input {
+    width: 100%;
+    padding: 12px;
+    border: 2px solid #eee;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-sizing: border-box;
+    font-family: inherit;
+}
+
+.faculty-modal-body input:focus {
+    border-color: var(--primary-purple);
+    outline: none;
+}
+
+.faculty-btn {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary-purple);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    margin-top: 10px;
+}
+
+.faculty-btn:hover {
+    background: #5a0b9e;
+}
+
+.password-wrapper {
+    position: relative;
+}
+
+.toggle-eye {
+    position: absolute;
+    right: 15px;
+    top: 15px;
+    /* Adjust height */
+    cursor: pointer;
+    color: #999;
+}
+
+/* Close Span */
+.close {
+    position: absolute;
+    right: 20px;
+    top: 20px;
+    font-size: 28px;
+    cursor: pointer;
+    color: #999;
+    line-height: 1;
+}
+
+.close:hover {
+    color: #d32f2f;
+}
+
+/* About & Contact Content */
+.about-content,
+.contact-content {
+    line-height: 1.6;
+    color: #555;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.contact-btn {
+    display: inline-block;
+    background: var(--primary-purple);
+    color: white;
+    text-decoration: none;
+    padding: 10px 20px;
+    border-radius: 30px;
+    margin-top: 15px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.contact-btn:hover {
+    background: #5a0b9e;
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(106, 13, 173, 0.3);
+}
+
+.error-text {
+    color: red;
+    font-size: 0.85rem;
+    margin-top: -10px;
+    margin-bottom: 10px;
+    display: block;
+    text-align: left;
+}

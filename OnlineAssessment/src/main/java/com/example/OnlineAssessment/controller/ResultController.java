@@ -1,6 +1,5 @@
 package com.example.OnlineAssessment.controller;
 
-
 import java.util.List;
 import java.util.Map;
 
@@ -24,7 +23,7 @@ public class ResultController {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     // Submit quiz result
- // ✅ SAFE SUBMIT (IDEMPOTENT)
+    // ✅ SAFE SUBMIT (IDEMPOTENT)
     @PostMapping("/submit")
     public ResponseEntity<Result> submitResult(@RequestBody Map<String, Object> payload) throws Exception {
 
@@ -32,15 +31,13 @@ public class ResultController {
         String quizId = (String) payload.get("quizId");
 
         @SuppressWarnings("unchecked")
-        Map<String, String> answers =
-                (Map<String, String>) (Map<?, ?>) payload.get("answers");
+        Map<String, String> answers = (Map<String, String>) (Map<?, ?>) payload.get("answers");
 
         // ✅ This method will now handle duplicate submissions safely
         Result result = resultService.evaluateAndSaveResult(rollNumber, quizId, answers);
 
         return ResponseEntity.ok(result);
     }
-
 
     // Get results by filter
     @GetMapping("/filter")
@@ -60,7 +57,7 @@ public class ResultController {
         return resultService.getStudentResults(rollNumber, quizId);
     }
 
- // ✅ Check if student has already attempted
+    // ✅ Check if student has already attempted
     @GetMapping("/student/attempted")
     public boolean hasStudentAttempted(
             @RequestParam String rollNumber,
@@ -75,9 +72,11 @@ public class ResultController {
             @PathVariable String quizId) throws Exception {
 
         String jsonAnswers = resultService.getStudentAnswers(rollNumber, quizId);
-        Map<String, String> answersMap = objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {});
+        Map<String, String> answersMap = objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {
+        });
         return answersMap;
     }
+
     @GetMapping("/faculty/ranking")
     public List<Result> getFacultyRanking(
             @RequestParam String quizId,
@@ -90,6 +89,9 @@ public class ResultController {
                 quizId, department, section, year, sortBy);
     }
 
- 
+    @GetMapping("/analysis")
+    public List<Result> getStudentAnalysis(@RequestParam String rollNumber) {
+        return resultService.getStudentAnalysis(rollNumber);
+    }
 
 }

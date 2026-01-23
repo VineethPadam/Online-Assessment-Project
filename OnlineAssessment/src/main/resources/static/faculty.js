@@ -14,30 +14,30 @@
 
   // Load all departments from backend
   async function loadDepartments() {
-      try {
-          const res = await authFetch("/departments");
-          if (res.ok) {
-              const depts = await res.json();
-              // Build <option> HTML for all departments
-              departmentsList = depts.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
-          } else {
-              departmentsList = '<option value="">Failed to load departments</option>';
-          }
-      } catch (err) {
-          console.error("Failed to load departments:", err);
-          departmentsList = '<option value="">Failed to load departments</option>';
+    try {
+      const res = await authFetch("/departments");
+      if (res.ok) {
+        const depts = await res.json();
+        // Build <option> HTML for all departments
+        departmentsList = depts.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
+      } else {
+        departmentsList = '<option value="">Failed to load departments</option>';
       }
+    } catch (err) {
+      console.error("Failed to load departments:", err);
+      departmentsList = '<option value="">Failed to load departments</option>';
+    }
   }
 
   // Wait until token is available, then load departments
   function waitForTokenAndLoadDepartments() {
-      const token = sessionStorage.getItem("token");
-      if (token) {
-          loadDepartments(); // now token exists
-      } else {
-          // retry after short delay
-          setTimeout(waitForTokenAndLoadDepartments, 50);
-      }
+    const token = sessionStorage.getItem("token");
+    if (token) {
+      loadDepartments(); // now token exists
+    } else {
+      // retry after short delay
+      setTimeout(waitForTokenAndLoadDepartments, 50);
+    }
   }
 
   // Start the process
@@ -292,9 +292,9 @@
     const prevSection = document.getElementById("classResultsSection");
     if (prevSection) prevSection.remove();
 
-	const section = document.createElement("div");
-	section.id = "classResultsSection";
-	section.innerHTML = `
+    const section = document.createElement("div");
+    section.id = "classResultsSection";
+    section.innerHTML = `
 	  <div class="results-filters">
 	    <input type="text" id="filterQuizId" placeholder="Quiz ID (Required)">
 
@@ -352,7 +352,7 @@
 
 	  <button id="backToDashboard">Back</button>
 	`;
-	facultyContainer.appendChild(section);
+    facultyContainer.appendChild(section);
 
 
     const filterBtn = section.querySelector("#filterResultsBtn");
@@ -444,6 +444,135 @@
     });
   });
 
+  // ===== Student Analysis =====
+  const studentAnalysisBtn = document.getElementById("studentAnalysisBtn");
+  if (studentAnalysisBtn) {
+    studentAnalysisBtn.addEventListener("click", () => {
+      facultyDashboard.classList.add("hidden");
+      const prevSection = document.getElementById("studentAnalysisSection");
+      if (prevSection) prevSection.remove();
+
+      const section = document.createElement("div");
+      section.id = "studentAnalysisSection";
+      section.innerHTML = `
+        <div class="analysis-search-container">
+          <h2>Student Performance Analysis</h2>
+          <p style="color: #666; margin-bottom: 10px;">Enter a student's roll number to view their quiz history and ranking.</p>
+          <div class="search-box-wrapper">
+            <input type="text" id="analysisRollNumber" placeholder="Ex: 23691A0501" autocomplete="off" autofocus>
+            <button id="getAnalysisBtn">
+              <span>🔍</span> Get Analysis
+            </button>
+          </div>
+        </div>
+
+        <div id="analysisContent"></div>
+
+        <div style="margin-top:30px;display:flex;justify-content:center;">
+          <button id="backFromAnalysisBtn" class="secondary-btn" style="padding:12px 30px; font-weight: 600;">
+            ← Back to Dashboard
+          </button>
+        </div>
+      `;
+      facultyContainer.appendChild(section);
+
+      const getBtn = section.querySelector("#getAnalysisBtn");
+      const analysisContent = section.querySelector("#analysisContent");
+      const backBtn = section.querySelector("#backFromAnalysisBtn");
+      const rollInput = section.querySelector("#analysisRollNumber");
+
+      const performSearch = () => {
+        const rollNumber = rollInput.value.trim();
+        if (!rollNumber) return alert("Please enter a valid Roll Number");
+
+        // UI Loading state
+        getBtn.disabled = true;
+        getBtn.innerHTML = "<span>⏳</span> Loading...";
+        analysisContent.innerHTML = "";
+
+        authFetch(`/results/analysis?rollNumber=${encodeURIComponent(rollNumber)}`)
+          .then(async res => {
+            if (!res.ok) {
+              const body = await res.text();
+              throw new Error(body || "Server error: " + res.status);
+            }
+            return res.json();
+          })
+          .then(data => {
+            if (!data || data.length === 0) {
+              analysisContent.innerHTML = `
+                <div class="analysis-results-card">
+                  <p class="no-results">No quiz results found for roll number: <strong>${rollNumber}</strong></p>
+                </div>`;
+              return;
+            }
+
+            // Build table
+            let html = `
+              <div class="analysis-results-card">
+                <div style="padding: 20px; border-bottom: 2px solid #f0f0f0; background: #fafafa;">
+                  <h3 style="margin:0; color:#333;">Analysis for: <span style="color:#6a0dad;">${data[0].student?.studentName || rollNumber}</span></h3>
+                </div>
+                <div style="overflow-x: auto;">
+                  <table class="results-table" style="width:100%; box-shadow:none; border-radius:0; margin:0;">
+                    <thead>
+                      <tr>
+                        <th>Quiz Name</th>
+                        <th>Quiz ID</th>
+                        <th>Score</th>
+                        <th>Total</th>
+                        <th>Rank</th>
+                        <th>Status</th>
+                        <th>Time</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            data.forEach(r => {
+              const statusClass = r.passFail === "Pass" ? "pass-text" : "fail-text";
+              html += `<tr>
+                <td style="font-weight:600;">${r.quiz?.quizName ?? "-"}</td>
+                <td style="color:#666;">${r.quiz?.quizId ?? "-"}</td>
+                <td style="font-weight:700; color:#6a0dad;">${r.score ?? 0}</td>
+                <td>${r.totalMarks ?? "-"}</td>
+                <td><span style="background:#e1bee7; padding:4px 10px; border-radius:15px; font-weight:700;">${r.rank ?? "-"}</span></td>
+                <td class="${statusClass}" style="font-weight:700;">${r.passFail ?? "-"}</td>
+                <td style="font-size: 0.85rem; color:#555;">${r.submissionTime ? new Date(r.submissionTime).toLocaleString() : "-"}</td>
+              </tr>`;
+            });
+
+            html += `</tbody></table></div></div>`;
+            analysisContent.innerHTML = html;
+          })
+          .catch(err => {
+            console.error(err);
+            analysisContent.innerHTML = `
+              <div class="error-msg">
+                <strong>Error:</strong> ${err.message}
+                <p style="margin-top:10px; font-size:0.9rem;">Please check if the session is still active or contact support.</p>
+              </div>`;
+          })
+          .finally(() => {
+            getBtn.disabled = false;
+            getBtn.innerHTML = "<span>🔍</span> Get Analysis";
+          });
+      };
+
+      getBtn.addEventListener("click", performSearch);
+      rollInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") performSearch();
+      });
+
+      backBtn.addEventListener("click", () => {
+        section.remove();
+        facultyDashboard.classList.remove("hidden");
+      });
+    });
+  }
+
   // ===== Logout =====
-  facultyLogout.addEventListener("click", () => location.reload());
+  if (facultyLogout) {
+    facultyLogout.addEventListener("click", () => location.reload());
+  }
 })();

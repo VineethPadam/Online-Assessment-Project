@@ -38,6 +38,9 @@ public class FacultyController {
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
             response.put("email", f.getEmail());
+            response.put("facultyName", f.getFacultyName());
+            response.put("department", f.getDepartment());
+            response.put("facultyId", f.getFacultyId());
             response.put("role", "FACULTY");
 
             return ResponseEntity.ok(response);

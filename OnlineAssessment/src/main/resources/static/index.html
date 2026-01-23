@@ -1,217 +1,253 @@
-<!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>MITS Online Assessment Portal</title>
-<link rel="stylesheet" href="index_style.css">
-<link rel="stylesheet" href="login_style.css">
-<link rel="stylesheet" href="student_style.css">
-<link rel="stylesheet" href="faculty_style.css">
-<link rel="stylesheet" href="admin_style.css">
-<link rel="stylesheet" href="faculty-forgot-password.css">
 
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>MITS Online Assessment Portal</title>
+	<link rel="stylesheet" href="index_style.css">
+	<!-- <link rel="stylesheet" href="login_style.css"> Merged into index_style.css -->
+	<link rel="stylesheet" href="student_style.css">
+	<link rel="stylesheet" href="faculty_style.css">
+	<link rel="stylesheet" href="admin_style.css">
+	<link rel="stylesheet" href="faculty-forgot-password.css">
+	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
 </head>
+
 <body>
 
-<div class="portal-box">
+	<!-- Navbar -->
+	<nav class="navbar">
+		<div class="nav-container">
+			<div class="logo-group">
+				<img src="Images/AssessPRO.png" alt="MITS Logo" class="college-logo">
+			</div>
 
-  <!-- College Header with Logo -->
-  <div class="portal-header">
-    <img src="Images/MITS_College_Name.png" alt="MITS Logo" class="college-logo">
-	<img src="Images/MITS_PORTAL_LOGO.png" alt="Quiz Logo" class="quiz-logo">
-    <div class="college-title">
-    </div>
-  </div>
+			<div class="nav-links" id="publicNavLinks">
+				<a href="#about" id="aboutUsBtn">About Us</a>
+				<a href="#contact" id="contactUsBtn">Contact Us</a>
+			</div>
 
-  <!-- Role Selection -->
-  <div id="roleSelection">
-    <div class="section-title"><h3>MITS ONLINE ASSESSMENT PORTAL</h3></div>
-    <div class="section-title">Select Your Role</div>
-	
-    <div class="card-container">
-      <div class="role-card" data-role="student">
-        <div class="icon">🎓</div>
-        <h3>Student</h3>
-        <p>Access quizzes, view results, and track progress.</p>
-      </div>
-      <div class="role-card" data-role="faculty">
-        <div class="icon">👨‍🏫</div>
-        <h3>Faculty</h3>
-        <p>Create quizzes, manage students, and monitor results.</p>
-      </div>
-      <div class="role-card" data-role="admin">
-        <div class="icon">🛡</div>
-        <h3>Admin</h3>
-        <p>System administration and full oversight.</p>
-      </div>
-    </div>
-  </div>
+			<div class="profile-menu hidden" id="profileMenu">
+				<button class="profile-btn" id="profileTrigger">
+					<span class="user-avatar">👤</span>
+					<span class="user-name-display" id="headerUserName">Profile</span>
+					<span class="arrow-down">▼</span>
+				</button>
+				<div class="dropdown-content" id="profileDropdown">
+					<!-- Populated by JS -->
+				</div>
+			</div>
+		</div>
+	</nav>
 
-  <!-- ---------- LOGIN FORM ---------- -->
-  <div id="loginSection">
-    <h3 class="login-title" id="loginTitle"></h3>
-    <div id="loginError"></div>
+	<!-- Main Content -->
+	<main class="main-content">
 
-	<!-- Student Fields -->
-	<div id="studentFields">
-	  <input type="text" id="studentRoll" placeholder="Roll Number" class="login-input">
-	  <div class="password-wrapper">
-	    <input type="password" id="studentPassword" placeholder="Password" class="login-input" autocomplete="new-password">
-	    <span class="toggle-password" data-target="studentPassword">👁️</span>
-	  </div>
+		<div class="content-wrapper">
 
-	  <button id="studentForgotPasswordBtn" class="back-btn" type="button">
-	    Forgot Password?
-	  </button>
+			<!-- Role Selection -->
+			<section id="roleSelection" class="active-section">
+				<div class="hero-text">
+					<h1>Welcome to MITS Assessment</h1>
+					<p class="subtitle">Select your role to continue accessing the portal.</p>
+				</div>
+
+				<div class="card-container">
+					<div class="role-card" data-role="student">
+						<div class="icon">🎓</div>
+						<h3>Student</h3>
+						<p>Access quizzes, view results, and track progress.</p>
+						<div class="btn-wrapper">
+							<button class="role-btn btn-student">Enter as Student <span
+									class="arrow">&rsaquo;</span></button>
+						</div>
+					</div>
+					<div class="role-card" data-role="faculty">
+						<div class="icon">👨‍🏫</div>
+						<h3>Faculty</h3>
+						<p>Create quizzes, manage students, and monitor results.</p>
+						<div class="btn-wrapper">
+							<button class="role-btn btn-faculty">Enter as Faculty <span
+									class="arrow">&rsaquo;</span></button>
+						</div>
+					</div>
+					<div class="role-card" data-role="admin">
+						<div class="icon">🛡</div>
+						<h3>Admin</h3>
+						<p>System administration and full oversight.</p>
+						<div class="btn-wrapper">
+							<button class="role-btn btn-admin">Enter as Admin <span
+									class="arrow">&rsaquo;</span></button>
+						</div>
+					</div>
+				</div>
+			</section>
+
+			<!-- Login Form -->
+			<section id="loginSection" class="hidden-section">
+				<div class="login-card">
+					<h3 class="login-title" id="loginTitle">Login</h3>
+					<div id="loginError"></div>
+
+					<!-- Student Fields -->
+					<div id="studentFields" class="role-fields">
+						<div class="input-group">
+							<input type="text" id="studentRoll" required placeholder=" ">
+							<label>Roll Number</label>
+						</div>
+						<div class="input-group">
+							<input type="password" id="studentPassword" required placeholder=" "
+								autocomplete="new-password">
+							<label>Password</label>
+							<span class="toggle-password" data-target="studentPassword">👁️</span>
+						</div>
+						<button id="studentForgotPasswordBtn" class="link-btn" type="button">Forgot Password?</button>
+					</div>
+
+					<!-- Faculty Fields -->
+					<div id="facultyFields" class="role-fields">
+						<div class="input-group">
+							<input type="email" id="facultyEmail" required placeholder=" ">
+							<label>Email Address</label>
+						</div>
+						<div class="input-group">
+							<input type="password" id="facultyPassword" required placeholder=" ">
+							<label>Password</label>
+							<span class="toggle-password" data-target="facultyPassword">👁️</span>
+						</div>
+						<button id="facultyForgotPasswordBtn" class="link-btn" type="button">Forgot Password?</button>
+					</div>
+
+					<!-- Admin Fields -->
+					<div id="adminFields" class="role-fields">
+						<div class="input-group">
+							<input type="text" id="adminUsername" required placeholder=" ">
+							<label>Username</label>
+						</div>
+						<div class="input-group">
+							<input type="password" id="adminPassword" required placeholder=" ">
+							<label>Password</label>
+							<span class="toggle-password" data-target="adminPassword">👁️</span>
+						</div>
+					</div>
+
+					<div class="action-buttons">
+						<button id="loginBtn" class="primary-btn">Login</button>
+						<button id="backBtn" class="secondary-btn">Back</button>
+					</div>
+				</div>
+			</section>
+
+			<!-- Dashboard -->
+			<section id="dashboard" class="hidden-section">
+				<div class="dashboard-header">
+					<h3 id="welcomeMsg">Welcome</h3>
+				</div>
+
+				<!-- Student Dashboard -->
+				<div id="studentDashboard" class="dashboard-cards hidden">
+					<div class="role-card" id="takeQuizBtn">
+						<div class="icon">🎯</div>
+						<h3>Take Quiz</h3>
+						<p>Start and attempt quizzes assigned to you</p>
+					</div>
+					<div class="role-card" id="viewResultBtn">
+						<div class="icon">📊</div>
+						<h3>View Result</h3>
+						<p>Check your past quiz results</p>
+					</div>
+
+				</div>
+
+				<!-- Faculty Dashboard -->
+				<div id="facultyDashboard" class="hidden">
+					<div class="dashboard-cards">
+						<div class="role-card" id="uploadStudentBtn">
+							<div class="icon">📁</div>
+							<h3>Upload Student Excel</h3>
+							<p>Upload or update student details quickly.</p>
+						</div>
+						<div class="role-card" id="addQuizBtn">
+							<div class="icon">➕</div>
+							<h3>Add Quiz</h3>
+							<p>Create new quizzes and upload questions.</p>
+						</div>
+						<div class="role-card" id="activateQuizBtn">
+							<div class="icon">✅</div>
+							<h3>Activate Quiz</h3>
+							<p>Set quizzes live for students to attempt.</p>
+						</div>
+						<div class="role-card" id="viewClassResultsBtn">
+							<div class="icon">📋</div>
+							<h3>View Class Results</h3>
+							<p>Check student performance and rankings.</p>
+						</div>
+						<div class="role-card" id="publishResultBtn">
+							<div class="icon">📝</div>
+							<h3>Publish Result</h3>
+							<p>Make quiz results visible to students.</p>
+						</div>
+						<div class="role-card" id="studentAnalysisBtn">
+							<div class="icon">🔍</div>
+							<h3>Student Analysis</h3>
+							<p>View detailed analysis for a specific student.</p>
+						</div>
+
+					</div>
+				</div>
+
+				<!-- Admin Dashboard -->
+				<div id="adminDashboard" class="hidden">
+					<div class="dashboard-cards">
+						<div class="role-card" id="uploadFacultyBtn">
+							<div class="icon">📤</div>
+							<h3>Upload/Update Faculty</h3>
+							<p>Manage faculty data efficiently.</p>
+						</div>
+						<div class="role-card" id="downloadFacultyBtn">
+							<div class="icon">📥</div>
+							<h3>Download Faculty Details</h3>
+							<p>Export faculty records in Excel format.</p>
+						</div>
+						<div class="role-card" id="manageDepartmentsBtn">
+							<div class="icon">🏛️</div>
+							<h3>Manage Departments</h3>
+							<p>Add or remove departments dynamically.</p>
+						</div>
+
+					</div>
+				</div>
+			</section>
+
+		</div>
+	</main>
+
+	<footer class="page-footer">
+		<div class="footer-content">
+			Developed by <strong>Vineeth sai</strong> & <strong>Yaswanth Reddy</strong>,
+			Dept of CSE (2023–2027 Batch) |
+			Mentor <strong>Mr. B Anandaraj Asst.Prof</strong>
+		</div>
+	</footer>
+
+	<!-- Session Expired Modal -->
+	<div id="sessionExpiredModal" class="session-modal hidden">
+		<div class="session-modal-content">
+			<div class="session-icon">⏰</div>
+			<h2>Session Expired</h2>
+			<p>Your login session has expired.<br>Please login again to continue.</p>
+			<button id="sessionExpiredBtn" class="session-btn">Login Again</button>
+		</div>
 	</div>
 
-	<!-- Faculty Fields -->
-	<div id="facultyFields">
-	  <input type="email" id="facultyEmail" placeholder="Email" class="login-input">
-	  <div class="password-wrapper">
-	    <input type="password" id="facultyPassword" placeholder="Password" class="login-input">
-	    <span class="toggle-password" data-target="facultyPassword">👁️</span>
-	  </div>
-
-	  <button id="facultyForgotPasswordBtn" class="back-btn" type="button">
-	    Forgot Password?
-	  </button>
-	</div>
-
-
-    <!-- Admin Fields -->
-    <div id="adminFields">
-      <input type="text" id="adminUsername" placeholder="Username" class="login-input">
-	  <div class="password-wrapper">
-	    <input type="password" id="adminPassword" placeholder="Password" class="login-input">
-	    <span class="toggle-password" data-target="adminPassword">👁️</span>
-	  </div>
-
-    </div>
-
-    <button id="loginBtn" class="login-btn">Login</button>
-    <button id="backBtn" class="back-btn">Back</button>
-  </div>
-
-  <!-- ---------- DASHBOARD ---------- -->
-  <div id="dashboard" class="hidden">
-    <h3 id="welcomeMsg"></h3>
-
-    <!-- Student Dashboard -->
-	<div id="studentDashboard" class="dashboard-cards hidden">
-	  <div class="role-card" id="takeQuizBtn">
-	    <div class="icon">🎯</div>
-	    <h3>Take Quiz</h3>
-	    <p>Start and attempt quizzes assigned to you</p>
-	  </div>
-	  <div class="role-card" id="viewResultBtn">
-	    <div class="icon">📊</div>
-	    <h3>View Result</h3>
-	    <p>Check your past quiz results</p>
-	  </div>
-	  <div class="role-card logout-btn" id="studentLogout">
-	    <div class="icon">🔒</div>
-	    <h3>Logout</h3>
-	  </div>
-	</div>
-
-
-	<!-- Faculty Dashboard -->
-	<div id="facultyDashboard" class="hidden">
-	  
-	  <div class="dashboard-cards">
-	    <div class="role-card" id="uploadStudentBtn">
-	      <div class="icon">📁</div>
-	      <h3>Upload Student Excel</h3>
-	      <p>Upload or update student details quickly.</p>
-	    </div>
-	    <div class="role-card" id="addQuizBtn">
-	      <div class="icon">➕</div>
-	      <h3>Add Quiz</h3>
-	      <p>Create new quizzes and upload questions.</p>
-	    </div>
-	    <div class="role-card" id="activateQuizBtn">
-	      <div class="icon">✅</div>
-	      <h3>Activate Quiz</h3>
-	      <p>Set quizzes live for students to attempt.</p>
-	    </div>
-	    <div class="role-card" id="viewClassResultsBtn">
-	      <div class="icon">📋</div>
-	      <h3>View Class Results</h3>
-	      <p>Check student performance and rankings.</p>
-	    </div>
-	    <div class="role-card" id="publishResultBtn">
-	      <div class="icon">📝</div>
-	      <h3>Publish Result</h3>
-	      <p>Make quiz results visible to students.</p>
-	    </div>
-	    <div class="role-card logout-btn" id="facultyLogout">
-	      <div class="icon">🔒</div>
-	      <h3>Logout</h3>
-	      <p>Sign out from your account.</p>
-	    </div>
-	  </div>
-	</div>
-
-	<!-- Admin Dashboard -->
-	<div id="adminDashboard" class="hidden">
-	  <div class="dashboard-cards">
-	    <div class="role-card" id="uploadFacultyBtn">
-	      <div class="icon">📤</div>
-	      <h3>Upload/Update Faculty</h3>
-	      <p>Manage faculty data efficiently.</p>
-	    </div>
-	    <div class="role-card" id="downloadFacultyBtn">
-	      <div class="icon">📥</div>
-	      <h3>Download Faculty Details</h3>
-	      <p>Export faculty records in Excel format.</p>
-	    </div>
-		<!-- ✅ New Card: Manage Departments -->
-		    <div class="role-card" id="manageDepartmentsBtn">
-		      <div class="icon">🏛️</div>
-		      <h3>Manage Departments</h3>
-		      <p>Add or remove departments dynamically.</p>
-		    </div>
-
-	    <div class="role-card logout-btn" id="adminLogout">
-	      <div class="icon">🔒</div>
-	      <h3>Logout</h3>
-	      <p>Sign out from your account.</p>
-	    </div>
-	  </div>
-	</div>
-
-  <!-- ✅ FOOTER INSIDE PORTAL BOX -->
-    <div class="portal-footer">
-      Developed by <strong>Vineeth sai</strong> & <strong>Yaswanth Reddy</strong>,
-      Dept of CSE (2023–2027 Batch) |
-      Mentor <strong>Mr. B Anandaraj Asst.Prof</strong>
-    </div>
-</div>
-
-<!-- ================= SESSION EXPIRED MODAL ================= -->
-<div id="sessionExpiredModal" class="modal hidden">
-  <div class="modal-content">
-    <div class="modal-icon">⏰</div>
-    <h2>Session Expired</h2>
-    <p>Your login session has expired.<br>Please login again to continue.</p>
-    <button id="sessionExpiredBtn" class="modal-btn">Login Again</button>
-  </div>
-</div>
-<!-- ========================================================= -->
-
-<script src="authFetch.js"></script>
-<script src="login.js"></script>
-<script src="student.js"></script>
-<script src="faculty.js"></script>
-<script src="admin.js"></script>
-<script src="faculty-forgot-password.js"></script>
-<script src="student_forgot_password.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-
-
-
+	<script src="authFetch.js"></script>
+	<script src="login.js"></script>
+	<script src="student.js"></script>
+	<script src="faculty.js"></script>
+	<script src="admin.js"></script>
+	<script src="faculty-forgot-password.js"></script>
+	<script src="student_forgot_password.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </body>
+
 </html>

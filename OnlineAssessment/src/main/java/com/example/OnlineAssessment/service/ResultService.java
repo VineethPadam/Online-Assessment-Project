@@ -36,7 +36,7 @@ public class ResultService {
 
     // ================== Evaluate and save student result ==================
     public Result evaluateAndSaveResult(String rollNumber, String quizId,
-                                        Map<String, String> answers) throws Exception {
+            Map<String, String> answers) throws Exception {
 
         if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_QuizId(rollNumber, quizId)) {
             throw new RuntimeException("You have already attempted this quiz.");
@@ -51,17 +51,14 @@ public class ResultService {
         int score = 0;
 
         for (Map.Entry<String, String> entry : answers.entrySet()) {
-            Options correctOptionObj =
-                    optionsRepo.findByQuestion_QuestionId(entry.getKey()).orElse(null);
+            Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(entry.getKey()).orElse(null);
 
             if (correctOptionObj != null) {
-                List<String> correctOptions =
-                        Arrays.stream(correctOptionObj.getCorrectOption().split(","))
-                              .map(String::trim).toList();
+                List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
+                        .map(String::trim).toList();
 
-                List<String> selectedOptions =
-                        Arrays.stream(entry.getValue().split(","))
-                              .map(String::trim).toList();
+                List<String> selectedOptions = Arrays.stream(entry.getValue().split(","))
+                        .map(String::trim).toList();
 
                 if (correctOptions.size() == selectedOptions.size()
                         && correctOptions.containsAll(selectedOptions)) {
@@ -89,8 +86,7 @@ public class ResultService {
                 quizId,
                 student.getStudentSection(),
                 student.getDepartment(),
-                student.getStudentYear()
-        );
+                student.getStudentYear());
 
         if (!published) {
             throw new RuntimeException("Results for this quiz are not yet published for your batch.");
@@ -118,10 +114,10 @@ public class ResultService {
     // ================== Get ranked results with all filters ==================
     @Transactional(readOnly = true)
     public List<Result> getRankedResults(String quizId,
-                                         String department,
-                                         String section,
-                                         Integer year,
-                                         String sortBy) {
+            String department,
+            String section,
+            Integer year,
+            String sortBy) {
 
         List<Result> results;
 
@@ -174,5 +170,36 @@ public class ResultService {
         }
 
         return results;
+    }
+
+    // ================== Get Analysis for a specific student across all quizzes
+    // ==================
+    @Transactional(readOnly = true)
+    public List<Result> getStudentAnalysis(String rollNumber) {
+        // 1. Find all results for this student
+        List<Result> studentResults = resultRepo.findResultsByStudent_StudentRollNumber(rollNumber);
+
+        List<Result> analyzedResults = new ArrayList<>();
+
+        // 2. For each result, calculate rank globally for that quiz
+        for (Result myResult : studentResults) {
+            String quizId = myResult.getQuiz().getQuizId();
+
+            // Get ranked list for this quiz (this calculates totalMarks, passFail, and Rank
+            // for everyone)
+            // Passing null for filters to get global rank
+            List<Result> allRanked = getRankedResults(quizId, null, null, null, "rank");
+
+            // Find my result in the ranked list
+            for (Result r : allRanked) {
+                if (r.getStudent().getStudentRollNumber().equals(rollNumber)) {
+                    // We found the enriched result object for this student
+                    analyzedResults.add(r);
+                    break;
+                }
+            }
+        }
+
+        return analyzedResults;
     }
 }

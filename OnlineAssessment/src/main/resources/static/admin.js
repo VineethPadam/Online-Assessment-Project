@@ -1,4 +1,4 @@
-(function() {
+(function () {
     // ------------------ SELECT ELEMENTS ------------------
     const adminDashboard = document.getElementById("adminDashboard");
     const uploadFacultyBtn = adminDashboard.querySelector(".role-card:nth-child(1)");
@@ -19,7 +19,7 @@
       </div>
     `;
 
-    
+
     document.body.appendChild(backdrop);
 
     const modal = document.getElementById("adminModal");
@@ -65,36 +65,36 @@
             method: "POST",
             body: formData
         })
-        .then(res => res.text())
-        .then(msg => {
-            uploadMsg.innerText = msg;
-            uploadMsg.style.color = "green";
-        })
-        .catch(err => {
-            uploadMsg.innerText = "Upload failed!";
-            uploadMsg.style.color = "red";
-            console.error(err);
-        });
+            .then(res => res.text())
+            .then(msg => {
+                uploadMsg.innerText = msg;
+                uploadMsg.style.color = "green";
+            })
+            .catch(err => {
+                uploadMsg.innerText = "Upload failed!";
+                uploadMsg.style.color = "red";
+                console.error(err);
+            });
     });
 
     // ------------------ DOWNLOAD FILE ------------------
     downloadFacultyBtn.addEventListener("click", () => {
         authFetch("/upload/faculty/download")
-        .then(res => res.blob())
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = "faculty.xlsx";
-            document.body.appendChild(a);
-            a.click();
-            a.remove();
-        })
-        .catch(err => console.error("Download failed", err));
+            .then(res => res.blob())
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = "faculty.xlsx";
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            })
+            .catch(err => console.error("Download failed", err));
     });
 
 })();
-(function() {
+(function () {
     // ------------------ SELECT ELEMENTS ------------------
     const manageDeptBtn = document.getElementById("manageDepartmentsBtn");
 
@@ -108,11 +108,14 @@
         <button id="closeDeptModal" class="close-btn">&times;</button>
         <h3>Manage Departments</h3>
         <input type="text" id="newDeptName" placeholder="New Department Name" />
-        <button id="addDeptBtn">Add Department</button>
+        <button type="button" id="addDeptBtn" style="background:#6a0dad; color:white; margin-top:10px;">Add Department</button>
         <div id="deptMsg"></div>
         <table id="deptTable">
           <thead>
-            <tr><th>ID</th><th>Name</th><th>Action</th></tr>
+            <tr>
+                <th>Department Name</th>
+                <th>Action</th>
+            </tr>
           </thead>
           <tbody></tbody>
         </table>
@@ -158,7 +161,6 @@
             data.forEach(dept => {
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${dept.id}</td>
                     <td>${dept.name}</td>
                     <td><button class="deleteDeptBtn" data-id="${dept.id}">Delete</button></td>
                 `;
@@ -196,6 +198,10 @@
             return;
         }
 
+        // Prevent double click
+        addDeptBtn.disabled = true;
+        addDeptBtn.textContent = "Adding...";
+
         try {
             await authFetch(`/departments/add?name=${encodeURIComponent(name)}`, { method: "POST" });
             deptMsg.innerText = "Department added!";
@@ -206,6 +212,9 @@
             console.error(err);
             deptMsg.innerText = "Failed to add department!";
             deptMsg.style.color = "red";
+        } finally {
+            addDeptBtn.disabled = false;
+            addDeptBtn.textContent = "Add Department";
         }
     });
 

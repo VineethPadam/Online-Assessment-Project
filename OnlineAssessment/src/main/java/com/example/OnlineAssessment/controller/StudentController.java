@@ -42,6 +42,8 @@ public class StudentController {
             response.put("token", token);
             response.put("rollNumber", s.getStudentRollNumber());
             response.put("name", s.getStudentName());
+            response.put("department", s.getDepartment());
+            response.put("section", s.getStudentSection());
             response.put("role", "STUDENT");
 
             return ResponseEntity.ok(response);
