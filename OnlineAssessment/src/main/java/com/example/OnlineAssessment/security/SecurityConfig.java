@@ -38,13 +38,26 @@ public class SecurityConfig {
 								"/faculty/validate",
 								"/admin/validate",
 								"/ping",
-								"/password/student/**", // <-- add this
+								"/password/student/**",
 								"/password/faculty/**",
 								"/error")
 						.permitAll()
 
-						// ✅ All /departments and /results endpoints require JWT but any role
-						.requestMatchers("/departments/**", "/results/**").authenticated()
+						// Admin Only
+						.requestMatchers("/admin/**").hasRole("ADMIN")
+						.requestMatchers("/departments/add", "/departments/delete/**").hasRole("ADMIN")
+
+						// Faculty Only
+						.requestMatchers("/quiz/create", "/quiz/activate", "/quiz/my-exams", "/quiz/questions/**")
+						.hasRole("FACULTY")
+						.requestMatchers("/results/filter", "/results/faculty/**", "/analyze/**").hasRole("FACULTY")
+
+						// Student + Faculty
+						.requestMatchers("/results/student/**", "/results/student").hasAnyRole("STUDENT", "FACULTY")
+						.requestMatchers("/quiz/active", "/quiz/{quizId}/questions/**").hasAnyRole("STUDENT", "FACULTY")
+
+						// Authenticated Users (View Departments)
+						.requestMatchers("/departments", "/departments/**").authenticated()
 
 						// Everything else secured
 						.anyRequest().authenticated())

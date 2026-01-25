@@ -18,7 +18,7 @@ public class AnswerKeyController {
     // Get the answer key for a specific quiz & student
     @GetMapping("/{quizId}/{rollNo}")
     public List<Map<String, Object>> getAnswerKey(
-            @PathVariable String quizId,
+            @PathVariable Long quizId,
             @PathVariable String rollNo) {
         return answerKeyService.generateAnswerKey(quizId, rollNo);
     }

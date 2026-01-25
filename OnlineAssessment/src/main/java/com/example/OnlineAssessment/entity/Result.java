@@ -18,12 +18,12 @@ public class Result {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
 
-    private int score;
+    private double score;
 
-    private LocalDateTime submissionTime;   // ✅ tie-breaker
+    private LocalDateTime submissionTime;
 
     @Transient
-    private Integer rank;                   // ✅ not stored in DB
+    private Integer rank;
 
     @ManyToOne
     @JoinColumn(name = "quiz_id")
@@ -35,39 +35,104 @@ public class Result {
 
     @Lob
     private String answers;
-    
+
     @Transient
-    private int totalMarks;
+    private double totalMarks;
 
     @Transient
     private String passFail;
 
-    public int getTotalMarks() { return totalMarks; }
-    public void setTotalMarks(int totalMarks) { this.totalMarks = totalMarks; }
+    @Transient
+    private boolean isPublished;
 
-    public String getPassFail() { return passFail; }
-    public void setPassFail(String passFail) { this.passFail = passFail; }
+    @Transient
+    private java.util.Map<String, String> studentAnswers;
 
-    public int getId() { return id; }
-    public void setId(int id) { this.id = id; }
+    public double getTotalMarks() {
+        return totalMarks;
+    }
 
-    public int getScore() { return score; }
-    public void setScore(int score) { this.score = score; }
+    public void setTotalMarks(double totalMarks) {
+        this.totalMarks = totalMarks;
+    }
 
-    public LocalDateTime getSubmissionTime() { return submissionTime; }
+    public String getPassFail() {
+        return passFail;
+    }
+
+    public void setPassFail(String passFail) {
+        this.passFail = passFail;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public double getScore() {
+        return score;
+    }
+
+    public void setScore(double score) {
+        this.score = score;
+    }
+
+    public LocalDateTime getSubmissionTime() {
+        return submissionTime;
+    }
+
     public void setSubmissionTime(LocalDateTime submissionTime) {
         this.submissionTime = submissionTime;
     }
 
-    public Integer getRank() { return rank; }
-    public void setRank(Integer rank) { this.rank = rank; }
+    public Integer getRank() {
+        return rank;
+    }
 
-    public Quiz getQuiz() { return quiz; }
-    public void setQuiz(Quiz quiz) { this.quiz = quiz; }
+    public void setRank(Integer rank) {
+        this.rank = rank;
+    }
 
-    public Student getStudent() { return student; }
-    public void setStudent(Student student) { this.student = student; }
+    public Quiz getQuiz() {
+        return quiz;
+    }
 
-    public String getAnswers() { return answers; }
-    public void setAnswers(String answers) { this.answers = answers; }
+    public void setQuiz(Quiz quiz) {
+        this.quiz = quiz;
+    }
+
+    public Student getStudent() {
+        return student;
+    }
+
+    public void setStudent(Student student) {
+        this.student = student;
+    }
+
+    public String getAnswers() {
+        return answers;
+    }
+
+    public void setAnswers(String answers) {
+        this.answers = answers;
+    }
+
+    public boolean isPublished() {
+        return isPublished;
+    }
+
+    public void setPublished(boolean isPublished) {
+        this.isPublished = isPublished;
+    }
+
+    public java.util.Map<String, String> getStudentAnswers() {
+        return studentAnswers;
+    }
+
+    public void setStudentAnswers(java.util.Map<String, String> studentAnswers) {
+        this.studentAnswers = studentAnswers;
+    }
 }

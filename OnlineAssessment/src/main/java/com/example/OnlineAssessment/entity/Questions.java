@@ -1,6 +1,6 @@
 package com.example.OnlineAssessment.entity;
 
-import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,32 +15,91 @@ import jakarta.persistence.OneToOne;
 @Entity
 public class Questions {
 
-	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
-	@Column(updatable = false, nullable = false)
-	private String questionId;
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(updatable = false, nullable = false)
+    private String questionId;
 
     @Column(columnDefinition = "LONGTEXT")
     private String questionText;
 
     @ManyToOne
-    @JoinColumn(name = "quizId")
+    @JoinColumn(name = "quiz_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
     private Quiz quiz;
 
     @OneToOne(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @JsonManagedReference
     private Options options;
 
+    private double marks;
+    private double negativeMarks;
+    private Integer timeLimitSeconds; // optional, null if no limit
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String questionImage; // stores Base64 string
+
     // Getters & Setters
-    public String getQuestionId() { return questionId; }
-    public void setQuestionId(String questionId) { this.questionId = questionId; }
+    public String getQuestionId() {
+        return questionId;
+    }
 
-    public String getQuestionText() { return questionText; }
-    public void setQuestionText(String questionText) { this.questionText = questionText; }
+    public void setQuestionId(String questionId) {
+        this.questionId = questionId;
+    }
 
-    public Quiz getQuiz() { return quiz; }
-    public void setQuiz(Quiz quiz) { this.quiz = quiz; }
+    public String getQuestionText() {
+        return questionText;
+    }
 
-    public Options getOptions() { return options; }
-    public void setOptions(Options options) { this.options = options; }
+    public void setQuestionText(String questionText) {
+        this.questionText = questionText;
+    }
+
+    public Quiz getQuiz() {
+        return quiz;
+    }
+
+    public void setQuiz(Quiz quiz) {
+        this.quiz = quiz;
+    }
+
+    public Options getOptions() {
+        return options;
+    }
+
+    public void setOptions(Options options) {
+        this.options = options;
+    }
+
+    public double getMarks() {
+        return marks;
+    }
+
+    public void setMarks(double marks) {
+        this.marks = marks;
+    }
+
+    public double getNegativeMarks() {
+        return negativeMarks;
+    }
+
+    public void setNegativeMarks(double negativeMarks) {
+        this.negativeMarks = negativeMarks;
+    }
+
+    public Integer getTimeLimitSeconds() {
+        return timeLimitSeconds;
+    }
+
+    public void setTimeLimitSeconds(Integer timeLimitSeconds) {
+        this.timeLimitSeconds = timeLimitSeconds;
+    }
+
+    public String getQuestionImage() {
+        return questionImage;
+    }
+
+    public void setQuestionImage(String questionImage) {
+        this.questionImage = questionImage;
+    }
 }

@@ -161,60 +161,317 @@
 
 				<!-- Faculty Dashboard -->
 				<div id="facultyDashboard" class="hidden">
-					<div class="dashboard-cards">
-						<div class="role-card" id="uploadStudentBtn">
-							<div class="icon">📁</div>
-							<h3>Upload Student Excel</h3>
-							<p>Upload or update student details quickly.</p>
-						</div>
-						<div class="role-card" id="addQuizBtn">
-							<div class="icon">➕</div>
-							<h3>Add Quiz</h3>
-							<p>Create new quizzes and upload questions.</p>
-						</div>
-						<div class="role-card" id="activateQuizBtn">
-							<div class="icon">✅</div>
-							<h3>Activate Quiz</h3>
-							<p>Set quizzes live for students to attempt.</p>
-						</div>
-						<div class="role-card" id="viewClassResultsBtn">
-							<div class="icon">📋</div>
-							<h3>View Class Results</h3>
-							<p>Check student performance and rankings.</p>
-						</div>
-						<div class="role-card" id="publishResultBtn">
+					<div class="dashboard-cards" id="facultyHomeCards">
+						<div class="role-card" id="manageExamsCategoryBtn">
 							<div class="icon">📝</div>
-							<h3>Publish Result</h3>
-							<p>Make quiz results visible to students.</p>
+							<h3>Manage Examinations</h3>
+							<p>Create, activate, and manage your exams.</p>
 						</div>
-						<div class="role-card" id="studentAnalysisBtn">
-							<div class="icon">🔍</div>
-							<h3>Student Analysis</h3>
-							<p>View detailed analysis for a specific student.</p>
+						<div class="role-card" id="viewResultsCategoryBtn">
+							<div class="icon">📊</div>
+							<h3>Results & Analysis</h3>
+							<p>View rankings, publish results, and analyze student performance.</p>
 						</div>
+					</div>
 
+					<!-- Manage Examinations Category View -->
+					<div id="examsCategorySection" class="hidden">
+						<div class="manage-header">
+							<h2 style="margin:0; font-size: 28px; font-weight:900; color:var(--text-main);">Manage
+								Examinations</h2>
+							<button id="backFromExamsCategory" class="btn-premium btn-secondary-outline">Back to
+								Dashboard</button>
+						</div>
+						<div class="dashboard-cards">
+							<div class="role-card" id="addQuizBtn">
+								<div class="icon">➕</div>
+								<h3>Add Quiz</h3>
+								<p>Create new quizzes and upload questions.</p>
+							</div>
+							<div class="role-card" id="activateQuizBtn">
+								<div class="icon">✅</div>
+								<h3>Activate Quiz</h3>
+								<p>Set quizzes live for students to attempt.</p>
+							</div>
+							<div class="role-card" id="myExamsBtn">
+								<div class="icon">📚</div>
+								<h3>Exams Conducted by Me</h3>
+								<p>View and manage all your previous exams.</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Results & Analysis Category View -->
+					<div id="resultsCategorySection" class="hidden">
+						<div class="manage-header">
+							<h2 style="margin:0; font-size: 28px; font-weight:900; color:var(--text-main);">Results &
+								Analysis</h2>
+							<button id="backFromResultsCategory" class="btn-premium btn-secondary-outline">Back to
+								Dashboard</button>
+						</div>
+						<div class="dashboard-cards">
+							<div class="role-card" id="viewClassResultsBtn">
+								<div class="icon">📋</div>
+								<h3>View Class Results</h3>
+								<p>Check student performance and rankings.</p>
+							</div>
+							<div class="role-card" id="publishResultBtn">
+								<div class="icon">📢</div>
+								<h3>Publish Result</h3>
+								<p>Make results visible to participants.</p>
+							</div>
+							<div class="role-card" id="studentAnalysisBtn">
+								<div class="icon">🔍</div>
+								<h3>Student Analysis</h3>
+								<p>Detailed performance history for individuals.</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Student Analysis View -->
+					<div id="studentAnalysisSection" class="hidden">
+						<div class="analysis-search-container">
+							<h2>Student Analysis</h2>
+							<p>Search for a student by roll number to see their performance across all quizzes.</p>
+							<div class="search-box-wrapper">
+								<input type="text" id="analysisRollNumber" placeholder="Enter Roll Number">
+								<button id="getAnalysisBtn" class="primary-btn">Analyze</button>
+							</div>
+						</div>
+						<div id="analysisResults" class="analysis-results-card">
+							<!-- Populated by JS -->
+						</div>
+						<button id="backFromAnalysis" class="secondary-btn" style="margin-top:20px; width:100%;">Back to
+							Dashboard</button>
 					</div>
 				</div>
 
 				<!-- Admin Dashboard -->
 				<div id="adminDashboard" class="hidden">
 					<div class="dashboard-cards">
-						<div class="role-card" id="uploadFacultyBtn">
-							<div class="icon">📤</div>
-							<h3>Upload/Update Faculty</h3>
-							<p>Manage faculty data efficiently.</p>
-						</div>
-						<div class="role-card" id="downloadFacultyBtn">
-							<div class="icon">📥</div>
-							<h3>Download Faculty Details</h3>
-							<p>Export faculty records in Excel format.</p>
+						<div class="role-card" id="manageFacultyDataBtn">
+							<div class="icon">👔</div>
+							<h3>Manage Faculty data</h3>
+							<p>Add, view, download or modify faculty records.</p>
 						</div>
 						<div class="role-card" id="manageDepartmentsBtn">
 							<div class="icon">🏛️</div>
 							<h3>Manage Departments</h3>
 							<p>Add or remove departments dynamically.</p>
 						</div>
+						<div class="role-card" id="manageStudentDataBtn">
+							<div class="icon">🤝</div>
+							<h3>Manage Student data</h3>
+							<p>Add, view, download or modify student records.</p>
+						</div>
+					</div>
+				</div>
 
+				<!-- Manage Student Data Section -->
+				<div id="manageStudentSection" class="hidden">
+					<div class="manage-header">
+						<h2 style="margin:0; font-size: 28px; font-weight:900;">Manage Student Data</h2>
+						<button id="backFromManageStudents" class="btn-premium btn-secondary-outline">Back to
+							Dashboard</button>
+					</div>
+
+					<div class="dashboard-cards" style="margin-bottom: 30px;">
+						<div class="role-card" id="uploadStudentAdminBtn">
+							<div class="icon">📤</div>
+							<h3>Add Student Data</h3>
+							<p>Multi-upload via Excel template.</p>
+						</div>
+						<div class="role-card" id="viewStudentsBtn">
+							<div class="icon">👁️</div>
+							<h3>View Data</h3>
+							<p>Search and filter student records.</p>
+						</div>
+						<div class="role-card" id="downloadStudentsCardBtn">
+							<div class="icon">📥</div>
+							<h3>Download Data</h3>
+							<p>Export students to Excel.</p>
+						</div>
+					</div>
+
+					<div id="studentViewSection" class="hidden">
+						<div class="filter-panel"
+							style="background:white; padding:35px; border-radius:20px; border:1px solid var(--border); margin-bottom:40px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:25px; box-shadow:var(--shadow-sm);">
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Department</label>
+								<select id="sDept" class="dept-select-dynamic" style="margin:0; height:50px;">
+									<option value="">All Departments</option>
+								</select>
+							</div>
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Section</label>
+								<select id="sSec" style="margin:0; height:50px;">
+									<option value="">All Sections</option>
+									<option value="A">A</option>
+									<option value="B">B</option>
+									<option value="C">C</option>
+									<option value="D">D</option>
+									<option value="E">E</option>
+									<option value="F">F</option>
+									<option value="G">G</option>
+									<option value="H">H</option>
+									<option value="I">I</option>
+									<option value="J">J</option>
+								</select>
+							</div>
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Year</label>
+								<select id="sYear" style="margin:0; height:50px;">
+									<option value="">All Years</option>
+									<option value="1">1</option>
+									<option value="2">2</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+								</select>
+							</div>
+							<div
+								style="grid-column: 1/-1; display:flex; gap:15px; margin-top:10px; border-top:1px solid var(--border); padding-top:25px;">
+								<button id="fetchStudentsBtn" class="btn-premium btn-primary-grad"
+									style="flex:2; height:54px;">🔍 View Students</button>
+							</div>
+						</div>
+
+						<div class="table-container" style="overflow-x:auto;">
+							<table style="width:100%; border-collapse:collapse;">
+								<thead style="background:var(--background); border-bottom:2px solid var(--border);">
+									<tr>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Roll Number</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Name</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Email</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Dept</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Sec</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Year</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Actions</th>
+									</tr>
+								</thead>
+								<tbody id="studentTableBody">
+									<tr>
+										<td colspan="7"
+											style="text-align:center; padding:100px; color:var(--text-muted); font-size:16px;">
+											Set filters and click "View Students"</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
+				<!-- Manage Faculty Data Section -->
+				<div id="manageFacultySection" class="hidden">
+					<div class="manage-header">
+						<h2 style="margin:0; font-size: 28px; font-weight:900;">Manage Faculty Data</h2>
+						<button id="backFromManageFaculty" class="btn-premium btn-secondary-outline">Back to
+							Dashboard</button>
+					</div>
+
+					<div class="dashboard-cards" style="margin-bottom: 30px;">
+						<div class="role-card" id="uploadFacultyAdminBtn">
+							<div class="icon">📤</div>
+							<h3>Add Faculty Data</h3>
+							<p>Multi-upload via Excel template.</p>
+						</div>
+						<div class="role-card" id="viewFacultyBtn">
+							<div class="icon">👁️</div>
+							<h3>View Data</h3>
+							<p>Search and filter faculty records.</p>
+						</div>
+						<div class="role-card" id="downloadFacultyCardBtn">
+							<div class="icon">📥</div>
+							<h3>Download Data</h3>
+							<p>Export faculty to Excel.</p>
+						</div>
+					</div>
+
+					<div id="facultyViewSection" class="hidden">
+						<div class="filter-panel"
+							style="background:white; padding:35px; border-radius:20px; border:1px solid var(--border); margin-bottom:40px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:25px; box-shadow:var(--shadow-sm);">
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Department</label>
+								<select id="fDeptAdmin" class="dept-select-dynamic" style="margin:0; height:50px;">
+									<option value="">All Departments</option>
+								</select>
+							</div>
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Section</label>
+								<select id="fSecAdmin" style="margin:0; height:50px;">
+									<option value="">All Sections</option>
+									<option value="A">A</option>
+									<option value="B">B</option>
+									<option value="C">C</option>
+									<option value="D">D</option>
+									<option value="E">E</option>
+									<option value="F">F</option>
+									<option value="G">G</option>
+									<option value="H">H</option>
+									<option value="I">I</option>
+									<option value="J">J</option>
+								</select>
+							</div>
+							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Year</label>
+								<select id="fYearAdmin" style="margin:0; height:50px;">
+									<option value="">All Years</option>
+									<option value="1">1</option>
+									<option value="2">2</option>
+									<option value="3">3</option>
+									<option value="4">4</option>
+								</select>
+							</div>
+							<div
+								style="grid-column: 1/-1; display:flex; gap:15px; margin-top:10px; border-top:1px solid var(--border); padding-top:25px;">
+								<button id="fetchFacultyBtn" class="btn-premium btn-primary-grad"
+									style="flex:2; height:54px;">🔍 View Faculty</button>
+							</div>
+						</div>
+
+						<div class="table-container" style="overflow-x:auto;">
+							<table style="width:100%; border-collapse:collapse;">
+								<thead style="background:var(--background); border-bottom:2px solid var(--border);">
+									<tr>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Faculty ID</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Name</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Email</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Dept</th>
+										<th
+											style="padding:15px 20px; text-align:left; color:var(--text-main); font-weight:800; font-size:12px; text-transform:uppercase;">
+											Actions</th>
+									</tr>
+								</thead>
+								<tbody id="facultyTableBody">
+									<tr>
+										<td colspan="5"
+											style="text-align:center; padding:100px; color:var(--text-muted); font-size:16px;">
+											Set filters and click "View Faculty"</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -243,6 +500,7 @@
 	<script src="authFetch.js"></script>
 	<script src="login.js"></script>
 	<script src="student.js"></script>
+	<script src="student_quiz_fix.js"></script>
 	<script src="faculty.js"></script>
 	<script src="admin.js"></script>
 	<script src="faculty-forgot-password.js"></script>

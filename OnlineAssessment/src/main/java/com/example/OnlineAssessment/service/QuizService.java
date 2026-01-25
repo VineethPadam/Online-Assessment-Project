@@ -1,12 +1,16 @@
 package com.example.OnlineAssessment.service;
 
 import java.util.List;
+import java.util.Optional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import com.example.OnlineAssessment.entity.Quiz;
+import com.example.OnlineAssessment.entity.Faculty;
 import com.example.OnlineAssessment.entity.QuizActivation;
 import com.example.OnlineAssessment.repositories.QuizRepo;
+import com.example.OnlineAssessment.repositories.FacultyRepo;
 import com.example.OnlineAssessment.repositories.QuizActivationRepo;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class QuizService {
@@ -15,36 +19,37 @@ public class QuizService {
     private QuizRepo quizRepo;
 
     @Autowired
+    private FacultyRepo facultyRepo;
+
+    @Autowired
     private QuizActivationRepo quizActivationRepo;
 
-    // Create a new quiz if it doesn't exist
- // ✅ Create a new quiz ONLY if quizId is unique
-    public Quiz createQuiz(String quizId, String quizName) {
-        // Check if quizId already exists
-        if (quizRepo.existsById(quizId)) {
-            throw new RuntimeException("Quiz ID already exists! Please choose a unique Quiz ID.");
+    // Create a new quiz for a specific faculty
+    public Quiz createQuiz(String quizCode, String quizName, String facultyId) {
+        Optional<Quiz> existing = quizRepo.findByQuizCodeAndFaculty_FacultyId(quizCode, facultyId);
+        if (existing.isPresent()) {
+            throw new RuntimeException("You already have a quiz with ID: " + quizCode);
         }
 
-        // Optional: Check if quizName is unique
-        if (quizRepo.findByQuizNameIgnoreCase(quizName) != null) {
-            throw new RuntimeException("Quiz Name already exists! Please choose a unique name.");
-        }
+        Faculty faculty = facultyRepo.findById(facultyId)
+                .orElseThrow(() -> new RuntimeException("Faculty not found"));
 
         Quiz quiz = new Quiz();
-        quiz.setQuizId(quizId);
+        quiz.setQuizCode(quizCode);
         quiz.setQuizName(quizName);
+        quiz.setFaculty(faculty);
         return quizRepo.save(quiz);
     }
 
-    // Activate or deactivate a quiz for a specific batch
-    public QuizActivation activateQuiz(String quizId, String section,
+    // Activate or deactivate a quiz
+    public QuizActivation activateQuiz(Long internalQuizId, String section,
             String department, int year, boolean active, int durationMinutes) {
 
-        Quiz quiz = quizRepo.findById(quizId)
+        Quiz quiz = quizRepo.findById(internalQuizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
         QuizActivation qa = quizActivationRepo
-                .findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
+                .findByQuizIdAndSectionDeptYear(quiz.getId(), section, department, year);
 
         if (qa == null) {
             qa = new QuizActivation();
@@ -60,39 +65,31 @@ public class QuizService {
         return quizActivationRepo.save(qa);
     }
 
- // Publish or unpublish results for a specific batch
-    public QuizActivation publishResults(String quizId, String section, String department, int year, boolean publish) {
-        // Step 1: Check if the quiz exists
-        if (!quizRepo.existsById(quizId)) {
-            throw new RuntimeException("Invalid Quiz ID");
-        }
-
-        // Step 2: Check if activation entry exists for that batch
-        QuizActivation qa = quizActivationRepo.findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
+    // Publish results
+    public QuizActivation publishResults(Long internalQuizId, String section, String department, int year,
+            boolean publish) {
+        QuizActivation qa = quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department,
+                year);
         if (qa == null) {
-            throw new RuntimeException("Quiz not activated for the selected section/year");
+            throw new RuntimeException("Quiz not activated for this batch");
         }
 
-        // Step 3: Update publish status
         qa.setPublished(publish);
         return quizActivationRepo.save(qa);
     }
 
-
-    // Check if results are published for a batch
-    public boolean areResultsPublished(String quizId, String section, String department, int year) {
-        QuizActivation qa = quizActivationRepo.findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
-        return qa != null && qa.isPublished();
-    }
-
-    // Get all active quizzes for a student
     public List<QuizActivation> getActiveQuizzesForStudent(String section, String department, int year) {
         return quizActivationRepo.findActiveQuizzesIgnoreCase(section, department, year);
     }
 
-    // Check if a quiz is active for a student
-    public boolean isQuizActiveForStudent(String quizId, String section, String department, int year) {
-        QuizActivation qa = quizActivationRepo.findByQuizIdSectionDeptYearIgnoreCase(quizId, section, department, year);
+    public boolean isQuizActiveForStudent(Long internalQuizId, String section, String department, int year) {
+        QuizActivation qa = quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department,
+                year);
         return qa != null && qa.isActive();
+    }
+
+    @Transactional
+    public void deleteQuiz(Long quizId) {
+        quizRepo.deleteById(quizId);
     }
 }

@@ -32,15 +32,17 @@ public class AdminExcelService {
 
             for (int i = 1; i <= sheet.getLastRowNum(); i++) {
                 Row row = sheet.getRow(i);
-                if (row == null) continue;
+                if (row == null)
+                    continue;
 
                 String facultyId = getCellValueAsString(row.getCell(0));
                 String name = getCellValueAsString(row.getCell(1));
                 String email = getCellValueAsString(row.getCell(2));
                 String department = getCellValueAsString(row.getCell(3));
-                //String password = getCellValueAsString(row.getCell(4));
+                // String password = getCellValueAsString(row.getCell(4));
 
-                if (facultyId.isEmpty()) continue;
+                if (facultyId.isEmpty())
+                    continue;
 
                 excelFacultyIds.add(facultyId); // collect all IDs in Excel
 
@@ -48,10 +50,13 @@ public class AdminExcelService {
                 Faculty faculty = facultyRepo.findById(facultyId).orElse(new Faculty());
                 faculty.setFacultyId(facultyId);
 
-                if (!name.isEmpty()) faculty.setFacultyName(name);
-                if (!email.isEmpty()) faculty.setEmail(email);
-                if (!department.isEmpty()) faculty.setDepartment(department);
-                
+                if (!name.isEmpty())
+                    faculty.setFacultyName(name);
+                if (!email.isEmpty())
+                    faculty.setEmail(email);
+                if (!department.isEmpty())
+                    faculty.setDepartment(department);
+
                 if (faculty.getPassword() == null) {
                     faculty.setPassword(facultyId);
                 }
@@ -69,10 +74,12 @@ public class AdminExcelService {
         }
     }
 
-
     // Generate Faculty Excel
     public byte[] generateFacultyExcel() throws Exception {
-        List<Faculty> facultyList = facultyRepo.findAll();
+        return generateFacultyExcel(facultyRepo.findAll());
+    }
+
+    public byte[] generateFacultyExcel(List<Faculty> facultyList) throws Exception {
         try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream bos = new ByteArrayOutputStream()) {
             Sheet sheet = workbook.createSheet("Faculty Data");
             Row header = sheet.createRow(0);
@@ -97,13 +104,19 @@ public class AdminExcelService {
 
     // Helper method
     private String getCellValueAsString(Cell cell) {
-        if (cell == null) return "";
+        if (cell == null)
+            return "";
         switch (cell.getCellType()) {
-            case STRING: return cell.getStringCellValue().trim();
-            case NUMERIC: return String.valueOf((long) cell.getNumericCellValue());
-            case BOOLEAN: return String.valueOf(cell.getBooleanCellValue());
-            case FORMULA: return cell.getCellFormula();
-            default: return "";
+            case STRING:
+                return cell.getStringCellValue().trim();
+            case NUMERIC:
+                return String.valueOf((long) cell.getNumericCellValue());
+            case BOOLEAN:
+                return String.valueOf(cell.getBooleanCellValue());
+            case FORMULA:
+                return cell.getCellFormula();
+            default:
+                return "";
         }
     }
 }

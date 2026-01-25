@@ -23,17 +23,17 @@ public class ResultController {
     private ObjectMapper objectMapper = new ObjectMapper();
 
     // Submit quiz result
-    // ✅ SAFE SUBMIT (IDEMPOTENT)
     @PostMapping("/submit")
     public ResponseEntity<Result> submitResult(@RequestBody Map<String, Object> payload) throws Exception {
 
         String rollNumber = (String) payload.get("rollNumber");
-        String quizId = (String) payload.get("quizId");
+        // Check if quizId is numeric (internal ID) or String
+        Object qIdObj = payload.get("quizId");
+        Long quizId = qIdObj instanceof Number ? ((Number) qIdObj).longValue() : Long.parseLong(qIdObj.toString());
 
         @SuppressWarnings("unchecked")
-        Map<String, String> answers = (Map<String, String>) (Map<?, ?>) payload.get("answers");
+        Map<String, String> answers = (Map<String, String>) payload.get("answers");
 
-        // ✅ This method will now handle duplicate submissions safely
         Result result = resultService.evaluateAndSaveResult(rollNumber, quizId, answers);
 
         return ResponseEntity.ok(result);
@@ -45,7 +45,7 @@ public class ResultController {
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam Integer year,
-            @RequestParam String quizId) {
+            @RequestParam Long quizId) {
         return resultService.getResultsByFilter(section, department, year, quizId);
     }
 
@@ -53,45 +53,59 @@ public class ResultController {
     @GetMapping("/student")
     public List<Result> getStudentResults(
             @RequestParam String rollNumber,
-            @RequestParam String quizId) {
+            @RequestParam Long quizId) {
         return resultService.getStudentResults(rollNumber, quizId);
     }
 
-    // ✅ Check if student has already attempted
+    // Check if student has already attempted
     @GetMapping("/student/attempted")
     public boolean hasStudentAttempted(
             @RequestParam String rollNumber,
-            @RequestParam String quizId) {
+            @RequestParam Long quizId) {
         return resultService.hasAttemptedQuiz(rollNumber, quizId);
     }
 
-    // ✅ New endpoint: fetch student's submitted answers
+    // Get all results for a student
+    @GetMapping("/student/all")
+    public ResponseEntity<?> getAllStudentResults(@RequestParam String rollNumber) {
+        String authUser = org.springframework.security.core.context.SecurityContextHolder.getContext()
+                .getAuthentication().getName();
+        if (!authUser.equalsIgnoreCase(rollNumber)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                    .body("System Security: Unauthorized access to performance records.");
+        }
+        return ResponseEntity.ok(resultService.getAllStudentResults(rollNumber));
+    }
+
+    // Fetch student's submitted answers
     @GetMapping("/student/{rollNumber}/quiz/{quizId}/answers")
     public Map<String, String> getStudentAnswers(
             @PathVariable String rollNumber,
-            @PathVariable String quizId) throws Exception {
+            @PathVariable Long quizId) throws Exception {
 
         String jsonAnswers = resultService.getStudentAnswers(rollNumber, quizId);
-        Map<String, String> answersMap = objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {
+        return objectMapper.readValue(jsonAnswers, new TypeReference<Map<String, String>>() {
         });
-        return answersMap;
     }
 
     @GetMapping("/faculty/ranking")
     public List<Result> getFacultyRanking(
-            @RequestParam String quizId,
+            @RequestParam Long quizId,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String section,
             @RequestParam(required = false) Integer year,
             @RequestParam(defaultValue = "rank") String sortBy) {
 
-        return resultService.getRankedResults(
-                quizId, department, section, year, sortBy);
+        return resultService.getRankedResults(quizId, department, section, year, sortBy);
     }
 
     @GetMapping("/analysis")
     public List<Result> getStudentAnalysis(@RequestParam String rollNumber) {
-        return resultService.getStudentAnalysis(rollNumber);
+        return resultService.getAllStudentResults(rollNumber);
     }
 
+    @RequestMapping(value = "/ping", method = { RequestMethod.GET, RequestMethod.HEAD })
+    public ResponseEntity<Void> ping() {
+        return ResponseEntity.ok().build();
+    }
 }

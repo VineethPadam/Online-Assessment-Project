@@ -193,21 +193,16 @@ function showDashboard() {
     let profileHtml = "";
 
     if (selectedRole === "student") {
-        const name = loggedInUser.name || "Student";
-        const roll = loggedInUser.rollNumber || "N/A";
-        const dept = loggedInUser.department || "N/A";
-        const sec = loggedInUser.section || "N/A";
-
-        headerUserName.textContent = name;
+        headerUserName.textContent = loggedInUser.name || "Student";
         profileHtml = `
             <div class="profile-header">
-                <span class="p-name">${name}</span>
+                <span class="p-name">${loggedInUser.name || "Student"}</span>
                 <span class="p-role">Student</span>
             </div>
             <div class="profile-details">
-                <p><strong>Roll:</strong> ${roll}</p>
-                <p><strong>Dept:</strong> ${dept}</p>
-                <p><strong>Section:</strong> ${sec}</p>
+                <p><strong>Roll:</strong> ${loggedInUser.rollNumber || "N/A"}</p>
+                <p><strong>Dept:</strong> ${loggedInUser.department || "N/A"}</p>
+                <p><strong>Section:</strong> ${loggedInUser.section || "N/A"}</p>
             </div>
             <div class="profile-actions">
                 <button class="menu-btn btn-logout" id="dropdownLogout">
@@ -256,6 +251,7 @@ function showDashboard() {
 
     if (profileDropdown) {
         profileDropdown.innerHTML = profileHtml;
+        profileDropdown.classList.remove("show"); // Ensure it starts closed
         // Bind Logout
         document.getElementById("dropdownLogout")?.addEventListener("click", logout);
     }
@@ -270,9 +266,12 @@ function logout() {
     selectedRole = null;
     sessionStorage.clear();
 
-    // Hide Profile Menu
+    // Hide Profile Menu and Dropdown
     const profileMenu = document.getElementById("profileMenu");
+    const profileDropdown = document.getElementById("profileDropdown");
+
     if (profileMenu) profileMenu.classList.add("hidden");
+    if (profileDropdown) profileDropdown.classList.remove("show");
 
     // Reset Header Name
     const headerUserName = document.getElementById("headerUserName");

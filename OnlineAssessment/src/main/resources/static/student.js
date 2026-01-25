@@ -1,946 +1,1161 @@
-	(() => {
-	    const takeQuizBtn = document.getElementById("takeQuizBtn");
-	    const viewResultBtn = document.getElementById("viewResultBtn");
-	    const leftMenu = document.getElementById("leftMenu"); 
-	    let quizContainer = null;
-	    let studentRoll = "";
-	    let modal = null;
-	    let lastModalContent = null;
-	
-	    // ✅ Added global control variables
-	    let examActive = false;
-	    let blurCount = 0;
-	    let timerInterval = null;
-		let isSubmitted = false;
-		
-		let submitBtn = null;        // global reference
-		let halfTimeReached = false;
-	
-		let prevBtnRef = null;
-		let nextBtnRef = null;
-		let navButtons = [];
-	
-		
-		let remainingSeconds = 0;  // Track remaining seconds globally
-		
-		let examPaused = false; 
-		let lastNetworkState = null; // true=online, false=offline
-	    // New flag
-		let hasShownOfflineAlert = false;
-		let hasShownOnlineAlert = false;
-	
-	
-	    window.setStudentRoll = (roll) => studentRoll = roll;
-	
-	    // -------------------- HELPERS --------------------
-	    function hashString(str) {
-	        let hash = 0;
-	        for (let i = 0; i < str.length; i++) {
-	            hash = ((hash << 5) - hash) + str.charCodeAt(i);
-	            hash |= 0;
-	        }
-	        return hash;
-	    }
-		
-	    function mulberry32(a) {
-	        return function() {
-	            let t = a += 0x6D2B79F5;
-	            t = Math.imul(t ^ t >>> 15, t | 1);
-	            t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-	            return ((t ^ t >>> 14) >>> 0) / 4294967296;
-	        }
-	    }
-	
-	    function shuffleArray(array, seed = null) {
-	        let arr = [...array];
-	        let random = seed !== null ? mulberry32(seed) : Math.random;
-	        for (let i = arr.length - 1; i > 0; i--) {
-	            const j = Math.floor(random() * (i + 1));
-	            [arr[i], arr[j]] = [arr[j], arr[i]];
-	        }
-	        return arr;
-	    }
-	
-	    function createModal() {
-	        if (modal) return;
-	        modal = document.createElement("div");
-	        modal.id = "studentModal";
-	        modal.className = "modal hidden";
-	        modal.innerHTML = `
-	            <div class="modal-content">
-	                <span id="modalClose" class="close">&times;</span>
-	                <div class="modal-header" id="modalHeader"></div>
-	                <div class="modal-body" id="modalBody"></div>
-	                <div class="modal-footer" id="modalFooter"></div>
-	            </div>
-	        `;
-	        document.body.appendChild(modal);
-	        modal.querySelector("#modalClose").addEventListener("click", () => {
-	            modal.classList.add("hidden");
-	            if (leftMenu) leftMenu.style.display = "flex";
-	        });
-	    }
-	
-	    function saveModalState() {
-	        if (!modal) return;
-	        lastModalContent = {
-	            header: modal.querySelector("#modalHeader").innerHTML,
-	            body: modal.querySelector("#modalBody").innerHTML,
-	            footer: modal.querySelector("#modalFooter").innerHTML
-	        };
-	    }
-	
-	    function restoreModalState() {
-	        if (!lastModalContent) return;
-	        modal.querySelector("#modalHeader").innerHTML = lastModalContent.header;
-	        modal.querySelector("#modalBody").innerHTML = lastModalContent.body;
-	        modal.querySelector("#modalFooter").innerHTML = lastModalContent.footer;
-	        modal.classList.remove("hidden");
-	        lastModalContent = null;
-	        if (leftMenu) leftMenu.style.display = "flex";
-	    }
-	
-	    // -------------------- TAKE QUIZ --------------------
-	    takeQuizBtn.addEventListener("click", () => {
-	        if (!studentRoll) return alert("Please login first.");
-	        if (leftMenu) leftMenu.style.display = "none";
-	        createModal();
-	        saveModalState();
-	        openTakeQuizModal();
-	    });
-	
-		async function openTakeQuizModal() {
-		    const modalHeader = modal.querySelector("#modalHeader");
-		    const modalBody = modal.querySelector("#modalBody");
-		    const modalFooter = modal.querySelector("#modalFooter");
+(() => {
+	const takeQuizBtn = document.getElementById("takeQuizBtn");
+	const viewResultBtn = document.getElementById("viewResultBtn");
+	const leftMenu = document.getElementById("leftMenu");
 
-		    modalHeader.textContent = "Select Department, Year, Section";
+	let studentRoll = "";
+	let currentExam = {
+		active: false,
+		questions: [],
+		answers: {},
+		currentIndex: 0,
+		startTime: null,
+		totalSeconds: 0,
+		blurWarnings: 0,
+		lockedQuestions: new Set(),
+		visitedQuestions: new Set(), // Track which questions were viewed
+		markedForReview: new Set(),
+		timers: {}, // For per-question timing
+		isConnectionStable: true
+	};
 
-		    // Fetch departments from backend
-		    let deptOptions = `<option value="">Select Department</option>`;
-		    try {
-		        const res = await authFetch("/departments");
-		        if (res.ok) {
-		            const depts = await res.json();
-		            depts.forEach(d => {
-		                deptOptions += `<option value="${d.name}">${d.name}</option>`;
-		            });
-		        }
-		    } catch (err) {
-		        console.error("Failed to load departments:", err);
-		    }
+	function getRoll() {
+		if (studentRoll) return studentRoll;
+		const user = JSON.parse(sessionStorage.getItem("user") || "{}");
+		studentRoll = user.rollNumber || "";
+		return studentRoll;
+	}
 
-		    modalBody.innerHTML = `
-		        <select id="quizDept">
-		            ${deptOptions}
-		        </select>
-		        <select id="quizYear">
-		            <option value="">Select Year</option>
-		            <option value="1">1</option>
-		            <option value="2">2</option>
-		            <option value="3">3</option>
-		            <option value="4">4</option>
-		        </select>
-		        <select id="quizSection">
-		            <option value="">Select Section</option>
-		            ${["A","B","C","D","E","F","G","H","I","J"].map(s=>`<option value="${s}">${s}</option>`).join("")}
-		        </select>
-		    `;
+	window.setStudentRoll = (roll) => {
+		studentRoll = roll;
+	};
 
-		    modalFooter.innerHTML = `<button class="login-btn" id="fetchQuizzesBtn">Fetch Quizzes</button>`;
-		    modal.classList.remove("hidden");
+	// -------------------- UTILITIES --------------------
+	function hashString(str) {
+		let hash = 0;
+		for (let i = 0; i < str.length; i++) {
+			hash = ((hash << 5) - hash) + str.charCodeAt(i);
+			hash |= 0;
+		}
+		return Math.abs(hash); // Ensure positive seed
+	}
 
-		    document.getElementById("fetchQuizzesBtn").addEventListener("click", fetchQuizzes);
+	function shuffleArray(array, seed) {
+		let arr = [...array];
+		let random = function () {
+			seed = (seed * 9301 + 49297) % 233280;
+			return seed / 233280;
+		};
+		for (let i = arr.length - 1; i > 0; i--) {
+			const j = Math.floor(random() * (i + 1));
+			[arr[i], arr[j]] = [arr[j], arr[i]];
 		}
+		return arr;
+	}
 
-	    async function fetchQuizzes() {
-	        const dept = document.getElementById("quizDept").value;
-	        const year = document.getElementById("quizYear").value;
-	        const section = document.getElementById("quizSection").value;
-	        if (!dept || !year || !section) return alert("Select all fields.");
-	
-	        const modalHeader = modal.querySelector("#modalHeader");
-	        const modalBody = modal.querySelector("#modalBody");
-	        const modalFooter = modal.querySelector("#modalFooter");
-	
-	        try {
-				const res = await authFetch(
-				  `/quiz/active?rollNumber=${studentRoll}&department=${dept}&year=${year}&section=${section}`
-				);
-				
-				if (res.status === 400) {
-				    alert("Invalid credentials");
-				    modal.classList.add("hidden");
-				    if (leftMenu) leftMenu.style.display = "flex";
-				    return;
-				}
-				
-	            if (!res.ok) throw new Error(await res.text());
-	            const quizzes = await res.json();
-	
-	            if (quizzes.length === 0) {
-	                modalHeader.textContent = "No Activated Quizzes";
-	                modalBody.innerHTML = "<p>No quizzes are active for your selection.</p>";
-	                modalFooter.innerHTML = `<button class="login-btn" id="modalOkBtn">OK</button>`;
-	                document.getElementById("modalOkBtn").addEventListener("click", () => {
-	                    modal.classList.add("hidden");
-	                    if (leftMenu) leftMenu.style.display = "flex";
-	                });
-	                return;
-	            }
-	
-	            modalHeader.textContent = "Select a Quiz";
-	            modalBody.innerHTML = `<ul id="quizListUL"></ul>`;
-	            const quizListUL = document.getElementById("quizListUL");
-	
-	            quizzes.forEach(q => {
-	                const li = document.createElement("li");
-	                li.textContent = `${q.quiz.quizId} - ${q.quiz.quizName}`;
-	                li.addEventListener("click", async () => {
-	                    try {
-	                        const attemptedRes = await authFetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${q.quiz.quizId}`);
-	                        const alreadyAttempted = await attemptedRes.json();
-	
-	                        if (alreadyAttempted) {
-	                            saveModalState();
-	                            modalHeader.textContent = "⚠️ Quiz Already Attempted";
-	                            modalBody.innerHTML = `<p>You have already attempted this quiz.</p>`;
-	                            modalFooter.innerHTML = `<button class="back-btn" id="closeModalBtn">OK</button>`;
-	                            document.getElementById("closeModalBtn").addEventListener("click", () => {
-	                                modal.classList.add("hidden");
-	                                if (leftMenu) leftMenu.style.display = "flex";
-	                            });
-	                            return;
-	                        }
-	
-	                        // Show confirmation modal
-	                        saveModalState();
-	                        modalHeader.textContent = "Confirm Quiz Start";
-	                        modalBody.innerHTML = `<p>Would you like to take the quiz: <strong>${q.quiz.quizName}</strong>?</p>
-	                                               <p style="color: #ff6600; font-weight: bold;">Note: Once you proceed, a 30-second preparation countdown will begin.</p>`;
-	                        modalFooter.innerHTML = `<button class="back-btn" id="cancelQuizBtn">Cancel</button>
-	                                                 <button class="login-btn" id="proceedQuizBtn">Proceed</button>`;
-	
-	                        document.getElementById("cancelQuizBtn").addEventListener("click", () => {
-	                            modal.classList.add("hidden");
-	                            if (leftMenu) leftMenu.style.display = "flex";
-	                        });
-	
-	                        document.getElementById("proceedQuizBtn").addEventListener("click", () => {
-	                            // Request full screen immediately on user click
-	                            enterFullScreen();
-	                            
-	                            // Start 30-second countdown
-	                            modalHeader.textContent = "Preparation Time";
-	                            modalBody.innerHTML = `<p>Get ready! The quiz will start in:</p>
-	                                                   <div style="font-size: 48px; font-weight: bold; color: #ff6600; text-align: center;" id="countdownTimer">30</div>`;
-	                            modalFooter.innerHTML = "";
-	
-	                            let countdown = 30;
-	                            const countdownInterval = setInterval(() => {
-	                                countdown--;
-	                                document.getElementById("countdownTimer").textContent = countdown;
-	                                if (countdown <= 0) {
-	                                    clearInterval(countdownInterval);
-	                                    modal.classList.add("hidden");
-	                                    openQuiz(q.quiz.quizId, q.quiz.quizName, dept, year, section, q.durationMinutes);
-	                                }
-	                            }, 1000);
-	                        });
-	
-	                    } catch (err) {
-	                        alert("Error checking attempts: " + err.message);
-	                    }
-	                });
-	                quizListUL.appendChild(li);
-	            });
-	            modalFooter.innerHTML = "";
-	
-	        } catch (err) {
-	            alert("Error: " + err.message);
-	        }
-	    }
-	
-	    // -------------------- OPEN QUIZ --------------------
-		async function openQuiz(quizId, quizName, dept, year, section, durationMinutes) {
-		    if (!studentRoll) return;
-		    modal.classList.add("hidden");
-		    // enterFullScreen(); // Moved to proceed button click
-	
-		    try {
-		        const res = await authFetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
-		        if (!res.ok) throw new Error(await res.text());
-		        let questions = await res.json();
-		        if (!questions || questions.length === 0) return alert("No questions found");
-	
-		        examActive = true;
-		        blurCount = 0;
-				isSubmitted = false;
-				halfTimeReached = false;
-	
-	
-		        setupTabProtection();
-		        disableCopy();
-	
-		        const seed = hashString(studentRoll + quizId);
-		        questions = shuffleArray(questions, seed);
-	
-		        quizContainer?.remove();
-		        quizContainer = document.createElement("div");
-		        quizContainer.className = "overlay-center";
-	
-		        const inner = document.createElement("div");
-		        inner.className = "quiz-container";
-	
-		        // HEADER
-				const header = document.createElement("div");
-				header.className = "quiz-header";
-				header.innerHTML = `
-				  <span>MITS Online Quiz</span>
-				  <span id="networkStatus" class="net-status online">● ONLINE</span>
-				`;
-				inner.appendChild(header);
-				// Initial network check ONLY after quiz UI is rendered
-				setTimeout(updateNetworkStatus, 500);
-	
-		
-		        // TIMER
-		        let timerDiv = null;
-		        //let timerInterval = null;
-		        if (durationMinutes > 0) {
-		            timerDiv = document.createElement("div");
-		            timerDiv.className = "quiz-timer";
-		            timerDiv.textContent = `Time Remaining: ${durationMinutes}:00`;
-		            inner.appendChild(timerDiv);
-	
-					remainingSeconds = durationMinutes * 60;
-					const totalSeconds = remainingSeconds;
-					const halfTimeSeconds = Math.floor(totalSeconds / 2);
-	
-	
-					function startTimer() {
-					    timerInterval = setInterval(() => {
-					        if (examPaused) return; // pause timer if offline
-	
-					        remainingSeconds--;
-	
-							const elapsedSeconds = totalSeconds - remainingSeconds;
-	
-							if (!halfTimeReached && elapsedSeconds >= halfTimeSeconds) {
-							    halfTimeReached = true;
-							    if (submitBtn && !examPaused) {
-							        submitBtn.disabled = false;
-							        submitBtn.textContent = "Submit";
-							    }
-							}
-	
-					        const mins = Math.floor(remainingSeconds / 60);
-					        const secs = remainingSeconds % 60;
-					        timerDiv.textContent = `Time Remaining: ${mins}:${secs.toString().padStart(2,'0')}`;
-	
-					        if (remainingSeconds <= 0) {
-					            clearInterval(timerInterval);
-					            submitQuiz();
-					        }
-					    }, 1000);
-					}
-	
-					startTimer();
-				}
-	
-		        const infoGrid = document.createElement("div");
-		        infoGrid.className = "quiz-info";
-		        [["Quiz ID", quizId], ["Quiz Name", quizName], ["Roll Number", studentRoll], ["Year", year], ["Department", dept], ["Section", section]].forEach(([k, v]) => {
-		            const div = document.createElement("div");
-		            div.innerHTML = `<strong>${k}:</strong> ${v}`;
-		            infoGrid.appendChild(div);
-		        });
-		        inner.appendChild(infoGrid);
-	
-		        // MAIN BODY (LEFT + RIGHT)
-		        const bodyDiv = document.createElement("div");
-		        bodyDiv.className = "quiz-body";
-	
-		        // LEFT SIDE - Question Area
-				// LEFT SIDE - Question Area
-				const questionArea = document.createElement("div");
-				questionArea.className = "question-area";
-	
-				const questionScroll = document.createElement("div");
-				questionScroll.className = "question-scroll";
-				questionArea.appendChild(questionScroll);
-	
-	
-		        // RIGHT SIDE - Navigation Panel
-		        const navPanel = document.createElement("div");
-		        navPanel.className = "question-nav";
-		        navPanel.innerHTML = `<h3>Question Panel</h3>`;
-		        const navGrid = document.createElement("div");
-		        navGrid.className = "question-grid";
-		        navPanel.appendChild(navGrid);
-	
-		        let currentIndex = 0;
-		        const questionDivs = [];
-	
-		        for (let idx = 0; idx < questions.length; idx++) {
-		            const q = questions[idx];
-		            const multiRes = await authFetch(`/quiz/questions/${q.questionId}/is-multiple`);
-		            const isMultiple = await multiRes.json();
-	
-		            const qDiv = document.createElement("div");
-		            qDiv.className = "quiz-question";
-		            qDiv.style.display = idx === 0 ? "block" : "none";
-		            qDiv.innerHTML = `<p class="question-text">${idx + 1}. ${q.questionText}</p>`;
-	
-		            const optsDiv = document.createElement("div");
-		            optsDiv.className = "quiz-options";
-	
-		            let opts = [];
-		            ["option1", "option2", "option3", "option4"].forEach(optKey => {
-		                if (q.options[optKey]) opts.push({ key: optKey, text: q.options[optKey] });
-		            });
-		            opts = shuffleArray(opts, seed + idx);
-	
-		            opts.forEach(opt => {
-		                const label = document.createElement("label");
-		                label.className = "option-card";
-		                const input = document.createElement("input");
-		                input.type = isMultiple ? "checkbox" : "radio";
-		                input.name = q.questionId;
-		                input.value = opt.key;
-	
-		                input.addEventListener("change", () => {
-		                    if (!isMultiple)
-		                        optsDiv.querySelectorAll(".option-card").forEach(l => l.classList.remove("selected"));
-		                    label.classList.toggle("selected");
-	
-		                    // Mark answered in panel
-		                    const btn = navGrid.querySelector(`[data-idx="${idx}"]`);
-		                    if (btn) btn.classList.add("answered");
-		                });
-	
-		                label.appendChild(input);
-		                label.appendChild(document.createTextNode(opt.text));
-		                optsDiv.appendChild(label);
-		            });
-	
-		            qDiv.appendChild(optsDiv);
-					questionScroll.appendChild(qDiv);
-		            questionDivs.push(qDiv);
-	
-		            // Nav Button
-		            const navBtn = document.createElement("button");
-					navButtons.push(navBtn);
-		            navBtn.textContent = idx + 1;
-		            navBtn.dataset.idx = idx;
-		            navBtn.className = "nav-btn";
-		            navBtn.addEventListener("click", (e) => {
-						if (examPaused) return offlineClickGuard(e);
-		                questionDivs.forEach(div => (div.style.display = "none"));
-		                questionDivs[idx].style.display = "block";
-		                currentIndex = idx;
-		                highlightNavButton();
-		            });
-		            navGrid.appendChild(navBtn);
-		        }
-	
-		        function highlightNavButton() {
-		            navGrid.querySelectorAll(".nav-btn").forEach(btn => btn.classList.remove("active"));
-		            const activeBtn = navGrid.querySelector(`[data-idx="${currentIndex}"]`);
-		            if (activeBtn) activeBtn.classList.add("active");
-		        }
-		        highlightNavButton();
-	
-		        // CONTROL BUTTONS
-		        const btnDiv = document.createElement("div");
-		        btnDiv.className = "quiz-controls";
-	
-		        const prevBtn = document.createElement("button");
-				prevBtnRef = prevBtn;
-		        prevBtn.className = "back-btn";
-		        prevBtn.textContent = "Previous";
-		        prevBtn.addEventListener("click", (e) => {
-					if (examPaused) return offlineClickGuard(e);
-		            if (currentIndex > 0) {
-		                questionDivs[currentIndex].style.display = "none";
-		                currentIndex--;
-		                questionDivs[currentIndex].style.display = "block";
-		                highlightNavButton();
-		            }
-		        });
-	
-		        const nextBtn = document.createElement("button");
-				nextBtnRef = nextBtn;
-		        nextBtn.className = "login-btn";
-		        nextBtn.textContent = "Next";
-		        nextBtn.addEventListener("click", (e) => {
-					if (examPaused) return offlineClickGuard(e);
-		            if (currentIndex < questionDivs.length - 1) {
-		                questionDivs[currentIndex].style.display = "none";
-		                currentIndex++;
-		                questionDivs[currentIndex].style.display = "block";
-		                highlightNavButton();
-		            }
-		        });
-	
-				submitBtn = document.createElement("button");
-				submitBtn.className = "login-btn";
-				submitBtn.textContent = "Submit (Available after half time)";
-				submitBtn.disabled = true;                 // 🔒 disable initially
-				submitBtn.addEventListener("click", submitQuiz);
-	
-	
-				// ---- create button groups ----
-				const leftGroup = document.createElement("div");
-				leftGroup.className = "left-buttons";
-				leftGroup.appendChild(prevBtn);
-				leftGroup.appendChild(nextBtn);
-	
-				const rightGroup = document.createElement("div");
-				rightGroup.className = "right-buttons";
-				rightGroup.appendChild(submitBtn);
-	
-				// ---- add groups to main control bar ----
-				btnDiv.appendChild(leftGroup);
-				btnDiv.appendChild(rightGroup);
-				questionArea.appendChild(btnDiv);
-	
-	
-		        bodyDiv.appendChild(questionArea);
-		        bodyDiv.appendChild(navPanel);
-		        inner.appendChild(bodyDiv);
-		        quizContainer.appendChild(inner);
-		        document.body.appendChild(quizContainer);
-	
-		    } catch (err) {
-		        alert("Error opening quiz: " + err.message);
-		    }
-		}
-		function offlineClickGuard(e) {
-		    if (examPaused) {
-		        e.preventDefault();
-		        alert("⚠️ You are offline. Please wait for internet connection.");
-		        return false;
-		    }
-		}
-	
-		// -------------------- SUBMIT QUIZ --------------------
-		async function submitQuiz() {
-		    // ✅ Stop exam protection and fullscreen
-			if (isSubmitted) return;   // 🔒 STOP DOUBLE SUBMIT
-			    isSubmitted = true;
-		    examActive = false;
-		    if (timerInterval) {
-		        clearInterval(timerInterval);
-		        timerInterval = null;
-		    }
-		    removeTabProtection();
-		    enableCopy(); // ✅ Re-enable copy/paste after quiz ends
-	
-		    // ✅ Remove any leftover "continue exam" overlays
-		    document.querySelectorAll("#continueExamBtn, #exitExamBtn").forEach(btn => {
-		        const overlay = btn.closest("div[style*='position: fixed']");
-		        if (overlay) overlay.remove();
-		    });
-	
-		    const answers = {};
-		    quizContainer?.querySelectorAll(".quiz-question").forEach(qDiv => {
-		        const qId = qDiv.querySelector("input")?.name;
-		        if (!qId) return;
-		        const selected = Array.from(qDiv.querySelectorAll("input:checked"))
-		            .map(i => i.value)
-		            .join(",");
-		        answers[qId] = selected;
-		        localStorage.removeItem("quizState");
-		    });
-	
-		    const quizId = quizContainer?.querySelector(".quiz-info div")?.textContent.split(":")[1].trim();
-		    try {
-		        const res = await authFetch("/results/submit", {
-		            method: "POST",
-		            headers: { "Content-Type": "application/json" },
-		            body: JSON.stringify({ rollNumber: studentRoll, quizId, answers })
-		        });
-		        if (!res.ok) throw new Error(await res.text());
-	
-		        quizContainer?.remove();
-		        if (document.fullscreenElement) document.exitFullscreen();
-	
-		        // ✅ Show only final success modal
-		        modal.querySelector("#modalHeader").textContent = "✅ Quiz Submitted Successfully!";
-		        modal.querySelector("#modalBody").innerHTML = "<p>Your answers have been submitted.</p>";
-		        modal.querySelector("#modalFooter").innerHTML = `<button class="back-btn" id="submitOkBtn">OK</button>`;
-		        modal.classList.remove("hidden");
-	
-		        document.getElementById("submitOkBtn").addEventListener("click", () => {
-		            if (leftMenu) leftMenu.style.display = "flex";
-		            modal.classList.add("hidden");
-		        });
-	
-		    } catch (err) {
-		        alert("Error submitting: " + err.message);
-		    }
-		}
-	
-	
-	    // -------------------- TAB PROTECTION --------------------
-	    function setupTabProtection() {
-	        removeTabProtection();
-	        document.addEventListener("visibilitychange", handleVisibilityChange);
-	        window.addEventListener("blur", handleWindowBlur);
-	    }
-	
-	    function removeTabProtection() {
-	        document.removeEventListener("visibilitychange", handleVisibilityChange);
-	        window.removeEventListener("blur", handleWindowBlur);
-	    }
-	
-	    function handleVisibilityChange() {
-			if (examPaused) return; // 🚫 DO NOTHING WHEN OFFLINE
-	
-	        if (document.hidden && examActive) {
-	            blurCount++;
-	            if (blurCount >= 2) {
-	                alert("🚨 You switched tabs too many times! Submitting quiz...");
-	                examActive = false;
-	                removeTabProtection();
-	                submitQuiz();
-	            } else {
-	                alert(`⚠️ Warning ${blurCount}/2: Don’t switch tabs or minimize.`);
-	            }
-	        }
-	    }
-	
-	    function handleWindowBlur() {
-			if (examPaused) return; // 🚫 DO NOTHING WHEN OFFLINE
-	
-	        if (!examActive) return;
-	        setTimeout(() => {
-	            if (!document.hidden && examActive) return;
-	            blurCount++;
-	            if (blurCount >= 5) {
-	                alert("🚨 You switched tabs too many times! Submitting quiz...");
-	                examActive = false;
-	                removeTabProtection();
-	                submitQuiz();
-	            }
-	        }, 300);
-	    }
-	
-		// -------------------- COPY / PASTE PROTECTION --------------------
-		function disableCopy() {
-		    document.addEventListener("copy", blockEvent);
-		    document.addEventListener("cut", blockEvent);
-		    document.addEventListener("paste", blockEvent);
-		    document.addEventListener("contextmenu", blockEvent);
-		    document.addEventListener("selectstart", blockEvent);
-		    document.addEventListener("keydown", blockKeyShortcuts);
-		}
-	
-		function enableCopy() {
-		    document.removeEventListener("copy", blockEvent);
-		    document.removeEventListener("cut", blockEvent);
-		    document.removeEventListener("paste", blockEvent);
-		    document.removeEventListener("contextmenu", blockEvent);
-		    document.removeEventListener("selectstart", blockEvent);
-		    document.removeEventListener("keydown", blockKeyShortcuts);
-		}
-	
-		function blockEvent(e) {
-		    e.preventDefault();
-		    return false;
-		}
-	
-		function blockKeyShortcuts(e) {
-		    if (
-		        (e.ctrlKey && ["c","x","v","u","s"].includes(e.key.toLowerCase())) ||
-		        (e.metaKey && ["c","x","v","u","s"].includes(e.key.toLowerCase())) ||
-		        e.key === "PrintScreen"
-		    ) {
-		        e.preventDefault();
-		        return false;
-		    }
-		}
-	
-	    // -------------------- VIEW RESULT --------------------
-	    viewResultBtn.addEventListener("click", () => {
-	        if (!studentRoll) return alert("Please login first.");
-	        if (leftMenu) leftMenu.style.display = "none";
-	        createModal();
-	        saveModalState();
-	        fetchResult();
-	    });
-	
-	    async function fetchResult() {
-	        const modalHeader = modal.querySelector("#modalHeader");
-	        const modalBody = modal.querySelector("#modalBody");
-	        const modalFooter = modal.querySelector("#modalFooter");
-	
-	        modalHeader.textContent = "Enter Quiz ID";
-	        modalBody.innerHTML = `<input type="text" id="resultQuizId" placeholder="Quiz ID" />`;
-	        modalFooter.innerHTML = `<button class="login-btn" id="fetchResultBtn">View Result</button>`;
-	        modal.classList.remove("hidden");
-	
-	        document.getElementById("fetchResultBtn").addEventListener("click", async () => {
-	            const quizId = document.getElementById("resultQuizId").value.trim();
-	            if (!quizId) return alert("Please enter a Quiz ID.");
-	
-	            try {
-	                const res = await authFetch(`/results/student?rollNumber=${studentRoll}&quizId=${quizId}`);
-	                if (!res.ok) throw new Error("Quiz not found");
-	                const results = await res.json();
-	                if (!results || results.length === 0) return alert("Result not published yet");
-	
-	                const r = results[0];
-	                modalHeader.textContent = "Quiz Result";
-	                modalBody.innerHTML = `
-	                    <p><strong>Roll Number:</strong> ${studentRoll}</p>
-	                    <p><strong>Quiz ID:</strong> ${r.quiz.quizId}</p>
-	                    <p><strong>Quiz Name:</strong> ${r.quiz.quizName}</p>
-	                    <p><strong>Score:</strong> ${r.score}</p>
-	                    <button class="login-btn" id="viewKeyBtnResult">View Answer Key</button>
-	                `;
-	                modalFooter.innerHTML = "";
-	                document.getElementById("viewKeyBtnResult").addEventListener("click", () => viewAnswerKey(quizId, studentRoll));
-	
-	            } catch (err) {
-	                alert("Error: " + err.message);
-	            }
-	        });
-	    }
-	
-	    // -------------------- VIEW ANSWER KEY --------------------
-		async function viewAnswerKey(quizId, rollNo) {
-		        try {
-		            const res = await authFetch(`/answerkey/${quizId}/${rollNo}`);
-		            if (!res.ok) throw new Error(await res.text());
-		            const keyData = await res.json();
-	
-		            saveModalState();
-		            modal.classList.add("hidden");
-		            quizContainer?.remove();
-	
-		            quizContainer = document.createElement("div");
-		            quizContainer.className = "overlay-center";
-	
-		            const inner = document.createElement("div");
-		            inner.className = "key-container";
-		            window.scrollTo({ top: 0, behavior: "auto" });
-	
-		            const header = document.createElement("div");
-		            header.className = "quiz-header";
-		            header.textContent = "Answer Key";
-		            inner.appendChild(header);
-	
-		            keyData.forEach((q, idx) => {
-		                const qDiv = document.createElement("div");
-		                qDiv.className = "quiz-question";
-		                qDiv.innerHTML = `<p class="question-text" style="white-space: pre-wrap;">${idx + 1}. ${q.questionText}</p>`;
-		                const optsDiv = document.createElement("div");
-		                optsDiv.className = "quiz-options";
-	
-		                ["option1","option2","option3","option4"].forEach(optKey => {
-		                    if (!q[optKey]) return;
-		                    const label = document.createElement("label"); 
-		                    label.className = "option-card";
-		                    label.style.whiteSpace = "pre-wrap";
-	
-		                    const isSelected = q.selectedOption?.split(",").includes(optKey);
-		                    const isCorrect = q.correctOption?.split(",").includes(optKey);
-	
-		                    if (isSelected && isCorrect) label.classList.add("correct-selected");
-		                    else if (isCorrect) label.classList.add("correct");
-		                    else if (isSelected) label.classList.add("wrong-selected");
-	
-		                    label.textContent = q[optKey];
-		                    optsDiv.appendChild(label);
-		                });
-	
-		                qDiv.appendChild(optsDiv);
-		                inner.appendChild(qDiv);
-		            });
-	
-	            const backBtn = document.createElement("button");
-	            backBtn.className = "back-btn";
-	            backBtn.textContent = "Back";
-	            backBtn.addEventListener("click", () => {
-	                quizContainer.remove();
-	                restoreModalState();
-	            });
-	
-	            inner.appendChild(backBtn);
-	            quizContainer.appendChild(inner);
-	            document.body.appendChild(quizContainer);
-	
-	        } catch (err) {
-	            alert("Error loading answer key: " + err.message);
-	        }
-	    }
-	
-	    // -------------------- FULLSCREEN & CENTERING --------------------
-	    function enterFullScreen() {
-	        const el = document.documentElement;
-	        if (el.requestFullscreen) el.requestFullscreen();
-	        else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-	        else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-	        else if (el.msRequestFullscreen) el.msRequestFullscreen();
-	    }
-		
-		document.addEventListener("fullscreenchange", () => {
-		    if (examActive && !document.fullscreenElement) {
-		        // Create overlay confirmation UI
-		        const overlay = document.createElement("div");
-		        overlay.style.position = "fixed";
-			        overlay.style.top = "0";
-		        overlay.style.left = "0";
-		        overlay.style.width = "100%";
-		        overlay.style.height = "100%";
-		        overlay.style.background = "rgba(0,0,0,0.6)";
-		        overlay.style.display = "flex";
-		        overlay.style.flexDirection = "column";
-		        overlay.style.alignItems = "center";
-		        overlay.style.justifyContent = "center";
-		        overlay.style.zIndex = "10000";
-		        overlay.innerHTML = `
-		            <div style="background:white; padding:20px; border-radius:12px; text-align:center; width:350px; box-shadow:0 6px 20px rgba(0,0,0,0.3);">
-		                <p style="font-size:16px; margin-bottom:20px;">⚠️ You exited fullscreen mode.<br><br>If you leave now, your quiz will be submitted.</p>
-		                <div style="display:flex; justify-content:space-between; gap:10px;">
-		                    <button id="continueExamBtn" class="login-btn" style="flex:1;">Continue Exam</button>
-		                    <button id="exitExamBtn" class="back-btn" style="flex:1;">Submit & Exit</button>
-		                </div>
-		            </div>
-		        `;
-		        document.body.appendChild(overlay);
-	
-		        // ✅ User clicks to continue exam
-		        document.getElementById("continueExamBtn").addEventListener("click", () => {
-		            overlay.remove();
-		            enterFullScreen(); // Works because it's a user click
-		        });
-	
-		        // 🚫 User clicks to exit exam
-		        document.getElementById("exitExamBtn").addEventListener("click", () => {
-		            overlay.remove();
-		            examActive = false;
-		            removeTabProtection();
-		            submitQuiz();
-		        });
-		    }
+	function formatTime(seconds) {
+		if (seconds < 0) seconds = 0;
+		const h = Math.floor(seconds / 3600);
+		const m = Math.floor((seconds % 3600) / 60);
+		const s = seconds % 60;
+		return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+	}
+
+	function showModernModal(options) {
+		const { title, body, icon, buttons, violationCount } = options;
+
+		// Aggressively clear ALL potential modal overlays to prevent overlapping
+		document.querySelectorAll(".warning-overlay, .modal-overlay, .custom-modal-overlay").forEach(m => m.remove());
+
+		const overlay = document.createElement("div");
+		overlay.className = "warning-overlay";
+		overlay.innerHTML = `
+			<div class="confirm-modal">
+				${violationCount ? `<div class="violation-badge">⚠️ Violation ${violationCount} / 5</div>` : ""}
+				${icon ? `<div style="font-size: 40px; margin-bottom: 15px;">${icon}</div>` : ""}
+				<h2>${title}</h2>
+				<p>${body}</p>
+				<div class="modal-footer-btns">
+					${buttons.map(btn => `<button class="exam-btn ${btn.className}" id="${btn.id}">${btn.text}</button>`).join("")}
+				</div>
+			</div>
+		`;
+		document.body.appendChild(overlay);
+
+		buttons.forEach(btn => {
+			overlay.querySelector(`#${btn.id}`).onclick = () => {
+				overlay.remove();
+				if (btn.callback) btn.callback();
+			};
 		});
-	
-		// -------------------- NETWORK STATUS --------------------
-		async function updateNetworkStatus() {
-		    const statusEl = document.getElementById("networkStatus");
-		    if (!statusEl) return;
-	
-		    let hasInternet = false;
-	
-		    try {
-		        const controller = new AbortController();
-		        const timeout = setTimeout(() => controller.abort(), 3000);
-	
-		        const res = await fetch("/ping", {
-		            method: "GET",
-		            cache: "no-store",
-		            signal: controller.signal
-		        });
-	
-		        clearTimeout(timeout);
-		        hasInternet = res.ok;
-		    } catch (e) {
-		        hasInternet = false;
-		    }
-	
-		    // prevent flickering
-		    if (hasInternet === lastNetworkState) return;
-		    lastNetworkState = hasInternet;
-	
-		    if (hasInternet) {
-		        statusEl.textContent = "● ONLINE";
-		        statusEl.classList.remove("offline");
-		        statusEl.classList.add("online");
-	
-		        if (examActive && examPaused) {
-		            examPaused = false;
-		            enableExamControls();
-	
-					if (!hasShownOnlineAlert) {
-					    alert("✅ Internet restored. Quiz resumed.");
-					    hasShownOnlineAlert = true;
-					    hasShownOfflineAlert = false;
+		return overlay;
+	}
+
+	// -------------------- DASHBOARD LOGIC --------------------
+	takeQuizBtn?.addEventListener("click", () => {
+		const roll = getRoll();
+		if (!roll) return alert("Please login first to access quizzes.");
+		showBatchSelector();
+	});
+
+	function createBaseModal(title, contentHTML, submitText, callback) {
+		const existing = document.getElementById("studentModalOverlay");
+		if (existing) existing.remove();
+
+		const overlay = document.createElement("div");
+		overlay.id = "studentModalOverlay";
+		overlay.className = "modal-overlay";
+		overlay.innerHTML = `
+      <div class="modal-content" id="studentModal" style="max-height: 90vh; overflow-y: auto;">
+        <span class="close">&times;</span>
+        <div class="modal-header" id="studentModalHeader" style="font-size: 1.5rem; color: var(--primary-purple); margin-bottom: 20px; font-weight: 700; border-bottom: 2px solid #f3e5f5; padding-bottom: 10px; text-align: center;">${title}</div>
+        <div class="modal-body" id="studentModalBody">${contentHTML}</div>
+        <div class="modal-footer" id="studentModalFooter" style="text-align: right; margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+          ${submitText ? `<button class="primary-btn" id="modalSubmitBtn" style="width: auto; padding: 10px 30px;">${submitText}</button>` : ""}
+        </div>
+      </div>
+    `;
+		document.body.appendChild(overlay);
+		overlay.querySelector(".close").onclick = () => overlay.remove();
+		if (submitText) overlay.querySelector("#modalSubmitBtn").onclick = () => callback(overlay);
+		return overlay;
+	}
+
+	// -------------------- UI COMPONENTS --------------------
+	function createSimpleModal(content) {
+		const existing = document.getElementById("quizModalOverlay");
+		if (existing) existing.remove();
+
+		const overlay = document.createElement("div");
+		overlay.id = "quizModalOverlay";
+		overlay.style.cssText = "position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); display:flex; align-items:center; justify-content:center; z-index:9999;";
+
+		const modal = document.createElement("div");
+		modal.style.cssText = "background:white; padding:30px; border-radius:15px; max-width:800px; width:90%; max-height:80vh; overflow-y:auto; box-shadow: 0 4px 6px rgba(0,0,0,0.1);";
+		modal.innerHTML = content;
+
+		overlay.appendChild(modal);
+		document.body.appendChild(overlay);
+
+		// Event listener for closing
+		const closeBtn = modal.querySelector("#closeSimpleModal");
+		if (closeBtn) closeBtn.onclick = () => overlay.remove();
+
+		return { overlay, modal };
+	}
+
+	async function showBatchSelector() {
+		const userData = JSON.parse(sessionStorage.getItem("user") || "{}");
+		let currentRoll = userData.rollNumber || studentRoll || "";
+		const currentDept = userData.department || "";
+		const currentYear = userData.year || 1;
+		const currentSection = userData.section || "A";
+
+		if (!currentRoll) {
+			currentRoll = getRoll();
+			if (!currentRoll) return alert("Please login first.");
+		}
+
+		console.log("Student Roll:", currentRoll);
+
+		const content = `
+			<h2 style="margin:0 0 20px; color:#6a0dad; font-family:'Segoe UI', sans-serif;">Find Your Quizzes</h2>
+			<div style="display:grid; gap:15px; margin-bottom:20px;">
+				<div>
+					<label style="display:block; margin-bottom:5px; font-weight:600; color:#333;">Department</label>
+					<select id="qDept" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; background:white;">
+						<option value="${currentDept}">${currentDept || 'Select Department'}</option>
+					</select>
+				</div>
+				<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+					<div>
+						<label style="display:block; margin-bottom:5px; font-weight:600; color:#333;">Year</label>
+						<select id="qYear" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; background:white;">
+							${[1, 2, 3, 4].map(y => `<option value="${y}" ${currentYear == y ? 'selected' : ''}>Year ${y}</option>`).join("")}
+						</select>
+					</div>
+					<div>
+						<label style="display:block; margin-bottom:5px; font-weight:600; color:#333;">Section</label>
+						<select id="qSection" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:5px; background:white;">
+							${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}" ${currentSection == s ? 'selected' : ''}>${s}</option>`).join('')}
+						</select>
+					</div>
+				</div>
+			</div>
+			
+			<div id="quizResultsArea"></div>
+
+			<div style="display:flex; gap:10px; margin-top:20px; border-top: 1px solid #eee; padding-top: 20px;">
+				<button id="fetchQuizzesBtn" style="flex:1; padding:12px; background:#6a0dad; color:white; border:none; border-radius:5px; cursor:pointer; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; transition: background 0.3s;">Fetch Quizzes</button>
+				<button id="closeSimpleModal" style="padding:12px 20px; background:#f1f5f9; color:#334155; border:none; border-radius:5px; cursor:pointer; font-weight:600;">Close</button>
+			</div>
+		`;
+
+		const { modal } = createSimpleModal(content);
+
+		// Populate Departments
+		try {
+			const res = await authFetch("/departments");
+			if (res.ok) {
+				const depts = await res.json();
+				const deptSelect = modal.querySelector("#qDept");
+				if (deptSelect && depts && depts.length > 0) {
+					deptSelect.innerHTML = depts.map(d => `<option value="${d.name}" ${currentDept === d.name ? 'selected' : ''}>${d.name}</option>`).join("");
+				}
+			}
+		} catch (err) { console.error("Dept error", err); }
+
+		// Fetch Logic
+		const fetchBtn = modal.querySelector("#fetchQuizzesBtn");
+		fetchBtn.onclick = async () => {
+			const dept = modal.querySelector("#qDept").value;
+			const year = modal.querySelector("#qYear").value;
+			const section = modal.querySelector("#qSection").value;
+			const resultsArea = modal.querySelector("#quizResultsArea");
+
+			if (!dept) return alert("Please select a department");
+
+			fetchBtn.textContent = "Loading...";
+			fetchBtn.disabled = true;
+			resultsArea.innerHTML = '<div style="text-align:center; padding:20px;">Using filters...</div>';
+
+			try {
+				const url = `/quiz/active?rollNumber=${encodeURIComponent(currentRoll)}&department=${encodeURIComponent(dept)}&year=${year}&section=${section}`;
+				const res = await authFetch(url);
+				if (!res.ok) throw new Error(await res.text());
+				const quizzes = await res.json();
+
+				renderSimpleQuizTable(quizzes, resultsArea, { dept, year, section });
+			} catch (e) {
+				resultsArea.innerHTML = `<div style="text-align:center; padding:15px; color:red;">Error: ${e.message}</div>`;
+			} finally {
+				fetchBtn.textContent = "Fetch Quizzes";
+				fetchBtn.disabled = false;
+			}
+		};
+	}
+
+	function renderSimpleQuizTable(quizzes, container, meta) {
+		if (!quizzes || quizzes.length === 0) {
+			container.innerHTML = `<div style="text-align:center; padding:30px; color:#666; background:#f9f9f9; border-radius:10px;">No active quizzes found for the selected batch.</div>`;
+			return;
+		}
+
+		container.innerHTML = `
+			<table style="width:100%; border-collapse:collapse; margin-top:10px;">
+				<thead>
+					<tr style="background:#f1f5f9; color:#475569;">
+						<th style="padding:12px; text-align:left; border-bottom:2px solid #e2e8f0; font-size:13px;">Quiz Detail</th>
+						<th style="padding:12px; text-align:left; border-bottom:2px solid #e2e8f0; font-size:13px;">Faculty</th>
+						<th style="padding:12px; text-align:center; border-bottom:2px solid #e2e8f0; font-size:13px;">Action</th>
+					</tr>
+				</thead>
+				<tbody>
+					${quizzes.filter(q => q && q.quiz).map(q => {
+			// Escape strings
+			const qName = q.quiz.quizName.replace(/'/g, "\\'");
+			const fName = (q.quiz.faculty?.facultyName || 'N/A').replace(/'/g, "\\'");
+			const dept = meta.dept.replace(/'/g, "\\'");
+
+			return `
+							<tr style="border-bottom:1px solid #f1f5f9;">
+								<td style="padding:15px; vertical-align:middle;">
+									<strong style="color:#1e293b; font-size:15px;">${q.quiz.quizName}</strong><br>
+									<span style="font-size:12px; color:#64748b;">Duration: ${q.durationMinutes || 30} mins</span>
+								</td>
+								<td style="padding:15px; vertical-align:middle; color:#475569;">${q.quiz.faculty?.facultyName || 'N/A'}</td>
+								<td style="padding:15px; text-align:center; vertical-align:middle;">
+									<button style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; transition:0.2s;"
+										onmouseover="this.style.background='#059669'"
+										onmouseout="this.style.background='#10b981'"
+										onclick="window.startQuizProcess(${q.quiz.id}, '${qName}', '${fName}', ${q.durationMinutes || 30}, '${dept}', '${meta.year}', '${meta.section}')">
+										Start
+									</button>
+								</td>
+							</tr>
+						`;
+		}).join('')}
+				</tbody>
+			</table>
+		`;
+	}
+
+
+
+	window.startQuizProcess = async (quizId, quizName, facultyName, duration, dept, year, section) => {
+		try {
+			const attRes = await authFetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${quizId}`);
+			if (await attRes.json()) return alert("Security: You have already attempted this quiz.");
+
+			const finalDuration = (duration && duration > 0) ? duration : 30;
+
+			// Create Custom Modal for Trusted User Event
+			const overlay = document.createElement("div");
+			overlay.className = "custom-modal-overlay";
+			overlay.innerHTML = `
+				<div class="custom-modal-box">
+					<h2 style="color:var(--primary); margin-top:0;">Start Exam: ${quizName}</h2>
+					<div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:left; margin:15px 0; font-size:14px; line-height:1.6; border:1px solid #e2e8f0;">
+						<strong>⏱ Duration:</strong> ${finalDuration} Minutes<br>
+						<strong>👤 Student:</strong> ${studentRoll}<br><br>
+						<strong>⚠️ STRICT EXAM RULES:</strong>
+						<ul style="margin:5px 0; padding-left:20px;">
+							<li>Full-screen mode is mandatory.</li>
+							<li>Tab switching/minimizing will result in termination.</li>
+							<li>Right-click, Copy, Paste are disabled.</li>
+							<li>Questions with timers will lock automatically.</li>
+						</ul>
+					</div>
+					<div style="display:flex; justify-content:flex-end; gap:10px;">
+						<button class="nav-btn" onclick="this.closest('.custom-modal-overlay').remove()">Cancel</button>
+						<button class="submit-btn-large" id="confirmStartBtn" style="width:auto; padding:10px 30px; font-size:16px;">I Agree & Start Exam</button>
+					</div>
+				</div>
+			`;
+			document.body.appendChild(overlay);
+
+			// Direct binding for trusted event
+			overlay.querySelector("#confirmStartBtn").onclick = () => {
+				// Immediate fullscreen request to satisfy browser security which must be the FIRST sync action
+				enterFullScreen();
+
+				overlay.remove();
+				document.getElementById("quizModalOverlay")?.remove();
+				document.getElementById("studentModalOverlay")?.remove();
+
+				// Enter environment
+				enterExamEnvironment(quizId, quizName, facultyName, finalDuration, dept, year, section);
+			};
+
+		} catch (e) { alert(e.message); }
+	};
+
+	// -------------------- EXAM ENVIRONMENT --------------------
+	async function enterExamEnvironment(quizId, quizName, facultyName, duration, dept, year, section) {
+		try {
+			const res = await authFetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
+			let questions = await res.json();
+			if (!questions?.length) return alert("Error: Questions not loaded.");
+
+			// Prep Data
+			const seed = hashString(studentRoll + quizId);
+			questions = shuffleArray(questions, seed);
+
+			currentExam = {
+				active: true,
+				quizId,
+				quizName,
+				facultyName,
+				questions,
+				answers: {},
+				currentIndex: 0,
+				totalSeconds: duration * 60,
+				blurWarnings: 0,
+				timers: {},
+				startTime: new Date().toISOString(),
+				lockedQuestions: new Set(),
+				visitedQuestions: new Set(),
+				markedForReview: new Set(),
+				student: JSON.parse(sessionStorage.getItem("user") || "{}")
+			};
+
+			renderExamUI();
+			document.body.classList.add("exam-body-locked"); // Lock main scroll
+			startGlobalTimer();
+			setupProctoring();
+			enterFullScreen();
+
+			// Consolidate connectivity check
+			const statusInterval = setInterval(async () => {
+				if (!currentExam.active) { clearInterval(statusInterval); return; }
+				const ping = document.getElementById("pingStatus");
+				if (!ping) return; // Prevent null error if UI not rendered
+
+				try {
+					const start = Date.now();
+					const res = await fetch("/ping", { method: "HEAD" });
+					const latency = Date.now() - start;
+					currentExam.isConnectionStable = res.ok;
+
+					if (ping) {
+						if (res.ok) {
+							ping.className = "status-pill status-online";
+							ping.innerHTML = `<span>●</span> Connection: Stable (${latency}ms)`;
+						} else {
+							throw new Error();
+						}
 					}
-		        }
-	
-		    } else {
-		        statusEl.textContent = "● OFFLINE";
-		        statusEl.classList.remove("online");
-		        statusEl.classList.add("offline");
-	
-		        if (examActive && !examPaused) {
-		            examPaused = true;
-		            disableExamControls();
-					if (!hasShownOfflineAlert) {
-					     alert("⚠️ Internet lost. Quiz paused.");
-					     hasShownOfflineAlert = true;
-					     hasShownOnlineAlert = false;
+				} catch (e) {
+					currentExam.isConnectionStable = false;
+					ping.className = "status-pill status-offline";
+					ping.innerHTML = "<span>●</span> Connection: LOST - DO NOT REFRESH";
+				}
+			}, 5000);
+
+			// Fullscreen & Escape protection
+			document.addEventListener("fullscreenchange", handleFullscreenExit);
+			document.addEventListener("webkitfullscreenchange", handleFullscreenExit);
+			document.addEventListener("keydown", handleKeydown);
+
+			// Disable Copy, Paste, Cut, Context Menu
+			document.addEventListener("contextmenu", e => e.preventDefault());
+			document.addEventListener("copy", e => e.preventDefault());
+			document.addEventListener("paste", e => e.preventDefault());
+			document.addEventListener("cut", e => e.preventDefault());
+
+			// Block sensitive keys
+			document.addEventListener("keydown", e => {
+				const forbiddenKeys = ['c', 'v', 'x', 'p', 'u', 's', 'a'];
+				if ((e.ctrlKey || e.metaKey) && forbiddenKeys.includes(e.key.toLowerCase())) {
+					e.preventDefault();
+					showWarning("SECURITY ALERT: System shortcuts are disabled for exam integrity.");
+				}
+				if (e.key === 'PrintScreen' || e.key === 'F12' || (e.shiftKey && e.metaKey && e.key === 's')) {
+					e.preventDefault();
+					showWarning("SECURITY ALERT: Screen capture and dev tools are prohibited.");
+				}
+			});
+
+		} catch (e) { alert("Failed to start exam: " + e.message); }
+	}
+
+	function renderExamUI() {
+		const existing = document.querySelector(".exam-overlay");
+		if (existing) existing.remove();
+
+		// Use a container for the 3-column layout
+		const overlay = document.createElement("div");
+		overlay.className = "exam-overlay";
+		// The 3-column layout structure
+		overlay.innerHTML = `
+      <div class="exam-grid-container">
+        
+        <!-- COLUMN 1: LEFT PANEL -->
+        <div class="exam-col col-left">
+          <div class="panel-header">Question Panel</div>
+          <div class="panel-content">
+            <button class="instruction-btn" id="viewInstrBtn">View Instructions</button>
+            
+            <div class="question-meta-box">
+              <div class="meta-header">Question Details</div>
+              <div class="meta-body">
+                <div class="meta-row">
+                  <span>Question:</span>
+                  <span class="meta-val" id="dispQNum">1</span>
+                    <span class="info-icon" title="Question Info">ⓘ</span>
+                </div>
+                <div class="meta-row">
+                  <span>Marks:</span>
+                  <span class="meta-val good" id="dispQMarks">2</span>
+                </div>
+                <div class="meta-row">
+                  <span>Negative Marks:</span>
+                  <span class="meta-val bad" id="dispQNeg">-0.5</span>
+                </div>
+                <div class="meta-row timer-row" id="qTimerRow" style="display:none;">
+                   <span>Time Left:</span>
+                   <span class="meta-val warning" id="qRemaining">--</span>
+                </div>
+              </div>
+            </div>
+
+             <div class="left-footer">
+                <button class="nav-btn prev-btn" id="exPrev">
+                  <span class="icon">❮</span> Previous
+                </button>
+             </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 2: CENTER PANEL (Question Area) -->
+        <div class="exam-col col-center">
+          <div class="panel-header">Question & Options</div>
+          <div class="panel-content scrollable">
+             <div class="question-area">
+                <div class="q-text-display" id="dispQText">
+                  <!-- Question Text Goes Here -->
+                </div>
+                
+                <div class="options-area">
+                   <p class="opt-instruction">Select the correct answer from the options below:</p>
+                   <div id="examOptionsList" class="options-vertical-list">
+                      <!-- Options Go Here -->
+                   </div>
+                </div>
+             </div>
+             
+             <div class="center-footer">
+               <button class="action-btn clear-btn" id="exReset">Clear Answer</button>
+               <button class="nav-btn next-btn" id="exNext">Next</button>
+             </div>
+          </div>
+        </div>
+
+        <!-- COLUMN 3: RIGHT PANEL (Navigation) -->
+        <div class="exam-col col-right">
+          <div class="panel-header">Question Navigation</div>
+          <div class="panel-content">
+             
+             <div class="timer-display-box">
+                <span class="timer-label">Time Remaining:</span>
+                <span class="timer-value" id="globalTimer">00:00:00</span>
+             </div>
+
+             <div class="grid-wrapper">
+                <div class="nav-grid" id="examNavGrid">
+                   <!-- Grid Circles -->
+                </div>
+             </div>
+
+              <div class="status-legend">
+                 <div class="legend-item"><span class="dot answered"></span> Answered</div>
+                 <div class="legend-item"><span class="dot not-answered"></span> Not Answered</div>
+                 <div class="legend-item"><span class="dot not-visited"></span> Not Visited</div>
+                 <div class="legend-item"><span class="dot review"></span> Marked for Review</div>
+              </div>
+
+             <div class="right-footer">
+                <div style="text-align:center; margin-bottom:10px;">
+                    <button class="action-btn review-btn" id="exReview" style="width:100%; margin-bottom:10px;">
+                        🏴 Mark for Review
+                    </button>
+                </div>
+                <button class="submit-btn-large" id="exSubmit">Submit</button>
+             </div>
+          </div>
+        </div>
+
+      </div>
+    `;
+		document.body.appendChild(overlay);
+
+		// Wire up buttons
+		overlay.querySelector("#exPrev").onclick = () => moveQuestion(-1);
+		overlay.querySelector("#exNext").onclick = () => moveQuestion(1);
+		overlay.querySelector("#exReset").onclick = resetCurrentAnswer;
+		overlay.querySelector("#exReview").onclick = toggleMarkForReview;
+		overlay.querySelector("#exSubmit").onclick = () => showExitConfirm("Are you sure you want to finish the exam?", true);
+		overlay.querySelector("#viewInstrBtn").onclick = showInstructions;
+
+		renderActiveQuestion();
+		renderNavGrid();
+	}
+
+	function handleFullscreenExit() {
+		// Only trigger if we are active AND not in valid fullscreen AND no modal is already up
+		if (currentExam.active &&
+			!document.fullscreenElement &&
+			!document.webkitFullscreenElement &&
+			!document.querySelector(".warning-overlay")) {
+
+			showExitConfirm("You have exited full-screen mode. This is logged as a violation. Click 'Continue Exam' to return to full-screen and resume.", false);
+		}
+	}
+
+	function handleKeydown(e) {
+		// Removed ESC prevention as it's unreliable and handled by fullscreenchange
+		// We can still block other keys
+	}
+
+	function showExitConfirm(msg, isSubmit = false) {
+		showModernModal({
+			title: isSubmit ? "Final Submission" : "Exam Paused",
+			body: msg,
+			icon: isSubmit ? "📝" : "⏸️",
+			buttons: isSubmit ? [
+				{ id: "cancelSub", text: "Cancel", className: "nav-btn", callback: null },
+				{ id: "finalSub", text: "Submit Now", className: "nav-btn next-btn", callback: () => submitExam(false, true) }
+			] : [
+				{ id: "panicSub", text: "Submit Exam", className: "exam-btn btn-danger", callback: () => submitExam(false, true) },
+				{ id: "continueExam", text: "Continue Exam", className: "nav-btn next-btn", callback: () => { setTimeout(() => enterFullScreen(), 50); } }
+			]
+		});
+	}
+
+	function showInstructions() {
+		const modal = document.createElement("div");
+		modal.className = "warning-overlay";
+		modal.innerHTML = `
+      <div class="confirm-modal" style="text-align:left; max-width:600px;">
+        <h2>JEE Exam Instructions</h2>
+        <ul style="padding-left:20px; line-height:2.0; font-weight:500;">
+          <li><b>SECURE MODE:</b> Fullscreen is mandatory. Exiting fullscreen logs a violation.</li>
+          <li><b>SYSTEM LOCK:</b> Right-click, Copy, Paste, and PrintScreen are disabled.</li>
+          <li><b>TAB MONITORING:</b> Any attempt to switch tabs will lead to auto-submission.</li>
+          <li><b>NAVIGATION:</b> You can move between questions using the grid or buttons.</li>
+          <li><b>AUTO-SAVE:</b> All responses are saved immediately to the server.</li>
+        </ul>
+        <button class="exam-btn btn-next" style="width:100%; margin-top:20px;" onclick="this.closest('.warning-overlay').remove()">Agree & Close</button>
+      </div>
+    `;
+		document.body.appendChild(modal);
+	}
+
+	function renderActiveQuestion() {
+		const q = currentExam.questions[currentExam.currentIndex];
+		if (!q) return;
+
+		// Mark as visited
+		currentExam.visitedQuestions.add(q.questionId);
+
+		const isLocked = currentExam.lockedQuestions.has(q.questionId);
+
+		// Update Left Panel Meta
+		const dispQNum = document.getElementById("dispQNum");
+		if (dispQNum) dispQNum.textContent = `${currentExam.currentIndex + 1}`;
+
+		const dispMarks = document.getElementById("dispQMarks");
+		if (dispMarks) dispMarks.textContent = q.marks;
+
+		const dispNeg = document.getElementById("dispQNeg");
+		if (dispNeg) dispNeg.textContent = q.negativeMarks;
+
+		const timerRow = document.getElementById("qTimerRow");
+		const qTimeLimit = q.timeLimitSeconds || q.timeLimit;
+		if (qTimeLimit) {
+			timerRow.style.display = "flex";
+		} else {
+			timerRow.style.display = "none";
+		}
+
+		// Update Center Panel Text
+		const qTextDiv = document.getElementById("dispQText");
+
+		if (isLocked) {
+			qTextDiv.innerHTML = `
+				<div style="opacity:0.5; pointer-events:none;">
+					<h3 style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 19px;">${q.questionText}</h3>
+					${q.questionImage ? `<div style="margin-top:15px;"><img src="${q.questionImage}" style="max-width:100%; border-radius:8px; border:1px solid #ddd;"></div>` : ""}
+				</div>
+				<div style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(200,200,200,0.2); display:flex; align-items:center; justify-content:center; border-radius:12px; z-index: 10;">
+					<h2 style="color:var(--danger); background:white; padding:15px 30px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.1); font-weight: 900; border: 3px solid var(--danger);">🔒 TIME EXPIRED</h2>
+				</div>
+			`;
+			qTextDiv.style.position = "relative";
+		} else {
+			qTextDiv.innerHTML = `
+				<h3 style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 19px;">${q.questionText}</h3>
+				${q.questionImage ? `<div style="margin-top:15px; text-align:center;"><img src="${q.questionImage}" style="max-width:100%; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.1); border:5px solid white;"></div>` : ""}
+			`;
+			qTextDiv.style.position = "relative";
+		}
+
+
+		// Panel 3: Options
+		const oList = document.getElementById("examOptionsList");
+		oList.innerHTML = "";
+		const correctOpt = q.options?.correctOption || "";
+		const isMulti = correctOpt.includes(",");
+		const savedAns = currentExam.answers[q.questionId] || "";
+		const selectedList = savedAns.split(",").filter(x => x);
+
+		const choices = q.options?.choices || [];
+		const choiceImgs = q.options?.choiceImages || [];
+		choices.forEach((opt, idx) => {
+			const item = document.createElement("div");
+			item.className = `option-item ${isMulti ? 'multi' : ''} ${selectedList.includes(opt) ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
+
+			const imgData = choiceImgs[idx];
+
+			item.innerHTML = `
+        <div class="option-circle"></div>
+        <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+          <span>${opt}</span>
+          ${imgData ? `<div><img src="${imgData}" style="max-width:200px; border-radius:6px; border:1px solid #eef2f6;"></div>` : ""}
+        </div>
+        <input type="${isMulti ? 'checkbox' : 'radio'}" name="qOpt" value="${opt}" ${selectedList.includes(opt) ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
+      `;
+
+			if (!isLocked) {
+				item.onclick = () => {
+					const input = item.querySelector("input");
+					if (isMulti) {
+						input.checked = !input.checked;
+						item.classList.toggle("selected", input.checked);
+					} else {
+						oList.querySelectorAll(".option-item").forEach(i => i.classList.remove("selected"));
+						item.classList.add("selected");
+						input.checked = true;
 					}
-		        }
-		    }
+					saveAnswer();
+				};
+			}
+			oList.appendChild(item);
+		});
+
+		// Logic for Question Timer (Spendable time per question)
+		if (qTimeLimit && !isLocked) {
+			if (!currentExam.timers[q.questionId]) {
+				currentExam.timers[q.questionId] = qTimeLimit;
+			}
+
+			// Clear existing interval if any to prevent duplicates
+			if (currentExam.activeTimerInterval) clearInterval(currentExam.activeTimerInterval);
+
+			const disp = document.getElementById("qRemaining");
+			if (disp) disp.textContent = currentExam.timers[q.questionId];
+
+			currentExam.activeTimerInterval = setInterval(() => {
+				if (!currentExam.active) { clearInterval(currentExam.activeTimerInterval); return; }
+				// If we have moved away from this question, pause this timer
+				if (currentExam.questions[currentExam.currentIndex].questionId !== q.questionId) {
+					clearInterval(currentExam.activeTimerInterval);
+					return;
+				}
+
+				currentExam.timers[q.questionId]--;
+				if (disp) disp.textContent = currentExam.timers[q.questionId];
+
+				if (currentExam.timers[q.questionId] <= 0) {
+					clearInterval(currentExam.activeTimerInterval);
+					currentExam.lockedQuestions.add(q.questionId);
+
+					// Check if ALL questions are now locked
+					const allLocked = currentExam.questions.every(quest =>
+						currentExam.lockedQuestions.has(quest.questionId)
+					);
+
+					if (allLocked) {
+						showModernModal({
+							title: "Exam Complete",
+							body: "All questions are now timed out. Your exam is being auto-submitted.",
+							icon: "⌛",
+							buttons: [{ id: "autoSubOk", text: "Submit Now", className: "nav-btn next-btn", callback: () => submitExam(true) }]
+						});
+						setTimeout(() => { if (currentExam.active) submitExam(true); }, 3000);
+					} else {
+						showModernModal({
+							title: "Time Expired",
+							body: "Time for this question has run out. It is now locked.",
+							icon: "🔒",
+							buttons: [{ id: "timerOk", text: "Next Question", className: "nav-btn next-btn", callback: () => moveQuestion(1) }]
+						});
+					}
+					renderActiveQuestion();
+					renderNavGrid();
+				}
+			}, 1000);
 		}
-	
-	
-		function disableExamControls() {
-		    if (prevBtnRef) prevBtnRef.disabled = true;
-		    if (nextBtnRef) nextBtnRef.disabled = true;
-		    if (submitBtn) submitBtn.disabled = true;
-	
-		    navButtons.forEach(btn => {
-		        btn.disabled = true;
-		        btn.classList.add("disabled");
-		    });
+
+		updateControlButtons();
+	}
+
+	function renderNavGrid() {
+		const grid = document.getElementById("examNavGrid");
+		grid.innerHTML = "";
+		let attemptedCount = 0;
+
+		currentExam.questions.forEach((q, i) => {
+			if (!q) return; // Skip undefined questions to prevent crash
+
+			const isAnswered = !!currentExam.answers[q.questionId];
+			if (isAnswered) attemptedCount++;
+
+			const circle = document.createElement("div");
+
+			// Accumulate classes for correct precedence and combination
+			const classes = ["nav-circle"];
+
+			// Logic for Colors:
+			if (currentExam.markedForReview.has(q.questionId)) classes.push("review");
+			else if (isAnswered) classes.push("answered");
+			else if (currentExam.lockedQuestions.has(q.questionId)) classes.push("locked");
+			else if (currentExam.visitedQuestions.has(q.questionId)) classes.push("not-answered");
+			else classes.push("not-visited");
+
+			if (i === currentExam.currentIndex) classes.push("current");
+
+			circle.className = classes.join(" ");
+
+			circle.textContent = i + 1;
+			circle.onclick = () => {
+				if (currentExam.lockedQuestions.has(q.questionId)) return;
+				currentExam.currentIndex = i;
+				renderActiveQuestion();
+				renderNavGrid();
+			};
+			grid.appendChild(circle);
+		});
+
+		// Removed attempt/warning count from old UI place, 
+		// but if we want them, we'd need to add them to the new layout.
+		// For now, let's assume the user image didn't emphasize them, 
+		// but we can add them to the "Left Panel" if needed.
+
+	}
+
+	function toggleMarkForReview() {
+		const q = currentExam.questions[currentExam.currentIndex];
+		if (currentExam.markedForReview.has(q.questionId)) {
+			currentExam.markedForReview.delete(q.questionId);
+		} else {
+			currentExam.markedForReview.add(q.questionId);
 		}
-	
-		function enableExamControls() {
-		    if (prevBtnRef) prevBtnRef.disabled = false;
-		    if (nextBtnRef) nextBtnRef.disabled = false;
-	
-		    if (submitBtn && halfTimeReached) {
-		        submitBtn.disabled = false;
-		    }
-	
-		    navButtons.forEach(btn => {
-		        btn.disabled = false;
-		        btn.classList.remove("disabled");
-		    });
+		renderNavGrid();
+	}
+
+	function saveAnswer() {
+		const q = currentExam.questions[currentExam.currentIndex];
+		if (!q) return;
+		const checked = Array.from(document.querySelectorAll("#examOptionsList input:checked")).map(i => i.value);
+		currentExam.answers[q.questionId] = checked.join(",");
+		renderNavGrid();
+	}
+
+	function resetCurrentAnswer() {
+		const q = currentExam.questions[currentExam.currentIndex];
+		if (!q) return;
+		if (currentExam.lockedQuestions.has(q.questionId)) return;
+		currentExam.answers[q.questionId] = "";
+		renderActiveQuestion();
+		renderNavGrid();
+	}
+
+	function moveQuestion(dir) {
+		let newIdx = currentExam.currentIndex + dir;
+
+		// Search for next available question that isn't locked
+		let found = false;
+		let steps = 0;
+		const maxSteps = currentExam.questions.length; // Safety break
+
+		while (newIdx >= 0 && newIdx < currentExam.questions.length && steps < maxSteps) {
+			const nextQ = currentExam.questions[newIdx];
+			if (!nextQ) break; // Array bounds protection
+
+			if (!currentExam.lockedQuestions.has(nextQ.questionId)) {
+				found = true;
+				break;
+			}
+			newIdx += (dir > 0 ? 1 : -1);
+			steps++;
 		}
-	
-		async function checkRealInternet() {
-		    try {
-		        const controller = new AbortController();
-		        const timeout = setTimeout(() => controller.abort(), 4000);
-	
-		        // ping your backend (VERY IMPORTANT)
-				const res = await fetch(`${window.location.origin}/ping`, {
-		            method: "GET",
-		            cache: "no-store",
-		            signal: controller.signal
-		        });
-	
-		        clearTimeout(timeout);
-		        return res.ok;
-		    } catch (e) {
-		        return false;
-		    }
+
+		if (found) {
+			currentExam.currentIndex = newIdx;
+			renderActiveQuestion();
+			renderNavGrid();
+		} else {
+			// If moving forward and hit end, or moving back and hit start (or all locked)
+			// Maybe show a toast or shake the container?
+			// For now, do nothing if no valid question in that direction.
+
+			// Optional: If we tried to go Next from the last question, user might want to submit
+			if (dir > 0 && newIdx >= currentExam.questions.length) {
+				// Maybe prompt submission?
+			}
 		}
-	
-		
-		// -------------------- PERIODIC NETWORK CHECK --------------------
-		setInterval(() => {
-		    if (examActive) {
-		        updateNetworkStatus();
-		    }
-		}, 5000); // check every 5 seconds
-	
-	
-		
-	})();
+	}
+
+	function updateControlButtons() {
+		document.getElementById("exPrev").disabled = currentExam.currentIndex === 0;
+		document.getElementById("exNext").disabled = currentExam.currentIndex === currentExam.questions.length - 1;
+	}
+
+	function startGlobalTimer() {
+		const timerElem = document.getElementById("globalTimer");
+
+		// Ensure initial render
+		if (timerElem) timerElem.textContent = formatTime(currentExam.totalSeconds);
+
+		const interval = setInterval(() => {
+			if (!currentExam.active) { clearInterval(interval); return; }
+
+			currentExam.totalSeconds--;
+			if (timerElem) timerElem.textContent = formatTime(currentExam.totalSeconds);
+
+			if (currentExam.totalSeconds <= 0) {
+				clearInterval(interval);
+				alert("Exam time is up! Auto-submitting...");
+				submitExam(true);
+			}
+		}, 1000);
+	}
+
+	async function submitExam(forced = false, skipConfirm = false) {
+		if (!forced && !skipConfirm && !confirm("Are you really sure you want to finish the exam?")) return;
+
+		currentExam.active = false;
+
+		// Show loading state
+		const overlay = document.querySelector(".exam-overlay");
+		if (overlay) {
+			const loader = document.createElement("div");
+			loader.id = "subLoader";
+			loader.style.cssText = "position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.8); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:100;";
+			loader.innerHTML = `<div class="loading-spinner"></div><h2 style="color:var(--primary); margin-top:20px;">Submitting Exam...</h2>`;
+			overlay.appendChild(loader);
+		}
+
+		try {
+			const payload = {
+				rollNumber: studentRoll,
+				quizId: currentExam.quizId,
+				answers: currentExam.answers,
+				startTime: currentExam.startTime,
+				endTime: new Date().toISOString()
+			};
+
+			const res = await authFetch("/results/submit", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(payload)
+			});
+			if (res.ok) {
+				if (document.fullscreenElement) {
+					try { await document.exitFullscreen(); } catch (e) { }
+				}
+
+				document.querySelector(".exam-overlay")?.remove();
+				document.body.classList.remove("exam-body-locked"); // Restore scroll
+				alert("Assessment submitted successfully. You can now view your result in the 'View Results' section.");
+
+				// Reset to dashboard
+				document.getElementById("studentDashboard")?.classList.remove("hidden");
+
+				// Automatically trigger results view
+				viewResultBtn?.click();
+			} else {
+				const errorMsg = await res.text();
+				throw new Error(errorMsg);
+			}
+		} catch (e) {
+			alert("Submission failed! " + e.message);
+			document.getElementById("subLoader")?.remove();
+			currentExam.active = true; // Allow retry
+		}
+	}
+
+	function setupProctoring() {
+		const handleViolation = () => {
+			if (!currentExam.active) return;
+			currentExam.blurWarnings++;
+
+			if (currentExam.blurWarnings > 5) {
+				submitExam(true);
+				showModernModal({
+					title: "Exam Terminated",
+					body: "You have exceeded the maximum of 5 tab switch warnings. Your exam has been auto-submitted.",
+					icon: "🚫",
+					buttons: [{ id: "termOk", text: "Back to Dashboard", className: "nav-btn next-btn", callback: null }]
+				});
+			} else {
+				showModernModal({
+					title: "Security Violation",
+					body: `Tab switching or minimizing detected. You have ${5 - currentExam.blurWarnings} attempts remaining before automatic termination.`,
+					icon: "⚠️",
+					violationCount: currentExam.blurWarnings,
+					buttons: [{ id: "warnOk", text: "I Understand", className: "nav-btn next-btn", callback: null }]
+				});
+			}
+		};
+
+		window.onblur = handleViolation;
+		document.addEventListener("visibilitychange", () => {
+			if (document.hidden) handleViolation();
+		});
+	}
+
+	function showWarning(msg) {
+		showModernModal({
+			title: "Security Alert",
+			body: msg,
+			icon: "🛡️",
+			buttons: [{ id: "alertOk", text: "I Understand", className: "nav-btn next-btn", callback: null }]
+		});
+	}
+
+	function enterFullScreen() {
+		const el = document.documentElement;
+		if (el.requestFullscreen) el.requestFullscreen();
+		else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+	}
+
+	// Store results in a map to avoid JSON serialization in HTML attributes
+	const resultsCache = new Map();
+
+	// -------------------- VIEW RESULTS --------------------
+	viewResultBtn?.addEventListener("click", () => {
+		const roll = getRoll();
+		if (!roll) return alert("Please login first to view results.");
+		const content = `
+      <div style="display:grid; gap:10px;">
+        <input type="text" id="resRoll" value="${roll}" disabled class="modal-select">
+        <button class="primary-btn" id="loadResBtn">Load My Results</button>
+      </div>
+      <div id="resList" style="margin-top:20px; max-height:400px; overflow-y:auto; padding-right:5px;"></div>
+    `;
+		const modalOverlay = createBaseModal("My Academic Performance", content);
+
+		modalOverlay.querySelector("#loadResBtn").onclick = async () => {
+			const list = modalOverlay.querySelector("#resList");
+			list.innerHTML = `<div style="text-align:center; padding:20px;"><div class="loading-spinner"></div><p>Fetching your results...</p></div>`;
+
+			try {
+				const r = await authFetch(`/results/student/all?rollNumber=${encodeURIComponent(studentRoll)}`);
+				if (!r.ok) throw new Error(await r.text());
+				const data = await r.json();
+
+				if (!data || data.length === 0) {
+					list.innerHTML = `<div style="text-align:center; padding:20px; color:#64748b;">No results found.</div>`;
+					return;
+				}
+
+				list.innerHTML = data.map((res, index) => {
+					const resId = `res_${Date.now()}_${index}`;
+					resultsCache.set(resId, res);
+					const isPending = res.passFail === "Result Pending";
+					const isPublished = res.published || res.isPublished;
+
+					return `
+            <div class="key-item" style="cursor:pointer; position:relative; overflow:hidden; margin-bottom:10px; border:1px solid #e2e8f0; border-radius:10px; padding:15px; transition:all 0.2s;" 
+                 onmouseover="this.style.borderColor='var(--primary-purple)'; this.style.background='#fdf5ff';" 
+                 onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white';"
+                 onclick="window.showResultDetails('${resId}')">
+              ${isPending ? `<div style="position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); display:flex; align-items:center; justify-content:center; font-weight:700; color:#64748b; z-index:5;">🔒 ASSESSMENT PENDING</div>` : ""}
+              <div style="display:flex; justify-content:space-between; align-items:center; position:relative; z-index:1;">
+                <div>
+                  <strong style="font-size:18px; color:#1e293b;">${res.quiz ? res.quiz.quizName : 'Unknown Quiz'}</strong>
+                  <br><small style="color:#64748b; font-weight:600;">${isPending ? 'Not yet evaluated' : (res.passFail || 'N/A')} | ${new Date(res.submissionTime).toLocaleDateString()}</small>
+                </div>
+                <div class="result-score" style="font-size:24px; font-weight:900; color:${isPending ? '#cbd5e1' : 'var(--primary)'}">
+                  ${isPending ? '--' : (res.score != null ? res.score.toFixed(1) : '0')}
+                  <span style="font-size:14px; color:#94a3b8; font-weight:600;">/${res.totalMarks || '--'}</span>
+                </div>
+              </div>
+              ${isPublished ? `<p style="color:#10b981; margin-top:10px; font-size:12px; font-weight:800;">★ SOLUTIONS AVAILABLE - CLICK TO VIEW</p>` : `<p style="color:#ef4444; margin-top:10px; font-size:12px; font-weight:800;">RESULTS NOT PUBLISHED BY FACULTY</p>`}
+            </div>
+          `;
+				}).join("");
+			} catch (e) {
+				console.error(e);
+				list.innerHTML = `<div style="text-align:center; color:red; padding:20px;">Error loading data: ${e.message}</div>`;
+			}
+		};
+	});
+
+	window.showResultDetails = (resId) => {
+		const resData = resultsCache.get(resId);
+		if (resData) {
+			// Hide the results list modal while viewing details
+			const listModal = document.getElementById("studentModalOverlay");
+			if (listModal) listModal.style.visibility = "hidden";
+			window.showDetailedKey(resData);
+		}
+	};
+
+	window.showDetailedKey = async (resData) => {
+		const isPublished = resData.published || resData.isPublished;
+		if (!isPublished) return alert("The detailed solutions for this quiz are not yet available.");
+
+		// Fetch actual questions to show the correct key
+		const qRes = await authFetch(`/quiz/${resData.quiz.id}/questions`);
+		const questions = await qRes.json();
+
+		const overlay = document.createElement("div");
+		overlay.className = "exam-overlay solver-view";
+		overlay.style.zIndex = "11000"; // Above everything
+		overlay.innerHTML = `
+      <div class="panel-header" style="display:flex; justify-content:space-between; align-items:center; padding:25px 40px; background:var(--header-grad); border:none; box-shadow:0 10px 40px rgba(99, 102, 241, 0.3);">
+          <div style="text-align:left;">
+            <h2 style="margin:0; font-size:26px; font-weight:900; color:white; letter-spacing:-0.5px;">Assessment Solver Key</h2>
+            <div style="display:flex; gap:20px; align-items:center; margin-top:10px;">
+               <span style="background:rgba(255,255,255,0.25); color:white; padding:6px 16px; border-radius:100px; font-size:13px; font-weight:900; backdrop-filter:blur(15px); border:1px solid rgba(255,255,255,0.2);">
+                 Final Score: <b>${resData.score.toFixed(1)} / ${resData.totalMarks}</b>
+               </span>
+               <span style="color:rgba(255,255,255,0.9); font-size:13px; font-weight:700; letter-spacing:1px;">CODE: ${resData.quiz.quizCode}</span>
+            </div>
+          </div>
+          <button class="btn-premium" id="closeSolver" style="background:#ff4757; color:white; border:none; box-shadow:0 10px 25px rgba(255, 71, 87, 0.4); height:54px; min-width:180px; font-weight:900; cursor:pointer; border-radius:15px; font-size:15px; text-transform:uppercase; letter-spacing:1px; transition:0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+            Close Solutions
+          </button>
+      </div>
+      <div class="panel-content scrollable" style="background:#f1f5f9; padding:30px;">
+        <div style="max-width:900px; margin: 0 auto; display:grid; gap:25px;">
+          ${questions.map((q, idx) => {
+			const studentAns = (resData.studentAnswers || {})[q.questionId] || "";
+			const correctAns = (q.options?.correctOption || "").trim();
+
+			const studentList = studentAns.split(",").map(s => s.trim()).filter(x => x);
+			const correctList = correctAns.split(",").map(s => s.trim()).filter(x => x);
+
+			const isCorrect = studentList.length > 0 &&
+				studentList.length === correctList.length &&
+				studentList.every(s => correctList.includes(s));
+
+			const isUnanswered = studentList.length === 0;
+
+			return `
+              <div class="exam-col" style="padding:40px; background:white; border-radius:28px; border:2px solid #ffffff; box-shadow:0 15px 35px rgba(0,0,0,0.05), 0 0 0 1px rgba(99, 102, 241, 0.05); transition:0.4s;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                       <span style="font-size:11px; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:2px; background:rgba(99, 102, 241, 0.1); padding:5px 12px; border-radius:8px;">Question ${idx + 1}</span>
+                       <span style="font-size:13px; font-weight:800; color:var(--text-muted);">${q.marks} Points</span>
+                    </div>
+                    <h2 style="margin:0; font-size:20px; line-height:1.6; color:var(--text-main); font-weight:800; white-space: pre-wrap; font-family: 'Consolas', monospace; background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">${q.questionText}</h2>
+                    ${q.questionImage ? `<div style="margin-top:15px;"><img src="${q.questionImage}" style="max-height:250px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.05);"></div>` : ""}
+                  </div>
+                  <div class="status-badge ${isUnanswered ? 'status-fail' : (isCorrect ? 'status-pass' : 'status-fail')}" style="padding:12px 28px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 6px 15px rgba(0,0,0,0.08); text-transform:uppercase; letter-spacing:1px;">
+                    ${isUnanswered ? 'Unattempted' : (isCorrect ? 'Correct Submission' : 'Incorrect Choice')}
+                  </div>
+                </div>
+                
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px;">
+                  ${(q.options?.choices || []).map(opt => {
+				const optTrim = opt.trim();
+				const isRight = correctList.includes(optTrim);
+				const isChosen = studentList.includes(optTrim);
+
+				let stateCls = "";
+				let icon = "○";
+				if (isRight) { stateCls = "background:#ecfdf5; border-color:#10b981; color:#064e3b; border-width: 3px; transform:scale(1.05); z-index:2; border-left: 10px solid #10b981;"; icon = "✅ (CORRECT)"; }
+				else if (isChosen) { stateCls = "background:#fff1f2; border-color:#f43f5e; color:#9f1239; border-width: 3px; border-left: 10px solid #f43f5e;"; icon = "❌ (YOUR ERROR)"; }
+				else { stateCls = "background:#f8fafc; border-color:#e2e8f0; color:#64748b;"; }
+
+				const optImg = (q.options?.choiceImages || [])[q.options.choices.indexOf(opt)];
+
+				return `
+                      <div style="padding:14px 18px; border-radius:10px; border:2px solid; font-weight:600; font-size:14px; display:flex; flex-direction:column; gap:12px; ${stateCls}">
+                        <div style="display:flex; align-items:center; gap:12px;">
+                           <span style="font-size:16px;">${icon}</span>
+                           ${opt}
+                        </div>
+                        ${optImg ? `<div><img src="${optImg}" style="max-height:100px; border-radius:5px;"></div>` : ""}
+                      </div>
+                    `;
+			}).join("")}
+                </div>
+                
+                <div style="margin-top:40px; padding:25px 30px; background:#f8fafc; border-radius:20px; border:2px dashed #e2e8f0; display:flex; flex-wrap:wrap; gap:60px; font-size:15px; position:relative;">
+                   <div>
+                     <div style="color:var(--text-muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Student Selection</div>
+                     <div style="color:${isCorrect ? '#10b981' : '#f43f5e'}; font-size:18px; font-weight:900;">${studentAns || 'Skipped'}</div>
+                   </div>
+                   <div>
+                     <div style="color:var(--text-muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Benchmark Key</div>
+                     <div style="color:#10b981; font-size:18px; font-weight:900;">${correctAns}</div>
+                   </div>
+                   <div style="position:absolute; top:-12px; left:30px; background:white; padding:0 12px; font-size:11px; font-weight:900; color:var(--primary); letter-spacing:1px; border:2px solid #e2e8f0; border-radius:100px;">VERIFICATION SUMMARY</div>
+                </div>
+              </div>
+            `;
+		}).join("")}
+        </div>
+      </div>
+    `;
+		document.body.appendChild(overlay);
+
+		overlay.querySelector("#closeSolver").onclick = () => {
+			overlay.remove();
+			const listModal = document.getElementById("studentModalOverlay");
+			if (listModal) listModal.style.visibility = "visible";
+		};
+	};
+
+	function init() {
+		getRoll(); // Populate local studentRoll from session if present
+	}
+
+	init();
+})();

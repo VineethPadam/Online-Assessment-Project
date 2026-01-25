@@ -5,5 +5,6 @@ import com.example.OnlineAssessment.entity.Faculty;
 
 public interface FacultyRepo extends JpaRepository<Faculty, String> {
 	Faculty findByEmail(String email);
-    
+
+	java.util.List<Faculty> findByDepartment(String department);
 }

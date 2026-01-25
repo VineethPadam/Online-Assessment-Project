@@ -28,15 +28,13 @@ public class StudentController {
 
         Student s = studentService.validateStudent(
                 student.getStudentRollNumber(),
-                student.getPassword()
-        );
+                student.getPassword());
 
         if (s != null) {
 
             String token = jwtUtil.generateToken(
                     s.getStudentRollNumber(),
-                    "STUDENT"
-            );
+                    "STUDENT");
 
             Map<String, Object> response = new HashMap<>();
             response.put("token", token);
@@ -44,13 +42,15 @@ public class StudentController {
             response.put("name", s.getStudentName());
             response.put("department", s.getDepartment());
             response.put("section", s.getStudentSection());
+            response.put("year", s.getStudentYear());
+            response.put("email", s.getStudentEmail());
             response.put("role", "STUDENT");
 
             return ResponseEntity.ok(response);
         }
 
         return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)  // ✅ 400 instead of 401
+                .status(HttpStatus.BAD_REQUEST) // ✅ 400 instead of 401
                 .body("Invalid student roll number or password");
 
     }

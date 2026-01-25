@@ -26,30 +26,27 @@ public class ExcelUploadController {
     @Autowired
     private AdminExcelService adminExcelService;
 
-    // ------------------ Upload Endpoints ------------------
-
     @PostMapping("/students")
-    public ResponseEntity<String> uploadStudents(@RequestParam("file") MultipartFile file){
-        try{
+    public ResponseEntity<String> uploadStudents(@RequestParam("file") MultipartFile file) {
+        try {
             studentExcelService.uploadStudents(file);
             return ResponseEntity.ok("Students uploaded successfully");
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body("Error: " + e.getMessage());
+                    .body("Error: " + e.getMessage());
         }
     }
 
     @PostMapping("/questions")
     public ResponseEntity<String> uploadQuestions(
             @RequestParam("file") MultipartFile file,
-            @RequestParam("quizId") String quizId) {
+            @RequestParam("quizId") Long quizId) {
 
         try {
             questionExcelService.uploadQuestions(file, quizId);
             return ResponseEntity.ok("Questions uploaded successfully");
         } catch (RuntimeException e) {
-            // business rule errors (quiz not exist, already uploaded)
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body(e.getMessage());
         } catch (Exception e) {
@@ -59,31 +56,17 @@ public class ExcelUploadController {
         }
     }
 
-    /*@PostMapping("/admins")
-    public ResponseEntity<String> uploadAdmins(@RequestParam("file") MultipartFile file){
-        try{
-            adminExcelService.uploadAdmins(file);
-            return ResponseEntity.ok("Admins uploaded successfully");
-        } catch(Exception e){
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body("Error: " + e.getMessage());
-        }
-    }*/
-
     @PostMapping("/faculty")
-    public ResponseEntity<String> uploadFaculty(@RequestParam("file") MultipartFile file){
-        try{
+    public ResponseEntity<String> uploadFaculty(@RequestParam("file") MultipartFile file) {
+        try {
             adminExcelService.uploadFaculty(file);
             return ResponseEntity.ok("Faculty uploaded successfully");
-        } catch(Exception e){
+        } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body("Error: " + e.getMessage());
+                    .body("Error: " + e.getMessage());
         }
     }
-
-    // ------------------ Download Faculty Excel ------------------
 
     @GetMapping("/faculty/download")
     public ResponseEntity<byte[]> downloadFacultyExcel() {
@@ -92,7 +75,7 @@ public class ExcelUploadController {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(
-                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+                    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
             headers.set(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=faculty.xlsx");
             headers.setContentLength(excelData.length);
 
@@ -100,10 +83,7 @@ public class ExcelUploadController {
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                                 .body(null);
+                    .body(null);
         }
     }
-    
-    
-    
 }

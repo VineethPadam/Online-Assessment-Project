@@ -18,11 +18,10 @@ public class AnalyzeController {
 
     @GetMapping
     public Map<String, Map<String, Object>> analyze(
-            @RequestParam String quizId,
+            @RequestParam Long quizId,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String section,
-            @RequestParam(required = false) Integer year
-    ) {
+            @RequestParam(required = false) Integer year) {
         return analyzeService.getPassFailAnalysis(quizId, department, section, year);
     }
 }
