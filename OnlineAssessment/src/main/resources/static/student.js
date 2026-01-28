@@ -61,6 +61,26 @@
 		return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 	}
 
+	function showFacultyNotice(title, message, type = "info") {
+		const overlay = document.createElement("div");
+		overlay.className = "warning-overlay";
+		overlay.style.zIndex = "20000";
+
+		const icon = type === "error" ? "❌" : (type === "success" ? "✅" : "ℹ️");
+		const color = type === "error" ? "#ef4444" : (type === "success" ? "#10b981" : "var(--primary)");
+
+		overlay.innerHTML = `
+      <div class="confirm-modal" style="max-width:450px; text-align:center; padding:40px;">
+        <div style="font-size:60px; margin-bottom:20px;">${icon}</div>
+        <h3 style="margin:0 0 15px; color:${color}; font-weight:900;">${title}</h3>
+        <p style="color:var(--text-muted); font-weight:600; line-height:1.6; margin-bottom:30px;">${message}</p>
+        <button class="exam-btn btn-next" style="width:100%; height:50px;">Understood</button>
+      </div>
+    `;
+		document.body.appendChild(overlay);
+		overlay.querySelector("button").onclick = () => overlay.remove();
+	}
+
 	function showModernModal(options) {
 		const { title, body, icon, buttons, violationCount } = options;
 
@@ -252,23 +272,29 @@
 				</thead>
 				<tbody>
 					${quizzes.filter(q => q && q.quiz).map(q => {
-			// Escape strings
+			// Escape strings for JS onclick call
 			const qName = q.quiz.quizName.replace(/'/g, "\\'");
 			const fName = (q.quiz.faculty?.facultyName || 'N/A').replace(/'/g, "\\'");
+			const qCode = q.quiz.quizCode.replace(/'/g, "\\'");
+			const fId = (q.quiz.faculty?.facultyId || 'N/A').replace(/'/g, "\\'");
 			const dept = meta.dept.replace(/'/g, "\\'");
 
 			return `
 							<tr style="border-bottom:1px solid #f1f5f9;">
 								<td style="padding:15px; vertical-align:middle;">
 									<strong style="color:#1e293b; font-size:15px;">${q.quiz.quizName}</strong><br>
+									<span style="font-size:11px; color:var(--primary); font-weight:700;">ID: ${q.quiz.quizCode}</span><br>
 									<span style="font-size:12px; color:#64748b;">Duration: ${q.durationMinutes || 30} mins</span>
 								</td>
-								<td style="padding:15px; vertical-align:middle; color:#475569;">${q.quiz.faculty?.facultyName || 'N/A'}</td>
+								<td style="padding:15px; vertical-align:middle; color:#475569;">
+									<div style="font-weight:600;">${q.quiz.faculty?.facultyName || 'N/A'}</div>
+									<div style="font-size:11px; color:#94a3b8;">FID: ${fId}</div>
+								</td>
 								<td style="padding:15px; text-align:center; vertical-align:middle;">
 									<button style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; transition:0.2s;"
 										onmouseover="this.style.background='#059669'"
 										onmouseout="this.style.background='#10b981'"
-										onclick="window.startQuizProcess(${q.quiz.id}, '${qName}', '${fName}', ${q.durationMinutes || 30}, '${dept}', '${meta.year}', '${meta.section}')">
+										onclick="window.startQuizProcess(${q.quiz.id}, '${qName}', '${fName}', ${q.durationMinutes || 30}, '${dept}', '${meta.year}', '${meta.section}', '${qCode}', '${fId}')">
 										Start
 									</button>
 								</td>
@@ -282,10 +308,13 @@
 
 
 
-	window.startQuizProcess = async (quizId, quizName, facultyName, duration, dept, year, section) => {
+	window.startQuizProcess = async (quizId, quizName, facultyName, duration, dept, year, section, quizCode, facultyId) => {
 		try {
 			const attRes = await authFetch(`/results/student/attempted?rollNumber=${studentRoll}&quizId=${quizId}`);
-			if (await attRes.json()) return alert("Security: You have already attempted this quiz.");
+			if (await attRes.json()) {
+				showFacultyNotice("Access Denied", "You have already attempted this quiz. Multiple attempts are not allowed.", "error");
+				return;
+			}
 
 			const finalDuration = (duration && duration > 0) ? duration : 30;
 
@@ -296,6 +325,10 @@
 				<div class="custom-modal-box">
 					<h2 style="color:var(--primary); margin-top:0;">Start Exam: ${quizName}</h2>
 					<div style="background:#f8fafc; padding:15px; border-radius:8px; text-align:left; margin:15px 0; font-size:14px; line-height:1.6; border:1px solid #e2e8f0;">
+						<div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-bottom:10px;">
+							<div><strong>Exam ID:</strong> ${quizCode}</div>
+							<div><strong>FID:</strong> ${facultyId}</div>
+						</div>
 						<strong>⏱ Duration:</strong> ${finalDuration} Minutes<br>
 						<strong>👤 Student:</strong> ${studentRoll}<br><br>
 						<strong>⚠️ STRICT EXAM RULES:</strong>
@@ -324,29 +357,143 @@
 				document.getElementById("studentModalOverlay")?.remove();
 
 				// Enter environment
-				enterExamEnvironment(quizId, quizName, facultyName, finalDuration, dept, year, section);
+				performSecurityPreFlight(quizId, quizName, facultyName, finalDuration, dept, year, section, quizCode, facultyId);
 			};
 
 		} catch (e) { alert(e.message); }
 	};
 
+	async function performSecurityPreFlight(quizId, quizName, facultyName, duration, dept, year, section, quizCode, facultyId) {
+		const sweepOverlay = document.createElement("div");
+		sweepOverlay.className = "warning-overlay";
+		sweepOverlay.style.zIndex = "15000";
+		sweepOverlay.innerHTML = `
+			<div class="confirm-modal" style="max-width:500px; text-align:center; padding:40px;">
+				<div id="countdownCircle" style="width:80px; height:80px; border-radius:50%; border:5px solid #eef2f6; border-top-color:var(--primary); margin:0 auto 25px; display:flex; align-items:center; justify-content:center; font-size:28px; font-weight:900; color:var(--primary);">8</div>
+				<h3 style="margin:0 0 10px; color:var(--primary); font-weight:900;">Proctoring Shield Activation</h3>
+				<p id="sweepStatus" style="color:var(--text-muted); font-weight:600; min-height:40px;">Initializing secure isolation...</p>
+				<div style="width:100%; height:6px; background:#f1f5f9; border-radius:10px; margin:20px 0; overflow:hidden;">
+					<div id="sweepProgress" style="width:0%; height:100%; background:var(--primary-grad); transition: width 0.3s linear;"></div>
+				</div>
+                <div style="font-size:11px; color:#94a3b8; font-weight:700; text-transform:uppercase; letter-spacing:1px;">System locking in progress</div>
+			</div>
+		`;
+		document.body.appendChild(sweepOverlay);
+
+		const statusText = sweepOverlay.querySelector("#sweepStatus");
+		const progressBar = sweepOverlay.querySelector("#sweepProgress");
+		const countdownElem = sweepOverlay.querySelector("#countdownCircle");
+
+		const totalSeconds = 8;
+		let elapsed = 0;
+
+		const steps = [
+			{ time: 1, msg: "Establishing secure communication tunnel..." },
+			{ time: 2.5, msg: "Scanning for active background calls..." },
+			{ time: 4, msg: "Analyzing screen-sharing protocols...", isNetwork: true },
+			{ time: 5.5, msg: "Shielding browser clipboard & shortcuts..." },
+			{ time: 7, msg: "Finalizing proctoring environment..." }
+		];
+
+		const checkInterval = setInterval(async () => {
+			elapsed += 0.1;
+			const remaining = Math.max(0, Math.ceil(totalSeconds - elapsed));
+			countdownElem.textContent = remaining;
+			progressBar.style.width = `${(elapsed / totalSeconds) * 100}%`;
+
+			// Focus check
+			if (document.hidden || !document.hasFocus()) {
+				clearInterval(checkInterval);
+				sweepOverlay.remove();
+				showFacultyNotice("Security Breach", "Activity outside the exam window detected. Isolation failed. Close all other apps and retry.", "error");
+				return;
+			}
+
+			// Step Updates
+			const currentStep = steps.find(s => Math.abs(elapsed - s.time) < 0.05);
+			if (currentStep) {
+				statusText.textContent = currentStep.msg;
+
+				if (currentStep.isNetwork) {
+					try {
+						const start = Date.now();
+						const res = await fetch("/ping", { method: "HEAD", cache: "no-store" });
+						const latency = Date.now() - start;
+						if (!res.ok || latency > 3000) throw new Error();
+						statusText.textContent = `Network Stable (Latency: ${latency}ms)`;
+					} catch (e) {
+						clearInterval(checkInterval);
+						sweepOverlay.remove();
+						showFacultyNotice("Network Error", "Unstable internet detected during system lock. Please check your connection.", "error");
+						return;
+					}
+				}
+			}
+
+			if (elapsed >= totalSeconds) {
+				clearInterval(checkInterval);
+
+				// Final Declaration
+				sweepOverlay.innerHTML = `
+					<div class="confirm-modal" style="max-width:550px; text-align:center; padding:40px; border:3px solid #fbdad0;">
+						<div style="font-size:50px; margin-bottom:20px;">🛡️</div>
+						<h3 style="margin:0 0 15px; color:#e11d48; font-weight:900;">Final Security Declaration</h3>
+						<p style="color:#475569; font-weight:600; line-height:1.6; text-align:left; margin-bottom:25px; background:#fff1f2; padding:20px; border-radius:15px;">
+							I solemnly declare that <b>no communication apps</b> (Zoom, Teams, WhatsApp, etc.) are active and <b>no screen-sharing or recording software</b> is running on this device. I understand that any attempt to use these will result in immediate termination of the exam.
+						</p>
+						<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+							<button id="cancelSweep" class="nav-btn" style="height:50px;">Go Back</button>
+							<button id="finalEnter" class="btn-premium btn-primary-grad" style="height:50px; font-weight:900;">I DECLARE & PROCEED</button>
+						</div>
+					</div>
+				`;
+
+				sweepOverlay.querySelector("#cancelSweep").onclick = () => sweepOverlay.remove();
+				sweepOverlay.querySelector("#finalEnter").onclick = () => {
+					sweepOverlay.remove();
+					enterExamEnvironment(quizId, quizName, facultyName, duration, dept, year, section);
+				};
+			}
+		}, 100);
+	}
+
 	// -------------------- EXAM ENVIRONMENT --------------------
 	async function enterExamEnvironment(quizId, quizName, facultyName, duration, dept, year, section) {
 		try {
-			const res = await authFetch(`/quiz/${quizId}/questions/for-student?department=${dept}&year=${year}&section=${section}`);
-			let questions = await res.json();
-			if (!questions?.length) return alert("Error: Questions not loaded.");
+			const res = await authFetch(`/quiz/${quizId}/sections/for-student?department=${dept}&year=${year}&section=${section}`);
+			let sections = await res.json();
+			if (!sections?.length) return alert("Error: Sections or questions not loaded.");
+
+			// Flatten questions and assign section info
+			let allQuestions = [];
+			sections.forEach(sec => {
+				const secQs = (sec.questions || []).map(q => ({
+					...q,
+					sectionId: sec.id,
+					sectionName: sec.sectionName
+				}));
+				allQuestions = allQuestions.concat(secQs);
+			});
+
+			if (!allQuestions.length) return alert("Error: No questions found in this exam.");
 
 			// Prep Data
 			const seed = hashString(studentRoll + quizId);
-			questions = shuffleArray(questions, seed);
+			// Optional: Shuffle within sections or whole? Let's keep the section order but shuffle within.
+			let finalQuestions = [];
+			sections.forEach(sec => {
+				let secQs = allQuestions.filter(q => q.sectionId === sec.id);
+				secQs = shuffleArray(secQs, seed);
+				finalQuestions = finalQuestions.concat(secQs);
+			});
 
 			currentExam = {
 				active: true,
 				quizId,
 				quizName,
 				facultyName,
-				questions,
+				sections: sections, // Keep original sections for navigation
+				questions: finalQuestions,
 				answers: {},
 				currentIndex: 0,
 				totalSeconds: duration * 60,
@@ -361,9 +508,15 @@
 
 			renderExamUI();
 			document.body.classList.add("exam-body-locked"); // Lock main scroll
-			startGlobalTimer();
+			renderExamUI();
+			document.body.classList.add("exam-body-locked"); // Lock main scroll
 			setupProctoring();
 			enterFullScreen();
+
+			// Show instructions immediately. Only start timer when user Acknowledges.
+			showInstructions(() => {
+				startGlobalTimer();
+			});
 
 			// Consolidate connectivity check
 			const statusInterval = setInterval(async () => {
@@ -428,6 +581,17 @@
 		overlay.className = "exam-overlay";
 		// The 3-column layout structure
 		overlay.innerHTML = `
+      <div id="topConnectivityBar" style="grid-column: 1 / -1; background: #0f172a; color: white; padding: 0 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255,255,255,0.1); z-index: 1000; position:relative; height:36px;">
+         <div style="display:flex; align-items:center; gap:20px;">
+            <div style="font-weight:900; letter-spacing:1px; font-size:14px; text-transform:uppercase; color:var(--primary);">${currentExam.quizName}</div>
+            <div style="height:14px; width:1px; background:rgba(255,255,255,0.2);"></div>
+            <div style="font-size:12px; font-weight:700; color:#94a3b8;">${currentExam.student.studentName || 'Student'} | ${studentRoll}</div>
+         </div>
+         <div id="pingStatus" class="status-pill status-online" style="margin:0; font-weight:800; font-size:10px; letter-spacing:0.5px; border-radius:100px; padding:4px 12px; background:rgba(16, 185, 129, 0.1); border:1px solid rgba(16, 185, 129, 0.2); color:#10b981;">
+            <span>●</span> Connection: Stable (---ms)
+         </div>
+      </div>
+
       <div class="exam-grid-container">
         
         <!-- COLUMN 1: LEFT PANEL -->
@@ -530,6 +694,7 @@
 		document.body.appendChild(overlay);
 
 		// Wire up buttons
+		// Wire up buttons
 		overlay.querySelector("#exPrev").onclick = () => moveQuestion(-1);
 		overlay.querySelector("#exNext").onclick = () => moveQuestion(1);
 		overlay.querySelector("#exReset").onclick = resetCurrentAnswer;
@@ -572,23 +737,111 @@
 		});
 	}
 
-	function showInstructions() {
+	function showInstructions(onAcknowledge = null) {
+		const exam = currentExam;
+		if (!exam.active) return;
+
+		const sectionsCount = exam.sections.length;
+		const totalQs = exam.questions.length;
+		let totalMarks = 0;
+		exam.questions.forEach(q => totalMarks += (q.marks || 0));
+
+		let sectionDetailsHTML = "";
+		if (sectionsCount > 1 || (sectionsCount === 1 && exam.sections[0].id !== -1)) {
+			sectionDetailsHTML = `
+				<div style="margin-top:15px; background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0;">
+					<h4 style="margin:0 0 10px; color:var(--primary); font-size:14px; font-weight:800;">Batch Assignment Breakdown</h4>
+					<table style="width:100%; border-collapse:collapse; font-size:13px;">
+						<thead>
+							<tr style="text-align:left; color:#64748b; border-bottom:1px solid #e2e8f0;">
+								<th style="padding:10px 5px;">Section Name</th>
+								<th style="padding:10px 5px; text-align:center;">Questions</th>
+								<th style="padding:10px 5px; text-align:right;">Marks</th>
+							</tr>
+						</thead>
+						<tbody>
+							${exam.sections.map(sec => {
+				const secQs = exam.questions.filter(q => q.sectionId === sec.id);
+				const secMarks = secQs.reduce((sum, q) => sum + (q.marks || 0), 0);
+				if (secQs.length === 0) return "";
+				return `
+									<tr style="border-bottom:1px solid #f1f5f9;">
+										<td style="padding:12px 5px; font-weight:700; color:#1e293b;">${sec.sectionName}</td>
+										<td style="padding:12px 5px; text-align:center; color:#475569;">${secQs.length}</td>
+										<td style="padding:12px 5px; text-align:right; font-weight:800; color:var(--primary);">${secMarks.toFixed(1)}</td>
+									</tr>
+								`;
+			}).join('')}
+						</tbody>
+					</table>
+				</div>
+			`;
+		} else {
+			sectionDetailsHTML = `
+				<div style="margin-top:15px; background:#f8fafc; padding:25px; border-radius:15px; border:1px solid #e2e8f0; text-align:center;">
+					<div style="font-size:13px; color:#64748b; font-weight:800; text-transform:uppercase; letter-spacing:1px; margin-bottom:10px;">Structure Overview</div>
+					<div style="display:flex; justify-content:center; gap:40px;">
+						<div>
+							<div style="font-size:28px; font-weight:900; color:#1e293b;">${totalQs}</div>
+							<div style="font-size:11px; font-weight:700; color:#94a3b8;">QUESTIONS</div>
+						</div>
+						<div style="width:1px; background:#e2e8f0;"></div>
+						<div>
+							<div style="font-size:28px; font-weight:900; color:var(--primary);">${totalMarks.toFixed(1)}</div>
+							<div style="font-size:11px; font-weight:700; color:#94a3b8;">TOTAL MARKS</div>
+						</div>
+					</div>
+				</div>
+			`;
+		}
+
 		const modal = document.createElement("div");
 		modal.className = "warning-overlay";
+		modal.style.cssText = "z-index:12000; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(15, 23, 42, 0.9); backdrop-filter:blur(8px); display:flex; align-items:center; justify-content:center;";
 		modal.innerHTML = `
-      <div class="confirm-modal" style="text-align:left; max-width:600px;">
-        <h2>JEE Exam Instructions</h2>
-        <ul style="padding-left:20px; line-height:2.0; font-weight:500;">
-          <li><b>SECURE MODE:</b> Fullscreen is mandatory. Exiting fullscreen logs a violation.</li>
-          <li><b>SYSTEM LOCK:</b> Right-click, Copy, Paste, and PrintScreen are disabled.</li>
-          <li><b>TAB MONITORING:</b> Any attempt to switch tabs will lead to auto-submission.</li>
-          <li><b>NAVIGATION:</b> You can move between questions using the grid or buttons.</li>
-          <li><b>AUTO-SAVE:</b> All responses are saved immediately to the server.</li>
-        </ul>
-        <button class="exam-btn btn-next" style="width:100%; margin-top:20px;" onclick="this.closest('.warning-overlay').remove()">Agree & Close</button>
+      <div class="confirm-modal" style="text-align:left; max-width:700px; width:90%; padding:40px; background:white; border-radius:24px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.5);">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:25px; border-bottom:1px solid #f1f5f9; padding-bottom:20px;">
+           <div>
+			   <h3 style="margin:0 0 5px; color:#1e293b; font-size:24px; font-weight:900;">${exam.quizName}</h3>
+			   <div style="font-size:13px; color:#64748b; font-weight:600;">Faculty: <span style="color:var(--primary);">${exam.facultyName}</span></div>
+		   </div>
+           <div style="background:rgba(99, 102, 241, 0.1); color:var(--primary); padding:8px 20px; border-radius:100px; font-weight:900; font-size:13px; border:1px solid rgba(99, 102, 241, 0.2);">
+             WEIGHTAGE: ${totalMarks.toFixed(1)} MARKS
+           </div>
+        </div>
+
+        <div style="max-height:55vh; overflow-y:auto; padding-right:15px;" class="scrollable">
+			${sectionDetailsHTML}
+
+			<h4 style="margin:30px 0 15px; color:#1e293b; font-size:16px; font-weight:800; display:flex; align-items:center; gap:10px;">
+				<span style="background:var(--primary); color:white; width:24px; height:24px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:12px;">⚖</span>
+				Exam Rules & Code of Conduct
+			</h4>
+			<ul style="padding:0; margin:0; list-style:none; display:grid; gap:12px;">
+			  ${[
+				{ t: "SECURE MODE", d: "Fullscreen is mandatory. Any attempt to exit fullscreen will be logged as a violation." },
+				{ t: "SYSTEM LOCK", d: "Right-click, Copy, Paste, and PrintScreen are completely disabled." },
+				{ t: "TAB MONITORING", d: "Switching tabs or minimizing the browser will lead to auto-submission after limit." },
+				{ t: "TIME CONSTRAINT", d: "The exam timer runs continuously. Individual question timers may also apply." },
+				{ t: "AUTO-SUBMISSION", d: "Upon timer expiry, your progress will be automatically saved and submitted." }
+			].map(r => `
+			  	<li style="background:#f8fafc; padding:12px 15px; border-radius:12px; border-left:4px solid var(--primary);">
+					<strong style="font-size:12px; color:var(--primary); display:block; margin-bottom:2px;">${r.t}</strong>
+					<span style="font-size:13px; color:#475569; font-weight:500;">${r.d}</span>
+				</li>
+			  `).join('')}
+			</ul>
+		</div>
+
+        <button class="submit-btn-large" style="width:100%; margin-top:30px; height:56px; font-size:16px; font-weight:900; letter-spacing:1px; box-shadow:0 10px 20px rgba(99, 102, 241, 0.2);" id="ackInstrBtn">ACKNOWLEDGE & START ASSESSMENT</button>
       </div>
     `;
 		document.body.appendChild(modal);
+
+		modal.querySelector("#ackInstrBtn").onclick = () => {
+			modal.remove();
+			if (onAcknowledge) onAcknowledge();
+		};
 	}
 
 	function renderActiveQuestion() {
@@ -743,45 +996,59 @@
 	function renderNavGrid() {
 		const grid = document.getElementById("examNavGrid");
 		grid.innerHTML = "";
-		let attemptedCount = 0;
 
-		currentExam.questions.forEach((q, i) => {
-			if (!q) return; // Skip undefined questions to prevent crash
+		// Set grid to 1 column to accommodate headers and then use a flex or nested grid for circles
+		grid.style.display = "flex";
+		grid.style.flexDirection = "column";
+		grid.style.gap = "20px";
 
-			const isAnswered = !!currentExam.answers[q.questionId];
-			if (isAnswered) attemptedCount++;
+		(currentExam.sections || []).forEach(sec => {
+			const sectionQs = currentExam.questions.filter(q => q.sectionId === sec.id || (sec.id === -1 && !q.sectionId));
+			if (sectionQs.length === 0) return;
 
-			const circle = document.createElement("div");
+			const secContainer = document.createElement("div");
+			secContainer.className = "nav-section-group";
 
-			// Accumulate classes for correct precedence and combination
-			const classes = ["nav-circle"];
+			const secTitle = document.createElement("div");
+			secTitle.className = "nav-section-title";
+			secTitle.style.cssText = "font-size: 13px; font-weight: 800; color: var(--primary); text-transform: uppercase; margin-bottom: 10px; border-left: 4px solid var(--primary); padding-left: 10px;";
+			secTitle.textContent = sec.sectionName;
+			secContainer.appendChild(secTitle);
 
-			// Logic for Colors:
-			if (currentExam.markedForReview.has(q.questionId)) classes.push("review");
-			else if (isAnswered) classes.push("answered");
-			else if (currentExam.lockedQuestions.has(q.questionId)) classes.push("locked");
-			else if (currentExam.visitedQuestions.has(q.questionId)) classes.push("not-answered");
-			else classes.push("not-visited");
+			const circleGrid = document.createElement("div");
+			circleGrid.style.display = "grid";
+			circleGrid.style.gridTemplateColumns = "repeat(auto-fill, minmax(40px, 1fr))";
+			circleGrid.style.gap = "10px";
 
-			if (i === currentExam.currentIndex) classes.push("current");
+			sectionQs.forEach(q => {
+				const qGlobalIndex = currentExam.questions.indexOf(q);
+				const isAnswered = !!currentExam.answers[q.questionId];
 
-			circle.className = classes.join(" ");
+				const circle = document.createElement("div");
+				const classes = ["nav-circle"];
 
-			circle.textContent = i + 1;
-			circle.onclick = () => {
-				if (currentExam.lockedQuestions.has(q.questionId)) return;
-				currentExam.currentIndex = i;
-				renderActiveQuestion();
-				renderNavGrid();
-			};
-			grid.appendChild(circle);
+				if (currentExam.markedForReview.has(q.questionId)) classes.push("review");
+				else if (isAnswered) classes.push("answered");
+				else if (currentExam.lockedQuestions.has(q.questionId)) classes.push("locked");
+				else if (currentExam.visitedQuestions.has(q.questionId)) classes.push("not-answered");
+				else classes.push("not-visited");
+
+				if (qGlobalIndex === currentExam.currentIndex) classes.push("current");
+
+				circle.className = classes.join(" ");
+				circle.textContent = qGlobalIndex + 1;
+				circle.onclick = () => {
+					if (currentExam.lockedQuestions.has(q.questionId)) return;
+					currentExam.currentIndex = qGlobalIndex;
+					renderActiveQuestion();
+					renderNavGrid();
+				};
+				circleGrid.appendChild(circle);
+			});
+
+			secContainer.appendChild(circleGrid);
+			grid.appendChild(secContainer);
 		});
-
-		// Removed attempt/warning count from old UI place, 
-		// but if we want them, we'd need to add them to the new layout.
-		// For now, let's assume the user image didn't emphasize them, 
-		// but we can add them to the "Left Panel" if needed.
-
 	}
 
 	function toggleMarkForReview() {
@@ -945,7 +1212,7 @@
 					body: `Tab switching or minimizing detected. You have ${5 - currentExam.blurWarnings} attempts remaining before automatic termination.`,
 					icon: "⚠️",
 					violationCount: currentExam.blurWarnings,
-					buttons: [{ id: "warnOk", text: "I Understand", className: "nav-btn next-btn", callback: null }]
+					buttons: [{ id: "warnOk", text: "I Understand", className: "nav-btn next-btn", callback: () => { setTimeout(enterFullScreen, 50); } }]
 				});
 			}
 		};
@@ -961,7 +1228,7 @@
 			title: "Security Alert",
 			body: msg,
 			icon: "🛡️",
-			buttons: [{ id: "alertOk", text: "I Understand", className: "nav-btn next-btn", callback: null }]
+			buttons: [{ id: "alertOk", text: "I Understand", className: "nav-btn next-btn", callback: () => { setTimeout(enterFullScreen, 50); } }]
 		});
 	}
 

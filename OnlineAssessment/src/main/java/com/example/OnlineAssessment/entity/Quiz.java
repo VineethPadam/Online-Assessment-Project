@@ -25,6 +25,9 @@ public class Quiz {
     @JoinColumn(name = "faculty_id")
     private Faculty faculty;
 
+    @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true, fetch = jakarta.persistence.FetchType.EAGER)
+    private List<Section> sections;
+
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.REMOVE)
     @com.fasterxml.jackson.annotation.JsonIgnore
     private List<Questions> questions;
@@ -67,6 +70,14 @@ public class Quiz {
 
     public void setQuestions(List<Questions> questions) {
         this.questions = questions;
+    }
+
+    public List<Section> getSections() {
+        return sections;
+    }
+
+    public void setSections(List<Section> sections) {
+        this.sections = sections;
     }
 
     public Faculty getFaculty() {

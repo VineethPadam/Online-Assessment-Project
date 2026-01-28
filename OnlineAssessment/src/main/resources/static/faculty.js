@@ -58,6 +58,26 @@
     });
   }
 
+  function showFacultyNotice(title, message, type = "info") {
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay";
+    overlay.style.zIndex = "20000";
+
+    const icon = type === "error" ? "❌" : (type === "success" ? "✅" : "ℹ️");
+    const color = type === "error" ? "#ef4444" : (type === "success" ? "#10b981" : "var(--primary)");
+
+    overlay.innerHTML = `
+      <div class="modal-content" style="max-width:450px; text-align:center; padding:40px;">
+        <div style="font-size:60px; margin-bottom:20px;">${icon}</div>
+        <h3 style="margin:0 0 15px; color:${color}; font-weight:900;">${title}</h3>
+        <p style="color:var(--text-muted); font-weight:600; line-height:1.6; margin-bottom:30px;">${message}</p>
+        <button class="btn-premium btn-primary-grad" style="width:100%; height:50px;">Understood</button>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+    overlay.querySelector("button").onclick = () => overlay.remove();
+  }
+
   // Load departments and update any open dropdowns
   async function loadDepartments() {
     if (departmentsListHTML) return departmentsListHTML;
@@ -100,7 +120,9 @@
 
     const submitBtn = document.createElement("button");
     submitBtn.className = "submit-btn";
+    submitBtn.id = "modalSubmitBtn";
     submitBtn.textContent = options.submitText || "Save Changes";
+    if (options.hideSubmit) submitBtn.style.display = "none";
     submitBtn.onclick = () => submitCallback(modal, overlay);
 
     actions.appendChild(cancelBtn);
@@ -154,7 +176,7 @@
   });
 
   // ===== 3. Advanced Question Editor =====
-  function openQuestionEditor(quiz, allQuestions, startIndex = 0) {
+  function openQuestionEditor(quiz, allQuestions, startIndex = 0, sectionId = null) {
     let currentIndex = startIndex;
     const isNew = startIndex === -1;
 
@@ -306,7 +328,10 @@
       };
 
       const qId = currentIndex >= 0 ? allQuestions[currentIndex].questionId : null;
-      const url = isNew ? `/quiz/${quiz.id}/questions/add` : `/quiz/questions/${qId}`;
+      let url = isNew ? `/quiz/${quiz.id}/questions/add` : `/quiz/questions/${qId}`;
+      if (isNew && sectionId) {
+        url = `/quiz/sections/${sectionId}/questions/add`;
+      }
       const method = isNew ? "POST" : "PUT";
 
       return authFetch(url, {
@@ -317,7 +342,7 @@
         if (r.ok) {
           if (!silent) {
             showMsg(m, "Saved!");
-            setTimeout(() => { o.remove(); openManageQuestions(quiz); }, 1000);
+            setTimeout(() => { o.remove(); if (window.refreshCurrentQuizSections) window.refreshCurrentQuizSections(); else openManageQuestions(quiz); }, 1000);
           }
           return r.json();
         } else {
@@ -334,7 +359,32 @@
     renderCurrent();
   }
 
-  // ===== 4. Manage Questions Home =====
+  // ===== 3.5 Section Editor =====
+  function openSectionEditor(quiz, section = null, callback) {
+    const isNew = !section;
+    const html = `
+      <label class="input-label">Section Name</label>
+      <input type="text" id="secName" value="${section ? section.sectionName : ''}" placeholder="e.g. Physics, Aptitude, etc.">
+      <label class="input-label">Description (Optional)</label>
+      <input type="text" id="secDesc" value="${section ? section.description : ''}" placeholder="Short description of this section">
+    `;
+
+    createModal(isNew ? "Add New Section" : "Edit Section", html, (m, o) => {
+      const name = m.querySelector("#secName").value.trim();
+      const desc = m.querySelector("#secDesc").value.trim();
+      if (!name) return showMsg(m, "Section name is required", "error");
+
+      const url = `/quiz/${quiz.id}/sections?name=${encodeURIComponent(name)}&description=${encodeURIComponent(desc)}`;
+      authFetch(url, { method: "POST" }).then(async r => {
+        if (r.ok) {
+          showMsg(m, "Section saved!");
+          setTimeout(() => { o.remove(); if (callback) callback(); }, 1000);
+        } else showMsg(m, await r.text(), "error");
+      });
+    }, { submitText: "Save Section" });
+  }
+
+  // ===== 4. Manage Questions Home (With Sections) =====
   function openManageQuestions(quiz) {
     document.getElementById("manageQuestionsUI")?.remove();
     document.getElementById("myExamsUI")?.classList.add("hidden");
@@ -350,61 +400,156 @@
           <p style="color:var(--text-muted); margin-top:5px; font-weight:600;">Managing Questions • Code: <strong style="color:var(--primary);">${quiz.quizCode}</strong></p>
         </div>
         <div style="display:flex; gap:12px;">
-          <button id="addQHome" class="btn-premium btn-primary-grad">+ Add Question</button>
+          <button id="addQDirectBtn" class="btn-premium btn-secondary-outline">+ Add Question</button>
+          <button id="addSectionBtn" class="btn-premium btn-primary-grad">+ Add Section</button>
           <button id="backHome" class="btn-premium btn-secondary-outline">Back to Library</button>
         </div>
       </div>
-      <div class="manage-body">
-        <div id="qListHome" class="questions-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:25px;"></div>
+      <div class="manage-body" id="sectionsContainer">
+         <div id="generalQuestionsArea" style="margin-bottom: 40px; display:none;">
+            <div class="section-header" style="background:#fff7ed; border-color:#fed7aa;">
+               <div class="section-title-area">
+                  <h3 style="color:#ea580c;">General Questions</h3>
+                  <p>Questions not assigned to any specific section.</p>
+               </div>
+            </div>
+            <div class="section-body" style="background:#fffcf9;">
+               <div id="mixedQList" class="questions-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:25px;"></div>
+            </div>
+         </div>
+         <div id="sectionListArea">
+            <div style="text-align:center; padding:50px;"><div class="loading-spinner"></div></div>
+         </div>
       </div>
     `;
     facultyContainer.appendChild(ui);
 
-    const loadQs = () => {
-      authFetch(`/quiz/${quiz.id}/questions`).then(r => {
-        if (!r.ok) throw new Error("Load failed");
-        return r.json();
-      }).then(qs => {
-        if (!Array.isArray(qs)) qs = [];
-        const list = ui.querySelector("#qListHome");
-        list.innerHTML = qs.length ? "" : `<div style="grid-column:1/-1; text-align:center; padding:50px; color:#94a3b8;">No questions found.</div>`;
-        qs.forEach((q, i) => {
-          const card = document.createElement("div");
-          card.className = "question-card";
-          card.style.cursor = "pointer";
-          card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
-               <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase;">Question ${i + 1}</span>
-               <button class="small-delete-btn" style="float:none;">Delete</button>
+    const loadSections = () => {
+      // Re-fetch quiz or just use existing. For fresh state, we re-fetch some.
+      const fetchSections = authFetch(`/quiz/${quiz.id}/sections`).then(r => r.json());
+      const fetchAllQs = authFetch(`/quiz/${quiz.id}/questions`).then(r => r.json());
+
+      Promise.all([fetchSections, fetchAllQs]).then(([sections, allQs]) => {
+        const sectionArea = ui.querySelector("#sectionListArea");
+        const generalArea = ui.querySelector("#generalQuestionsArea");
+        const mixedQList = ui.querySelector("#mixedQList");
+        const addQDirectBtn = ui.querySelector("#addQDirectBtn");
+
+        const hasSections = sections && sections.length > 0;
+
+        // UI Rule: If sections exist, faculty should add questions to sections.
+        // Hiding the top direct-add button and the general area entirely.
+        if (hasSections) {
+          addQDirectBtn.style.display = "none";
+          generalArea.style.display = "none";
+        } else {
+          addQDirectBtn.style.display = "inline-flex";
+          // If no sections, we show mixed questions (unassigned ones)
+          const mixedQs = allQs.filter(q => !q.sectionId && !q.section);
+          if (mixedQs.length > 0) {
+            generalArea.style.display = "block";
+            mixedQList.innerHTML = "";
+            renderQuestionCards(mixedQs, mixedQList, quiz, loadSections);
+          } else {
+            generalArea.style.display = "none";
+          }
+        }
+
+        if (!hasSections) {
+          // Check if we have unassigned questions to decide whether to show the empty state
+          const unassignedQsCount = allQs.filter(q => !q.sectionId && !q.section).length;
+          sectionArea.innerHTML = unassignedQsCount > 0 ? "" : `
+            <div style="text-align:center; padding:100px; background:white; border-radius:24px; border:2px dashed var(--border);">
+              <div style="font-size:60px; margin-bottom:20px;">📦</div>
+              <h3 style="font-weight:900;">Organize Your Exam</h3>
+              <p style="color:var(--text-muted); font-weight:600;">You can add questions directly or create sections for better structure.</p>
+              <div style="display:flex; justify-content:center; gap:20px; margin-top:20px;">
+                <button class="btn-premium btn-secondary-outline" onclick="document.getElementById('addQDirectBtn').click()">Add Direct Question</button>
+                <button class="btn-premium btn-primary-grad" onclick="document.getElementById('addSectionBtn').click()">Create Section</button>
+              </div>
+            </div>`;
+          return;
+        }
+
+        sectionArea.innerHTML = "";
+        sections.forEach(sec => {
+          const secWrap = document.createElement("div");
+          secWrap.className = "section-wrapper";
+          secWrap.innerHTML = `
+            <div class="section-header">
+              <div class="section-title-area">
+                <h3>${sec.sectionName}</h3>
+                <p>${sec.description || 'No description provided'}</p>
+              </div>
+              <div class="section-actions">
+                <button class="btn-premium btn-primary-grad add-q-to-sec" style="padding: 8px 16px; font-size:12px;">+ Add Question</button>
+                <button class="delete-btn delete-sec" style="padding: 8px 16px; font-size:12px;">Delete Section</button>
+              </div>
             </div>
-            <div style="font-weight:700; color:var(--text-main); font-size:1.0rem; line-height:1.6; white-space: pre-wrap; font-family: 'Consolas', monospace; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin: 10px 0;">${q.questionText}</div>
-            <div class="meta-pill"><span>${q.marks} Marks</span><span>-${q.negativeMarks} Neg</span></div>
-            <div style="margin-top:15px; color:var(--text-muted); font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:5px;">
-               <span>Options: <b>${q.options?.choices?.length || 0}</b></span>
-               ${q.timeLimitSeconds ? `<span style="margin-left:auto;">⏱️ ${q.timeLimitSeconds}s</span>` : ''}
+            <div class="section-body">
+              <div class="questions-list" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:25px;">
+                 ${(sec.questions || []).length === 0 ? '<div class="empty-section-msg" style="grid-column: 1/-1;">No questions in this section.</div>' : ''}
+              </div>
             </div>
           `;
-          card.onclick = (e) => {
-            if (e.target.classList.contains('small-delete-btn')) {
-              if (confirm("Delete this question?")) authFetch(`/quiz/questions/${q.questionId}`, { method: "DELETE" }).then(r => { if (r.ok) loadQs(); });
-              return;
+
+          const qList = secWrap.querySelector(".questions-list");
+          renderQuestionCards(sec.questions || [], qList, quiz, loadSections, sec.id);
+
+          secWrap.querySelector(".add-q-to-sec").onclick = () => openQuestionEditor(quiz, [], -1, sec.id);
+          secWrap.querySelector(".delete-sec").onclick = () => {
+            if (confirm(`Delete section "${sec.sectionName}" and all its questions?`)) {
+              authFetch(`/quiz/sections/${sec.id}`, { method: "DELETE" }).then(r => { if (r.ok) loadSections(); });
             }
-            openQuestionEditor(quiz, qs, i);
           };
-          list.appendChild(card);
+
+          sectionArea.appendChild(secWrap);
         });
       }).catch(err => {
-        ui.querySelector("#qListHome").innerHTML = `<div style="grid-column:1/-1; color:red; text-align:center;">Failed to load questions.</div>`;
+        ui.querySelector("#sectionListArea").innerHTML = `<div style="color:red; text-align:center;">Failed to load data.</div>`;
       });
     };
-    loadQs();
 
-    ui.querySelector("#addQHome").onclick = () => openQuestionEditor(quiz, [], -1);
+    function renderQuestionCards(qs, listElement, quizInfo, reloadFn, sectionId = null) {
+      qs.forEach((q, i) => {
+        const card = document.createElement("div");
+        card.className = "question-card";
+        card.style.cursor = "pointer";
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+             <span style="font-size:12px; font-weight:800; color:var(--primary); text-transform:uppercase;">Question ${i + 1}</span>
+             <button class="small-delete-btn" style="float:none;">Delete</button>
+          </div>
+          <div style="font-weight:700; color:var(--text-main); font-size:1.0rem; line-height:1.6; white-space: pre-wrap; font-family: 'Consolas', monospace; background: #f8fafc; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; margin: 10px 0;">${q.questionText}</div>
+          <div class="meta-pill"><span>${q.marks} Marks</span><span>-${q.negativeMarks} Neg</span></div>
+          <div style="margin-top:15px; color:var(--text-muted); font-size:0.85rem; font-weight:600; display:flex; align-items:center; gap:5px;">
+             <span>Options: <b>${q.options?.choices?.length || 0}</b></span>
+             ${q.timeLimitSeconds ? `<span style="margin-left:auto;">⏱️ ${q.timeLimitSeconds}s</span>` : ''}
+          </div>
+        `;
+        card.onclick = (e) => {
+          if (e.target.classList.contains('small-delete-btn')) {
+            if (confirm("Delete this question?")) authFetch(`/quiz/questions/${q.questionId}`, { method: "DELETE" }).then(r => { if (r.ok) reloadFn(); });
+            return;
+          }
+          openQuestionEditor(quizInfo, qs, i, sectionId);
+        };
+        listElement.appendChild(card);
+      });
+    }
+
+    loadSections();
+
+    ui.querySelector("#addQDirectBtn").onclick = () => openQuestionEditor(quiz, [], -1, null);
+    ui.querySelector("#addSectionBtn").onclick = () => openSectionEditor(quiz, null, loadSections);
     ui.querySelector("#backHome").onclick = () => {
       ui.remove();
       const myUI = document.getElementById("myExamsUI");
       if (myUI) myUI.classList.remove("hidden"); else facultyDashboard.classList.remove("hidden");
     };
+
+    // Override the reload behavior of openManageQuestions in other functions if needed
+    window.refreshCurrentQuizSections = loadSections;
   }
 
   // ===== 5. My Conducted Exams =====
@@ -553,7 +698,7 @@
           }
           resBody.innerHTML = data.map(r => `
           <tr style="border-bottom:1px solid var(--border); transition:background 0.2s;" onmouseover="this.style.background='var(--background)'" onmouseout="this.style.background='transparent'">
-            <td style="padding:15px 20px;"><span style="background:var(--primary); color:white; width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px;">#${r.rank}</span></td>
+            <td style="padding:15px 20px;"><span style="background:${r.rank ? 'var(--primary)' : '#94a3b8'}; color:white; width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-weight:900; font-size:12px;">${r.rank ? '#' + r.rank : 'N/A'}</span></td>
             <td style="padding:15px 20px; color:var(--text-muted); font-weight:700; font-size:13px;">${r.student.studentRollNumber}</td>
             <td style="padding:15px 20px; font-weight:800; color:var(--text-main); font-size:14px;">${r.student.studentName}</td>
             <td style="padding:15px 20px; font-size:13px; color:var(--text-muted);">${r.student.department}-${r.student.studentSection}-${r.student.studentYear}</td>
@@ -874,25 +1019,211 @@
   // Utilities
   activateQuizBtn?.addEventListener("click", () => {
     loadDepartments();
-    createModal("Live Activation",
-      `<label class="input-label">Quiz ID</label><input type="number" id="aI">
-       <div class="input-group-row">
-         <div><label class="input-label">Sec</label><select id="aS">${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}">${s}</option>`).join("")}</select></div>
-         <div>
-           <label class="input-label">Dept</label>
-           <select id="aD" class="dept-select-dynamic">
-             <option value="">Select Department</option>
-             ${departmentsListHTML}
-           </select>
+    const html = `
+      <label class="input-label">Quiz ID</label>
+      <div style="display:flex; gap:10px;">
+        <input type="number" id="aI" placeholder="Enter Quiz ID" style="flex:1;">
+        <button id="loadConfigBtn" class="btn-premium btn-secondary-outline" style="padding:0 15px;">Fetch Details</button>
+      </div>
+      
+      <div id="activationConfigArea" style="margin-top:20px; display:none;">
+         <div class="input-group-row">
+           <div><label class="input-label">Sec</label><select id="aS">${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}">${s}</option>`).join("")}</select></div>
+           <div>
+             <label class="input-label">Dept</label>
+             <select id="aD" class="dept-select-dynamic">
+               <option value="">Select Department</option>
+               ${departmentsListHTML}
+             </select>
+           </div>
+           <div><label class="input-label">Year</label><select id="aY"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
          </div>
-         <div><label class="input-label">Year</label><select id="aY"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
-       </div>
-       <label class="input-label">Duration (Mins)</label><input type="number" id="aDu" value="60">
-       <label class="input-label">Action</label><select id="aSt"><option value="true">Activate</option><option value="false">Deactivate</option></select>`,
-      (m, o) => {
-        authFetch(`/quiz/activate?quizId=${m.querySelector("#aI").value}&section=${m.querySelector("#aS").value}&department=${m.querySelector("#aD").value}&year=${m.querySelector("#aY").value}&active=${m.querySelector("#aSt").value}&durationMinutes=${m.querySelector("#aDu").value}`, { method: "POST" })
-          .then(async r => { showMsg(m, await r.text(), r.ok ? "success" : "error"); if (r.ok) setTimeout(() => o.remove(), 1500); });
+         
+         <div style="margin-top:20px; padding:15px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
+            <h4 style="margin:0 0 10px; font-size:14px; color:var(--primary);">Random Question Settings</h4>
+            <p style="font-size:11px; color:var(--text-muted); margin-bottom:15px;">Specify how many questions to pick randomly for each student. Leave 0 to pick all.</p>
+            <div id="sectionCountsList"></div>
+         </div>
+
+         <label class="input-label">Duration (Mins)</label><input type="number" id="aDu" value="60">
+         <label class="input-label">Action</label><select id="aSt"><option value="true">Activate</option><option value="false">Deactivate</option></select>
+      </div>
+    `;
+
+    const modal = createModal("Live Activation", html, (m, o) => {
+      const quizId = m.querySelector("#aI").value;
+      const section = m.querySelector("#aS").value;
+      const dept = m.querySelector("#aD").value;
+      const year = m.querySelector("#aY").value;
+      const active = m.querySelector("#aSt").value;
+      const duration = m.querySelector("#aDu").value;
+
+      // Extract section configs and VALIDATE
+      const configs = {};
+      let isValid = true;
+      let errorMsg = "";
+
+      m.querySelectorAll(".sec-row-item").forEach(row => {
+        const sid = row.dataset.id;
+        const totalAvail = parseInt(row.dataset.total);
+        const countInput = row.querySelector(".sec-count-input");
+        const marksInput = row.querySelector(".sec-marks-input");
+
+        const count = parseInt(countInput.value) || 0;
+        const targetMarks = parseFloat(marksInput.value) || 0;
+        const marksArray = JSON.parse(row.dataset.marks || "[]");
+
+        if (count > totalAvail) {
+          isValid = false;
+          errorMsg = `Section "${row.dataset.name}": Trying to get more questions (${count}) than existing questions (${totalAvail}).`;
+          return;
+        }
+
+        if (count > 0 && targetMarks > 0) {
+          // Sort to find max/min possible for specific error Messaging
+          const sorted = [...marksArray].sort((a, b) => b - a);
+          const maxPossible = sorted.slice(0, count).reduce((a, b) => a + b, 0);
+          const minPossible = sorted.slice(-count).reduce((a, b) => a + b, 0);
+
+          if (targetMarks > maxPossible) {
+            isValid = false;
+            errorMsg = `Section "${row.dataset.name}": You requested ${targetMarks} marks, but the most I can get from any ${count} questions is ${maxPossible}. I can't accommodate that much marks for this section.`;
+            return;
+          }
+
+          if (targetMarks < minPossible) {
+            isValid = false;
+            errorMsg = `Section "${row.dataset.name}": The minimum marks possible for ${count} questions is ${minPossible}. Your target of ${targetMarks} is too low.`;
+            return;
+          }
+
+          if (!canSatisfyMarks(marksArray, count, targetMarks)) {
+            isValid = false;
+            errorMsg = `Section "${row.dataset.name}": I can't pick the questions for these marks according to the marks you gave to your questions.`;
+            return;
+          }
+        }
+
+        if (count > 0) {
+          configs[sid] = { count, targetMarks };
+        }
       });
+
+      if (!isValid) return showFacultyNotice("Configuration Error", errorMsg, "error");
+
+      const configStr = encodeURIComponent(JSON.stringify(configs));
+      const url = `/quiz/activate?quizId=${quizId}&section=${section}&department=${dept}&year=${year}&active=${active}&durationMinutes=${duration}&sectionConfigs=${configStr}`;
+
+      authFetch(url, { method: "POST" }).then(async r => {
+        if (r.ok) {
+          const action = active === "true" ? "Activated" : "Deactivated";
+          showFacultyNotice("Success", `Quiz ${action} Successfully!`, "success");
+          setTimeout(() => o.remove(), 1500);
+        } else {
+          showFacultyNotice("Action Failed", await r.text(), "error");
+        }
+      });
+    }, { hideSubmit: true, submitText: "Activate Assessment" });
+
+    // Helper: Subset sum variant to check if N elements can sum to T
+    function canSatisfyMarks(marks, n, target) {
+      // DP or recursive with memo
+      const memo = new Map();
+      function solve(idx, count, currentSum) {
+        const key = `${idx}-${count}-${currentSum.toFixed(2)}`;
+        if (memo.has(key)) return memo.get(key);
+
+        if (count === n) {
+          return Math.abs(currentSum - target) < 0.01;
+        }
+        if (idx === marks.length || count > n || currentSum > target + 1) return false;
+
+        // Pick
+        if (solve(idx + 1, count + 1, currentSum + marks[idx])) {
+          memo.set(key, true);
+          return true;
+        }
+        // Skip
+        if (solve(idx + 1, count, currentSum)) {
+          memo.set(key, true);
+          return true;
+        }
+
+        memo.set(key, false);
+        return false;
+      }
+      return solve(0, 0, 0);
+    }
+
+    const loadBtn = modal.querySelector("#loadConfigBtn");
+    loadBtn.onclick = async () => {
+      const qId = modal.querySelector("#aI").value;
+      if (!qId) return showFacultyNotice("Required Field", "Please enter a valid Quiz ID to fetch configuration details.", "error");
+
+      loadBtn.disabled = true;
+      loadBtn.textContent = "...";
+
+      try {
+        const [secRes, qRes] = await Promise.all([
+          authFetch(`/quiz/${qId}/sections`),
+          authFetch(`/quiz/${qId}/questions`)
+        ]);
+
+        if (!secRes.ok || !qRes.ok) throw new Error();
+
+        const sections = await secRes.json();
+        const allQs = await qRes.json();
+
+        const listArea = modal.querySelector("#sectionCountsList");
+        listArea.innerHTML = `
+          <div style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px; margin-bottom:10px; padding-bottom:5px; border-bottom:1px solid #ddd; font-size:10px; font-weight:800; text-transform:uppercase; color:#64748b;">
+             <span>Section Name</span>
+             <span>Qty</span>
+             <span>Marks</span>
+          </div>
+        `;
+
+        const renderRow = (id, name, qs) => {
+          const mList = JSON.stringify(qs.map(q => q.marks));
+          return `
+            <div class="sec-row-item" data-id="${id}" data-total="${qs.length}" data-name="${name}" data-marks='${mList}' style="display:grid; grid-template-columns: 2fr 1fr 1fr; gap:10px; align-items:center; margin-bottom:8px;">
+               <span style="font-size:12px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${name}">${name} (${qs.length})</span>
+               <input type="number" class="sec-count-input" value="0" placeholder="Qty" style="width:100%; margin:0; padding:5px 8px; border-radius:8px;">
+               <input type="number" class="sec-marks-input" value="0" placeholder="Marks" style="width:100%; margin:0; padding:5px 8px; border-radius:8px;">
+            </div>
+          `;
+        };
+
+        // General questions
+        const orphaned = allQs.filter(q => !q.sectionId && !q.section);
+        if (orphaned.length > 0) listArea.innerHTML += renderRow("-1", "General", orphaned);
+
+        // Sections
+        sections.forEach(sec => {
+          listArea.innerHTML += renderRow(sec.id, sec.sectionName, sec.questions || []);
+        });
+
+        modal.querySelector("#activationConfigArea").style.display = "block";
+
+        const submitBtn = modal.querySelector("#modalSubmitBtn");
+        submitBtn.style.display = "inline-flex";
+
+        const actionSelect = modal.querySelector("#aSt");
+        if (actionSelect) {
+          actionSelect.onchange = () => {
+            submitBtn.textContent = actionSelect.value === "true" ? "Activate Assessment" : "Deactivate Assessment";
+          };
+          // Trigger once init
+          actionSelect.onchange();
+        }
+
+      } catch (e) {
+        showFacultyNotice("Sync Error", "Could not synchronize with quiz database. Please verify the Quiz ID.", "error");
+      } finally {
+        loadBtn.disabled = false;
+        loadBtn.textContent = "Fetch";
+      }
+    };
   });
 
   publishResultBtn?.addEventListener("click", () => {

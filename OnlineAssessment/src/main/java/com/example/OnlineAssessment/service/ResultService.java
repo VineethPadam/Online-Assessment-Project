@@ -53,17 +53,20 @@ public class ResultService {
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
         double score = 0;
+        double totalPossibleMarks = 0;
 
         for (Map.Entry<String, String> entry : answers.entrySet()) {
+            String questionId = entry.getKey();
             String studentAnswer = entry.getValue();
-            if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
-                continue; // Skip evaluation for unanswered questions
-            }
 
-            Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(entry.getKey()).orElse(null);
-
+            Options correctOptionObj = optionsRepo.findByQuestion_QuestionId(questionId).orElse(null);
             if (correctOptionObj != null) {
                 Questions question = correctOptionObj.getQuestion();
+                totalPossibleMarks += question.getMarks();
+
+                if (studentAnswer == null || studentAnswer.trim().isEmpty()) {
+                    continue;
+                }
 
                 List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
                         .map(String::trim)
@@ -74,10 +77,6 @@ public class ResultService {
                         .map(String::trim)
                         .filter(s -> !s.isEmpty())
                         .toList();
-
-                if (selectedOptions.isEmpty()) {
-                    continue; // Double check, skip if no actual choices were selected
-                }
 
                 if (correctOptions.size() == selectedOptions.size()
                         && correctOptions.containsAll(selectedOptions)) {
@@ -92,6 +91,7 @@ public class ResultService {
         result.setStudent(student);
         result.setQuiz(quiz);
         result.setScore(score);
+        result.setTotalMarks(totalPossibleMarks);
 
         result.setSubmissionTime(java.time.LocalDateTime.now());
         result.setAnswers(objectMapper.writeValueAsString(answers));
@@ -161,21 +161,23 @@ public class ResultService {
             throw new RuntimeException("Invalid filter combination");
         }
 
-        // Calculate total possible score once for the quiz
-        double totalPossibleScore = 0;
-        if (!results.isEmpty()) {
-            totalPossibleScore = results.get(0).getQuiz().getQuestions().stream()
-                    .mapToDouble(Questions::getMarks).sum();
-        }
-
         // ===== Assign unique ranks based on score and submission time (already sorted
         // by repo) =====
+        // Only students who pass should receive a rank
+        int rankCounter = 1;
         for (int i = 0; i < results.size(); i++) {
             Result r = results.get(i);
-            r.setTotalMarks((int) totalPossibleScore);
-            r.setPassFail((totalPossibleScore > 0 && ((double) r.getScore() / totalPossibleScore) * 100 >= 40) ? "Pass"
-                    : "Fail");
-            r.setRank(i + 1); // Strict unique rank
+            // totalMarks is now persistent, so we use r.getTotalMarks()
+            double tm = r.getTotalMarks();
+            boolean hasPassed = (tm > 0 && ((double) r.getScore() / tm) * 100 >= 40);
+            r.setPassFail(hasPassed ? "Pass" : "Fail");
+
+            // Only assign rank if student passed
+            if (hasPassed) {
+                r.setRank(rankCounter++);
+            } else {
+                r.setRank(null); // No rank for failed students
+            }
         }
 
         // ===== Sort final results =====
@@ -193,9 +195,8 @@ public class ResultService {
     public List<Result> getAllStudentResults(String rollNumber) {
         List<Result> results = resultRepo.findResultsByStudent_StudentRollNumber(rollNumber);
         for (Result r : results) {
-            double totalMarks = r.getQuiz().getQuestions().stream().mapToDouble(Questions::getMarks).sum();
-            r.setTotalMarks((int) totalMarks);
-            r.setPassFail(((double) r.getScore() / totalMarks) * 100 >= 40 ? "Pass" : "Fail");
+            double totalMarks = r.getTotalMarks();
+            r.setPassFail((totalMarks > 0 && ((double) r.getScore() / totalMarks) * 100 >= 40) ? "Pass" : "Fail");
 
             // Check publication
             Student s = r.getStudent();

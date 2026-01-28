@@ -28,6 +28,16 @@ public class Questions {
     @com.fasterxml.jackson.annotation.JsonIgnore
     private Quiz quiz;
 
+    @ManyToOne
+    @JoinColumn(name = "section_id")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private Section section;
+
+    @com.fasterxml.jackson.annotation.JsonProperty("sectionId")
+    public Long getSectionIdForJson() {
+        return section != null ? section.getId() : null;
+    }
+
     @OneToOne(mappedBy = "question", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
     private Options options;
 
@@ -61,6 +71,14 @@ public class Questions {
 
     public void setQuiz(Quiz quiz) {
         this.quiz = quiz;
+    }
+
+    public Section getSection() {
+        return section;
+    }
+
+    public void setSection(Section section) {
+        this.section = section;
     }
 
     public Options getOptions() {

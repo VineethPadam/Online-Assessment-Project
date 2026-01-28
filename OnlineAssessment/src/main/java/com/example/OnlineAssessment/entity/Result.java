@@ -36,7 +36,6 @@ public class Result {
     @Lob
     private String answers;
 
-    @Transient
     private double totalMarks;
 
     @Transient

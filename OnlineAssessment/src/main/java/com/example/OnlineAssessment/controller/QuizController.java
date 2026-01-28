@@ -39,6 +39,9 @@ public class QuizController {
     @Autowired
     private QuizRepo quizRepo;
 
+    @Autowired
+    private com.example.OnlineAssessment.service.SectionService sectionService;
+
     private String getCurrentFacultyId() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         Faculty faculty = facultyRepo.findByEmail(email);
@@ -151,10 +154,11 @@ public class QuizController {
             @RequestParam String department,
             @RequestParam int year,
             @RequestParam boolean active,
-            @RequestParam(defaultValue = "0") int durationMinutes) {
+            @RequestParam(defaultValue = "0") int durationMinutes,
+            @RequestParam(required = false) String sectionConfigs) {
 
         try {
-            quizService.activateQuiz(quizId, section, department, year, active, durationMinutes);
+            quizService.activateQuiz(quizId, section, department, year, active, durationMinutes, sectionConfigs);
             return ResponseEntity.ok("Quiz activation updated successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -186,19 +190,157 @@ public class QuizController {
         return ResponseEntity.ok(quizService.getActiveQuizzesForStudent(section, department, year));
     }
 
-    // ✅ Fetch questions for a student
-    @GetMapping("/{quizId}/questions/for-student")
-    public List<Questions> getQuestionsForStudent(
+    // ✅ Fetch sections and questions for a student
+    @GetMapping("/{quizId}/sections/for-student")
+    public List<?> getSectionsForStudent(
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year,
             @PathVariable Long quizId) {
 
-        boolean isActive = quizService.isQuizActiveForStudent(quizId, section, department, year);
-        if (!isActive) {
+        com.example.OnlineAssessment.entity.QuizActivation activation = quizService.getQuizActivation(quizId, section,
+                department, year);
+        if (activation == null || !activation.isActive()) {
             throw new RuntimeException("Quiz is not active for your class.");
         }
-        return questionService.getQuestionsByQuizId(quizId);
+
+        java.util.List<com.example.OnlineAssessment.entity.Section> sections = sectionService
+                .getSectionsByQuizId(quizId);
+        java.util.List<Questions> allQuestions = questionService.getQuestionsByQuizId(quizId);
+        java.util.List<Questions> orphanedQuestions = allQuestions.stream().filter(q -> q.getSection() == null)
+                .toList();
+
+        java.util.Map<String, java.util.Map<String, Object>> configs = null;
+        if (activation.getSectionConfigs() != null && !activation.getSectionConfigs().isEmpty()) {
+            try {
+                configs = new com.fasterxml.jackson.databind.ObjectMapper().readValue(
+                        activation.getSectionConfigs(),
+                        new com.fasterxml.jackson.core.type.TypeReference<java.util.Map<String, java.util.Map<String, Object>>>() {
+                        });
+            } catch (Exception e) {
+            }
+        }
+
+        // Get student roll from security context
+        String roll = SecurityContextHolder.getContext().getAuthentication().getName();
+        // Use hash of roll number + quizId as seed for consistent randomness per
+        // student
+        long seed = (roll + quizId).hashCode();
+        java.util.Random studentRandom = new java.util.Random(seed);
+
+        java.util.List<Object> finalSections = new java.util.ArrayList<>();
+
+        if (!orphanedQuestions.isEmpty()) {
+            java.util.Map<String, Object> cfg = (configs != null) ? configs.get("-1") : null;
+            java.util.List<Questions> picked = pickRandom(orphanedQuestions, cfg, studentRandom);
+            if (!picked.isEmpty()) {
+                com.example.OnlineAssessment.entity.Section virtualSection = new com.example.OnlineAssessment.entity.Section();
+                virtualSection.setId(-1L);
+                virtualSection.setSectionName("General");
+                virtualSection.setDescription("General questions for this exam");
+                virtualSection.setQuestions(picked);
+                finalSections.add(virtualSection);
+            }
+        }
+
+        // Handle Real Sections
+        for (com.example.OnlineAssessment.entity.Section sec : sections) {
+            java.util.Map<String, Object> cfg = (configs != null) ? configs.get(sec.getId().toString()) : null;
+            java.util.List<Questions> picked = pickRandom(sec.getQuestions(), cfg, studentRandom);
+            sec.setQuestions(picked);
+            finalSections.add(sec);
+        }
+
+        return finalSections;
+    }
+
+    private java.util.List<Questions> pickRandom(java.util.List<Questions> list, java.util.Map<String, Object> config,
+            java.util.Random rnd) {
+        if (list == null || list.isEmpty())
+            return new java.util.ArrayList<>();
+
+        // Always shuffle EVERYTHING first
+        java.util.List<Questions> baseList = new java.util.ArrayList<>(list);
+        java.util.Collections.shuffle(baseList, rnd);
+
+        // Always shuffle options for each question
+        for (Questions q : baseList) {
+            if (q.getOptions() != null && q.getOptions().getChoices() != null) {
+                java.util.List<String> choices = new java.util.ArrayList<>(q.getOptions().getChoices());
+
+                // Smart Detection: If options contain position-dependent text, skip shuffling
+                boolean isPositional = choices.stream().anyMatch(c -> {
+                    String lc = c.toLowerCase();
+                    return lc.contains("both") || lc.contains("above") || lc.contains("below")
+                            || lc.contains("neither") || lc.contains("all of the");
+                });
+                if (isPositional)
+                    continue;
+
+                java.util.List<String> imgs = q.getOptions().getChoiceImages() != null
+                        ? new java.util.ArrayList<>(q.getOptions().getChoiceImages())
+                        : new java.util.ArrayList<>();
+
+                // Keep images in sync with choices using the same shuffled indices
+                java.util.List<Integer> indices = new java.util.ArrayList<>();
+                for (int i = 0; i < choices.size(); i++)
+                    indices.add(i);
+                java.util.Collections.shuffle(indices, rnd);
+
+                java.util.List<String> shuffledChoices = new java.util.ArrayList<>();
+                java.util.List<String> shuffledImgs = new java.util.ArrayList<>();
+                for (int idx : indices) {
+                    shuffledChoices.add(choices.get(idx));
+                    if (idx < imgs.size())
+                        shuffledImgs.add(imgs.get(idx));
+                }
+                q.getOptions().setChoices(shuffledChoices);
+                q.getOptions().setChoiceImages(shuffledImgs);
+            }
+        }
+
+        if (config == null)
+            return baseList;
+
+        Integer count = (Integer) config.get("count");
+        Double targetMarks = (config.get("targetMarks") != null) ? ((Number) config.get("targetMarks")).doubleValue()
+                : 0.0;
+
+        if (count == null || count <= 0)
+            return baseList;
+
+        if (targetMarks > 0) {
+            // Pick N questions that sum to targetMarks.
+            // baseList is already shuffled
+            java.util.List<Questions> result = findSubset(baseList, count, targetMarks, 0, new java.util.ArrayList<>());
+            if (result != null)
+                return result;
+        }
+
+        // Fallback or if no targetMarks: already shuffled, just take N
+        if (count > baseList.size())
+            count = baseList.size();
+        return baseList.subList(0, count);
+    }
+
+    private java.util.List<Questions> findSubset(java.util.List<Questions> list, int n, double target, int start,
+            java.util.List<Questions> current) {
+        if (current.size() == n) {
+            double sum = current.stream().mapToDouble(Questions::getMarks).sum();
+            return (Math.abs(sum - target) < 0.01) ? new java.util.ArrayList<>(current) : null;
+        }
+        if (start >= list.size())
+            return null;
+
+        // Try including list[start]
+        current.add(list.get(start));
+        java.util.List<Questions> found = findSubset(list, n, target, start + 1, current);
+        if (found != null)
+            return found;
+
+        // Try excluding
+        current.remove(current.size() - 1);
+        return findSubset(list, n, target, start + 1, current);
     }
 
     // ✅ Fetch questions by quizId (general use)
@@ -224,6 +366,59 @@ public class QuizController {
             quizService.publishResults(quizId, section, department, year, publish);
             return ResponseEntity.ok(publish ? "Result published" : "Result unpublished");
         } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    // ✅ Sections Endpoints
+    @PostMapping("/{quizId}/sections")
+    public ResponseEntity<?> createSection(
+            @PathVariable Long quizId,
+            @RequestParam String name,
+            @RequestParam(required = false) String description) {
+        try {
+            return ResponseEntity.ok(sectionService.createSection(quizId, name, description));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{quizId}/sections")
+    public ResponseEntity<?> getSections(@PathVariable Long quizId) {
+        return ResponseEntity.ok(sectionService.getSectionsByQuizId(quizId));
+    }
+
+    @DeleteMapping("/sections/{sectionId}")
+    public ResponseEntity<?> deleteSection(@PathVariable Long sectionId) {
+        try {
+            sectionService.deleteSection(sectionId);
+            return ResponseEntity.ok("Section deleted");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/sections/{sectionId}/questions/add")
+    public ResponseEntity<?> addQuestionToSection(
+            @PathVariable Long sectionId,
+            @RequestBody Map<String, Object> payload) {
+        try {
+            String text = (String) payload.get("questionText");
+            @SuppressWarnings("unchecked")
+            List<String> options = (List<String>) payload.get("options");
+            String correct = (String) payload.get("correctOption");
+            double marks = Double.parseDouble(payload.get("marks").toString());
+            double negMarks = Double.parseDouble(payload.get("negativeMarks").toString());
+            Integer timeLimit = payload.get("timeLimit") != null ? Integer.parseInt(payload.get("timeLimit").toString())
+                    : null;
+            String questionImage = (String) payload.get("questionImage");
+            @SuppressWarnings("unchecked")
+            List<String> choiceImages = (List<String>) payload.get("choiceImages");
+
+            Questions q = questionService.addQuestionToSection(sectionId, text, options, correct, marks, negMarks,
+                    timeLimit, questionImage, choiceImages);
+            return ResponseEntity.ok(q);
+        } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
     }

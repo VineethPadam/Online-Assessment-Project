@@ -24,9 +24,16 @@ public class QuestionService {
     @Autowired
     private QuizRepo quizRepo;
 
+    @Autowired
+    private com.example.OnlineAssessment.repositories.SectionRepo sectionRepo;
+
     // Fetch questions by internal quiz ID
     public List<Questions> getQuestionsByQuizId(Long quizId) {
         return questionRepo.findByQuiz_Id(quizId);
+    }
+
+    public List<Questions> getQuestionsBySectionId(Long sectionId) {
+        return questionRepo.findBySection_Id(sectionId);
     }
 
     public boolean isMultiple(String questionId) {
@@ -34,6 +41,33 @@ public class QuestionService {
         if (opt == null || opt.getCorrectOption() == null)
             return false;
         return opt.getCorrectOption().contains(",");
+    }
+
+    @Transactional
+    public Questions addQuestionToSection(Long sectionId, String questionText, List<String> choices,
+            String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
+            String questionImage, List<String> choiceImages) {
+        com.example.OnlineAssessment.entity.Section section = sectionRepo.findById(sectionId)
+                .orElseThrow(() -> new RuntimeException("Section not found"));
+
+        Questions question = new Questions();
+        question.setQuestionText(questionText);
+        question.setQuiz(section.getQuiz());
+        question.setSection(section);
+        question.setMarks(marks);
+        question.setNegativeMarks(negativeMarks);
+        question.setTimeLimitSeconds(timeLimitSeconds);
+        question.setQuestionImage(questionImage);
+
+        Options options = new Options();
+        options.setChoices(choices);
+        options.setChoiceImages(choiceImages);
+        options.setCorrectOption(correctOption);
+        options.setQuestion(question);
+
+        question.setOptions(options);
+
+        return questionRepo.save(question);
     }
 
     @Transactional

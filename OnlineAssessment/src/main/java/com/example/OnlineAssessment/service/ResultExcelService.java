@@ -50,7 +50,7 @@ public class ResultExcelService {
         int rowNum = 1;
         for (Result r : results) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue(r.getRank() != null ? r.getRank() : 0);
+            row.createCell(0).setCellValue(r.getRank() != null ? String.valueOf(r.getRank()) : "N/A");
             row.createCell(1).setCellValue(r.getStudent().getStudentRollNumber());
             row.createCell(2).setCellValue(r.getStudent().getStudentName());
             row.createCell(3).setCellValue(r.getStudent().getDepartment());

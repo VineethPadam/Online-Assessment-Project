@@ -43,7 +43,7 @@ public class QuizService {
 
     // Activate or deactivate a quiz
     public QuizActivation activateQuiz(Long internalQuizId, String section,
-            String department, int year, boolean active, int durationMinutes) {
+            String department, int year, boolean active, int durationMinutes, String sectionConfigs) {
 
         Quiz quiz = quizRepo.findById(internalQuizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
@@ -61,6 +61,7 @@ public class QuizService {
 
         qa.setActive(active);
         qa.setDurationMinutes(durationMinutes);
+        qa.setSectionConfigs(sectionConfigs);
 
         return quizActivationRepo.save(qa);
     }
@@ -86,6 +87,10 @@ public class QuizService {
         QuizActivation qa = quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department,
                 year);
         return qa != null && qa.isActive();
+    }
+
+    public QuizActivation getQuizActivation(Long internalQuizId, String section, String department, int year) {
+        return quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department, year);
     }
 
     @Transactional
