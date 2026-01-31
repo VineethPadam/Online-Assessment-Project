@@ -182,6 +182,12 @@
 
     const editorHTML = `
       <div id="editorContent">
+        <label class="input-label">Question Type</label>
+        <select id="qType" style="margin-bottom:15px; width:100%; height:45px; border-radius:10px; border:2px solid #e2e8f0; padding:0 15px; font-weight:600;">
+           <option value="MCQ">Multiple Choice</option>
+           <option value="NUMERICAL">Numerical Answer (JEE/GATE Style)</option>
+        </select>
+      
         <label class="input-label">Question Text</label>
         <textarea id="edText" style="min-height:100px;"></textarea>
         
@@ -189,9 +195,17 @@
         <input type="file" id="edImg" accept="image/*" style="margin-bottom:15px;">
         <div id="edImgPreview" style="margin-bottom:20px; max-height:150px; overflow:hidden; border-radius:8px; display:none;"></div>
 
-        <label class="input-label">Options (Mark correct answer)</label>
-        <div id="edOptList"></div>
-        <button id="edAddOpt" class="add-opt-btn" style="padding:10px; font-size:13px; margin-bottom:20px;">+ Add Option</button>
+        <div id="mcqSection">
+            <label class="input-label">Options (Mark correct answer)</label>
+            <div id="edOptList"></div>
+            <button id="edAddOpt" class="add-opt-btn" style="padding:10px; font-size:13px; margin-bottom:20px;">+ Add Option</button>
+        </div>
+
+        <div id="numericalSection" style="display:none;">
+             <label class="input-label">Correct Numerical Answer</label>
+             <input type="number" id="edNumAns" step="any" placeholder="e.g. 5.5 or -10" style="margin-bottom:20px;">
+             <p style="font-size:12px; color:var(--text-muted); margin-top:-15px; margin-bottom:20px;">Enter the exact numerical value correct for this question.</p>
+        </div>
         
         <div class="input-group-row">
           <div><label class="input-label">Marks</label><input type="number" id="edMarks" value="1"></div>
@@ -214,18 +228,34 @@
       { submitText: "Save Question", cancelText: "Close Editor", maxWidth: "650px" }
     );
 
+    const qType = modal.querySelector("#qType");
     const edText = modal.querySelector("#edText");
     const edOptList = modal.querySelector("#edOptList");
     const edMarks = modal.querySelector("#edMarks");
     const edNeg = modal.querySelector("#edNeg");
     const edTime = modal.querySelector("#edTime");
+    const edNumAns = modal.querySelector("#edNumAns");
+    const mcqSection = modal.querySelector("#mcqSection");
+    const numericalSection = modal.querySelector("#numericalSection");
+
     const qCounter = modal.querySelector("#qCounter");
     const prevBtn = modal.querySelector("#prevQ");
     const nextBtn = modal.querySelector("#nextQ");
 
+    qType.addEventListener("change", () => {
+      if (qType.value === "NUMERICAL") {
+        mcqSection.style.display = "none";
+        numericalSection.style.display = "block";
+      } else {
+        mcqSection.style.display = "block";
+        numericalSection.style.display = "none";
+      }
+    });
+
     function renderCurrent() {
       if (currentIndex === -1) {
-        edText.value = ""; edOptList.innerHTML = "";
+        qType.value = "MCQ"; qType.dispatchEvent(new Event('change'));
+        edText.value = ""; edOptList.innerHTML = ""; edNumAns.value = "";
         edMarks.value = 1; edNeg.value = 0; edTime.value = "";
         qCounter.textContent = "New Question Entry";
         prevBtn.style.display = nextBtn.style.display = "none";
@@ -234,6 +264,9 @@
       }
 
       const q = allQuestions[currentIndex];
+      qType.value = q.questionType || "MCQ";
+      qType.dispatchEvent(new Event('change'));
+
       edText.value = q.questionText;
       edMarks.value = q.marks;
       edNeg.value = q.negativeMarks;
@@ -253,10 +286,15 @@
       prevBtn.disabled = currentIndex === 0;
       nextBtn.disabled = currentIndex === allQuestions.length - 1;
 
-      edOptList.innerHTML = "";
-      const correctOnes = (q.options?.correctOption || "").split(",").map(s => s.trim());
-      const choiceImgs = q.options?.choiceImages || [];
-      (q.options?.choices || []).forEach((choice, idx) => addOptionRow(choice, correctOnes.includes(choice), choiceImgs[idx]));
+      // Handle Content based on Type
+      if (qType.value === "NUMERICAL") {
+        edNumAns.value = q.options?.correctOption || "";
+      } else {
+        edOptList.innerHTML = "";
+        const correctOnes = (q.options?.correctOption || "").split(",").map(s => s.trim());
+        const choiceImgs = q.options?.choiceImages || [];
+        (q.options?.choices || []).forEach((choice, idx) => addOptionRow(choice, correctOnes.includes(choice), choiceImgs[idx]));
+      }
     }
 
     function addOptionRow(val = "", isCorrect = false, imgData = "") {
@@ -283,31 +321,42 @@
     }
 
     async function saveQuestion(m, o, silent = false) {
+      const type = qType.value;
       const choices = []; const correct = []; const choiceImages = [];
+      const txt = edText.value.trim();
 
-      for (const r of m.querySelectorAll(".option-row")) {
-        const v = r.querySelector(".opt-val").value.trim();
-        if (v) {
-          choices.push(v);
-          if (r.querySelector(".is-correct").checked) correct.push(v);
+      if (type === "MCQ") {
+        for (const r of m.querySelectorAll(".option-row")) {
+          const v = r.querySelector(".opt-val").value.trim();
+          if (v) {
+            choices.push(v);
+            if (r.querySelector(".is-correct").checked) correct.push(v);
 
-          const imgInput = r.querySelector(".opt-img-input");
-          const existingImg = r.querySelector(".opt-img-preview img");
+            const imgInput = r.querySelector(".opt-img-input");
+            const existingImg = r.querySelector(".opt-img-preview img");
 
-          if (imgInput.files[0]) {
-            choiceImages.push(await getBase64(imgInput.files[0]));
-          } else if (existingImg) {
-            choiceImages.push(existingImg.src);
-          } else {
-            choiceImages.push("");
+            if (imgInput.files[0]) {
+              choiceImages.push(await getBase64(imgInput.files[0]));
+            } else if (existingImg) {
+              choiceImages.push(existingImg.src);
+            } else {
+              choiceImages.push("");
+            }
           }
         }
-      }
 
-      const txt = edText.value.trim();
-      if (!txt || choices.length < 2 || !correct.length) {
-        if (!silent) showMsg(m, "Required: text, 2+ options, & 1+ correct.", "error");
-        return Promise.reject();
+        if (!txt || choices.length < 2 || !correct.length) {
+          if (!silent) showMsg(m, "Required: text, 2+ options, & 1+ correct.", "error");
+          return Promise.reject();
+        }
+      } else {
+        // NUMERICAL
+        const ans = edNumAns.value.trim();
+        if (!txt || !ans) {
+          if (!silent) showMsg(m, "Required: text and correct answer.", "error");
+          return Promise.reject();
+        }
+        correct.push(ans);
       }
 
       const qImgInput = m.querySelector("#edImg");
@@ -320,8 +369,12 @@
       }
 
       const payload = {
-        questionText: txt, options: choices, correctOption: correct.join(","),
-        marks: edMarks.value, negativeMarks: edNeg.value,
+        questionText: txt,
+        questionType: type,
+        options: choices,
+        correctOption: correct.join(","),
+        marks: edMarks.value,
+        negativeMarks: edNeg.value,
         timeLimit: edTime.value || null,
         questionImage: qImageData,
         choiceImages: choiceImages

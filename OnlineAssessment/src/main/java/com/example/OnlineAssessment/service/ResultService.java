@@ -68,21 +68,47 @@ public class ResultService {
                     continue;
                 }
 
-                List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .toList();
+                if ("NUMERICAL".equalsIgnoreCase(question.getQuestionType())) {
+                    String correctStr = correctOptionObj.getCorrectOption().trim();
+                    String studentStr = studentAnswer.trim();
+                    boolean isCorrect = false;
+                    try {
+                        double cVal = Double.parseDouble(correctStr);
+                        double sVal = Double.parseDouble(studentStr);
+                        // Tolerance for floating point comparison
+                        if (Math.abs(cVal - sVal) < 0.0001) {
+                            isCorrect = true;
+                        }
+                    } catch (NumberFormatException e) {
+                        // Fallback to exact string match if parsing fails
+                        if (correctStr.equalsIgnoreCase(studentStr)) {
+                            isCorrect = true;
+                        }
+                    }
 
-                List<String> selectedOptions = Arrays.stream(studentAnswer.split(","))
-                        .map(String::trim)
-                        .filter(s -> !s.isEmpty())
-                        .toList();
-
-                if (correctOptions.size() == selectedOptions.size()
-                        && correctOptions.containsAll(selectedOptions)) {
-                    score += question.getMarks();
+                    if (isCorrect) {
+                        score += question.getMarks();
+                    } else {
+                        score -= question.getNegativeMarks();
+                    }
                 } else {
-                    score -= question.getNegativeMarks();
+                    // MCQ Evaluation
+                    List<String> correctOptions = Arrays.stream(correctOptionObj.getCorrectOption().split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .toList();
+
+                    List<String> selectedOptions = Arrays.stream(studentAnswer.split(","))
+                            .map(String::trim)
+                            .filter(s -> !s.isEmpty())
+                            .toList();
+
+                    if (correctOptions.size() == selectedOptions.size()
+                            && correctOptions.containsAll(selectedOptions)) {
+                        score += question.getMarks();
+                    } else {
+                        score -= question.getNegativeMarks();
+                    }
                 }
             }
         }

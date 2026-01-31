@@ -100,8 +100,10 @@ public class QuizController {
             String questionImage = (String) payload.get("questionImage");
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
+            String questionType = (String) payload.getOrDefault("questionType", "MCQ");
 
-            Questions q = questionService.addQuestionToQuiz(quizId, text, options, correct, marks, negMarks, timeLimit,
+            Questions q = questionService.addQuestionToQuiz(quizId, text, questionType, options, correct, marks,
+                    negMarks, timeLimit,
                     questionImage, choiceImages);
             return ResponseEntity.ok(q);
         } catch (Exception e) {
@@ -126,8 +128,10 @@ public class QuizController {
             String questionImage = (String) payload.get("questionImage");
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
+            String questionType = (String) payload.getOrDefault("questionType", "MCQ");
 
-            Questions q = questionService.updateQuestion(questionId, text, options, correct, marks, negMarks,
+            Questions q = questionService.updateQuestion(questionId, text, questionType, options, correct, marks,
+                    negMarks,
                     timeLimit, questionImage, choiceImages);
             return ResponseEntity.ok(q);
         } catch (Exception e) {
@@ -414,8 +418,10 @@ public class QuizController {
             String questionImage = (String) payload.get("questionImage");
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
+            String questionType = (String) payload.getOrDefault("questionType", "MCQ");
 
-            Questions q = questionService.addQuestionToSection(sectionId, text, options, correct, marks, negMarks,
+            Questions q = questionService.addQuestionToSection(sectionId, text, questionType, options, correct, marks,
+                    negMarks,
                     timeLimit, questionImage, choiceImages);
             return ResponseEntity.ok(q);
         } catch (Exception e) {

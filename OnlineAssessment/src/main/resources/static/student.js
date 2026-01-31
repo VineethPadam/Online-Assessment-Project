@@ -894,47 +894,75 @@
 		}
 
 
-		// Panel 3: Options
+		// Panel 3: Options / Input
 		const oList = document.getElementById("examOptionsList");
 		oList.innerHTML = "";
-		const correctOpt = q.options?.correctOption || "";
-		const isMulti = correctOpt.includes(",");
-		const savedAns = currentExam.answers[q.questionId] || "";
-		const selectedList = savedAns.split(",").filter(x => x);
 
-		const choices = q.options?.choices || [];
-		const choiceImgs = q.options?.choiceImages || [];
-		choices.forEach((opt, idx) => {
-			const item = document.createElement("div");
-			item.className = `option-item ${isMulti ? 'multi' : ''} ${selectedList.includes(opt) ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
-
-			const imgData = choiceImgs[idx];
-
-			item.innerHTML = `
-        <div class="option-circle"></div>
-        <div style="flex:1; display:flex; flex-direction:column; gap:8px;">
-          <span>${opt}</span>
-          ${imgData ? `<div><img src="${imgData}" style="max-width:200px; border-radius:6px; border:1px solid #eef2f6;"></div>` : ""}
-        </div>
-        <input type="${isMulti ? 'checkbox' : 'radio'}" name="qOpt" value="${opt}" ${selectedList.includes(opt) ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
-      `;
-
-			if (!isLocked) {
-				item.onclick = () => {
-					const input = item.querySelector("input");
-					if (isMulti) {
-						input.checked = !input.checked;
-						item.classList.toggle("selected", input.checked);
-					} else {
-						oList.querySelectorAll(".option-item").forEach(i => i.classList.remove("selected"));
-						item.classList.add("selected");
-						input.checked = true;
-					}
-					saveAnswer();
-				};
+		if (q.questionType === "NUMERICAL") {
+			const savedAns = currentExam.answers[q.questionId] || "";
+			const inputContainer = document.createElement("div");
+			inputContainer.style.padding = "20px 0";
+			inputContainer.innerHTML = `
+				<label style="display:block; margin-bottom:10px; font-weight:700; color:var(--text-main);">Enter your numerical answer:</label>
+				<input type="number" step="any" id="numericalAnswerInput" 
+					style="width: 100%; max-width: 300px; padding: 15px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 18px; font-weight: 600; outline:none; transition: border-color 0.2s;"
+					placeholder="e.g. 10.5">
+			`;
+			const input = inputContainer.querySelector("input");
+			input.value = savedAns;
+			if (isLocked) {
+				input.disabled = true;
+				input.style.background = "#f1f5f9";
 			}
-			oList.appendChild(item);
-		});
+
+			input.oninput = () => {
+				input.style.borderColor = "var(--primary)";
+				saveAnswer();
+			};
+
+			oList.appendChild(inputContainer);
+
+		} else {
+			// MCQ Logic
+			const correctOpt = q.options?.correctOption || "";
+			const isMulti = correctOpt.includes(",");
+			const savedAns = currentExam.answers[q.questionId] || "";
+			const selectedList = savedAns.split(",").filter(x => x);
+
+			const choices = q.options?.choices || [];
+			const choiceImgs = q.options?.choiceImages || [];
+			choices.forEach((opt, idx) => {
+				const item = document.createElement("div");
+				item.className = `option-item ${isMulti ? 'multi' : ''} ${selectedList.includes(opt) ? 'selected' : ''} ${isLocked ? 'locked' : ''}`;
+
+				const imgData = choiceImgs[idx];
+
+				item.innerHTML = `
+			<div class="option-circle"></div>
+			<div style="flex:1; display:flex; flex-direction:column; gap:8px;">
+			  <span>${opt}</span>
+			  ${imgData ? `<div><img src="${imgData}" style="max-width:200px; border-radius:6px; border:1px solid #eef2f6;"></div>` : ""}
+			</div>
+			<input type="${isMulti ? 'checkbox' : 'radio'}" name="qOpt" value="${opt}" ${selectedList.includes(opt) ? 'checked' : ''} ${isLocked ? 'disabled' : ''}>
+		  `;
+
+				if (!isLocked) {
+					item.onclick = () => {
+						const input = item.querySelector("input");
+						if (isMulti) {
+							input.checked = !input.checked;
+							item.classList.toggle("selected", input.checked);
+						} else {
+							oList.querySelectorAll(".option-item").forEach(i => i.classList.remove("selected"));
+							item.classList.add("selected");
+							input.checked = true;
+						}
+						saveAnswer();
+					};
+				}
+				oList.appendChild(item);
+			});
+		}
 
 		// Logic for Question Timer (Spendable time per question)
 		if (qTimeLimit && !isLocked) {
@@ -1064,8 +1092,16 @@
 	function saveAnswer() {
 		const q = currentExam.questions[currentExam.currentIndex];
 		if (!q) return;
-		const checked = Array.from(document.querySelectorAll("#examOptionsList input:checked")).map(i => i.value);
-		currentExam.answers[q.questionId] = checked.join(",");
+
+		if (q.questionType === "NUMERICAL") {
+			const input = document.getElementById("numericalAnswerInput");
+			if (input) {
+				currentExam.answers[q.questionId] = input.value;
+			}
+		} else {
+			const checked = Array.from(document.querySelectorAll("#examOptionsList input:checked")).map(i => i.value);
+			currentExam.answers[q.questionId] = checked.join(",");
+		}
 		renderNavGrid();
 	}
 
@@ -1342,6 +1378,42 @@
           ${questions.map((q, idx) => {
 			const studentAns = (resData.studentAnswers || {})[q.questionId] || "";
 			const correctAns = (q.options?.correctOption || "").trim();
+
+			if (q.questionType === "NUMERICAL") {
+				const isCorrect = parseFloat(studentAns) === parseFloat(correctAns) || studentAns.trim() === correctAns.trim();
+				const isUnanswered = !studentAns || studentAns.trim() === "";
+
+				return `
+              <div class="exam-col" style="padding:40px; background:white; border-radius:28px; border:2px solid #ffffff; box-shadow:0 15px 35px rgba(0,0,0,0.05), 0 0 0 1px rgba(99, 102, 241, 0.05); transition:0.4s;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                       <span style="font-size:11px; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:2px; background:rgba(99, 102, 241, 0.1); padding:5px 12px; border-radius:8px;">Question ${idx + 1}</span>
+                       <span style="font-size:13px; font-weight:800; color:var(--text-muted);">${q.marks} Points</span>
+                       <span style="font-size:11px; font-weight:800; color:#db2777; background:#fce7f3; padding:5px 10px; border-radius:100px;">NUMERICAL</span>
+                    </div>
+                    <h2 style="margin:0; font-size:20px; line-height:1.6; color:var(--text-main); font-weight:800; white-space: pre-wrap; font-family: 'Consolas', monospace; background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">${q.questionText}</h2>
+                    ${q.questionImage ? `<div style="margin-top:15px;"><img src="${q.questionImage}" style="max-height:250px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.05);"></div>` : ""}
+                  </div>
+                  <div class="status-badge ${isUnanswered ? 'status-fail' : (isCorrect ? 'status-pass' : 'status-fail')}" style="padding:12px 28px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 6px 15px rgba(0,0,0,0.08); text-transform:uppercase; letter-spacing:1px;">
+                    ${isUnanswered ? 'Unattempted' : (isCorrect ? 'Correct Answer' : 'Incorrect Answer')}
+                  </div>
+                </div>
+                
+                <div style="margin-top:40px; padding:25px 30px; background:#f8fafc; border-radius:20px; border:2px dashed #e2e8f0; display:flex; flex-wrap:wrap; gap:60px; font-size:15px; position:relative;">
+                   <div>
+                     <div style="color:var(--text-muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Your Answer</div>
+                     <div style="color:${isCorrect ? '#10b981' : '#f43f5e'}; font-size:24px; font-weight:900; font-family: 'Consolas', monospace;">${studentAns || 'Skipped'}</div>
+                   </div>
+                   <div>
+                     <div style="color:var(--text-muted); font-size:11px; font-weight:900; text-transform:uppercase; letter-spacing:1px; margin-bottom:8px;">Correct Answer</div>
+                     <div style="color:#10b981; font-size:24px; font-weight:900; font-family: 'Consolas', monospace;">${correctAns}</div>
+                   </div>
+                   <div style="position:absolute; top:-12px; left:30px; background:white; padding:0 12px; font-size:11px; font-weight:900; color:var(--primary); letter-spacing:1px; border:2px solid #e2e8f0; border-radius:100px;">VERIFICATION SUMMARY</div>
+                </div>
+              </div>
+            `;
+			}
 
 			const studentList = studentAns.split(",").map(s => s.trim()).filter(x => x);
 			const correctList = correctAns.split(",").map(s => s.trim()).filter(x => x);

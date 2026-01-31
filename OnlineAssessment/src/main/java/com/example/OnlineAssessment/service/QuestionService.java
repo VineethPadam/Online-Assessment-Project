@@ -44,7 +44,8 @@ public class QuestionService {
     }
 
     @Transactional
-    public Questions addQuestionToSection(Long sectionId, String questionText, List<String> choices,
+    public Questions addQuestionToSection(Long sectionId, String questionText, String questionType,
+            List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
             String questionImage, List<String> choiceImages) {
         com.example.OnlineAssessment.entity.Section section = sectionRepo.findById(sectionId)
@@ -52,6 +53,7 @@ public class QuestionService {
 
         Questions question = new Questions();
         question.setQuestionText(questionText);
+        question.setQuestionType(questionType);
         question.setQuiz(section.getQuiz());
         question.setSection(section);
         question.setMarks(marks);
@@ -71,7 +73,8 @@ public class QuestionService {
     }
 
     @Transactional
-    public Questions addQuestionToQuiz(Long internalQuizId, String questionText, List<String> choices,
+    public Questions addQuestionToQuiz(Long internalQuizId, String questionText, String questionType,
+            List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
             String questionImage, List<String> choiceImages) {
         Quiz quiz = quizRepo.findById(internalQuizId)
@@ -79,6 +82,7 @@ public class QuestionService {
 
         Questions question = new Questions();
         question.setQuestionText(questionText);
+        question.setQuestionType(questionType);
         question.setQuiz(quiz);
         question.setMarks(marks);
         question.setNegativeMarks(negativeMarks);
@@ -97,13 +101,14 @@ public class QuestionService {
     }
 
     @Transactional
-    public Questions updateQuestion(String questionId, String questionText, List<String> choices,
+    public Questions updateQuestion(String questionId, String questionText, String questionType, List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
             String questionImage, List<String> choiceImages) {
         Questions question = questionRepo.findById(questionId)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
 
         question.setQuestionText(questionText);
+        question.setQuestionType(questionType);
         question.setMarks(marks);
         question.setNegativeMarks(negativeMarks);
         question.setTimeLimitSeconds(timeLimitSeconds);

@@ -48,6 +48,8 @@ public class Questions {
     @Column(columnDefinition = "LONGTEXT")
     private String questionImage; // stores Base64 string
 
+    private String questionType; // "MCQ" or "NUMERICAL"
+
     // Getters & Setters
     public String getQuestionId() {
         return questionId;
@@ -119,5 +121,13 @@ public class Questions {
 
     public void setQuestionImage(String questionImage) {
         this.questionImage = questionImage;
+    }
+
+    public String getQuestionType() {
+        return questionType;
+    }
+
+    public void setQuestionType(String questionType) {
+        this.questionType = questionType;
     }
 }
