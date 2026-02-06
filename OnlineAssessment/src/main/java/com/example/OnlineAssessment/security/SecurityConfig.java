@@ -22,7 +22,12 @@ public class SecurityConfig {
 				.csrf(csrf -> csrf.disable())
 				.authorizeHttpRequests(auth -> auth
 						// Public pages
-						.requestMatchers("/", "/index.html", "/faculty_help.html").permitAll()
+						.requestMatchers("/", "/index.html", "/faculty_help.html", "/superadmin.html",
+								"/api/superadmin/public/**")
+						.permitAll()
+
+						// Super Admin API (PROTECTED)
+						.requestMatchers("/api/superadmin/**").hasRole("SUPERADMIN")
 
 						// Static files
 						.requestMatchers(

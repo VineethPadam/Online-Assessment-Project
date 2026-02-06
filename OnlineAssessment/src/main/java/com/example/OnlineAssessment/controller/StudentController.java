@@ -24,34 +24,43 @@ public class StudentController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validateStudent(@RequestBody Student student) {
+    public ResponseEntity<?> validateStudent(@RequestBody Map<String, Object> payload) {
+        String rollNumber = (String) payload.get("studentRollNumber");
+        String password = (String) payload.get("password");
+        Object cidObj = payload.get("collegeId");
+        if (cidObj == null)
+            return ResponseEntity.badRequest().body("College selection is required");
+        Long collegeId = Long.valueOf(cidObj.toString());
 
-        Student s = studentService.validateStudent(
-                student.getStudentRollNumber(),
-                student.getPassword());
+        try {
+            Student s = studentService.validateStudent(rollNumber, password, collegeId);
 
-        if (s != null) {
+            if (s != null) {
 
-            String token = jwtUtil.generateToken(
-                    s.getStudentRollNumber(),
-                    "STUDENT");
+                String token = jwtUtil.generateToken(
+                        s.getStudentRollNumber(),
+                        "STUDENT",
+                        collegeId);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("rollNumber", s.getStudentRollNumber());
-            response.put("name", s.getStudentName());
-            response.put("department", s.getDepartment());
-            response.put("section", s.getStudentSection());
-            response.put("year", s.getStudentYear());
-            response.put("email", s.getStudentEmail());
-            response.put("role", "STUDENT");
+                Map<String, Object> response = new HashMap<>();
+                response.put("token", token);
+                response.put("rollNumber", s.getStudentRollNumber());
+                response.put("name", s.getStudentName());
+                response.put("department", s.getDepartment());
+                response.put("section", s.getStudentSection());
+                response.put("year", s.getStudentYear());
+                response.put("email", s.getStudentEmail());
+                response.put("role", "STUDENT");
 
-            return ResponseEntity.ok(response);
+                return ResponseEntity.ok(response);
+            }
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid student roll number or password");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST) // ✅ 400 instead of 401
-                .body("Invalid student roll number or password");
 
     }
 }

@@ -1,9 +1,12 @@
 package com.example.OnlineAssessment.service;
 
 import com.example.OnlineAssessment.entity.Faculty;
+import com.example.OnlineAssessment.entity.College;
+import com.example.OnlineAssessment.repositories.CollegeRepo;
 import com.example.OnlineAssessment.repositories.FacultyRepo;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -17,13 +20,17 @@ import java.util.Set;
 public class AdminExcelService {
 
     private final FacultyRepo facultyRepo;
+    private final CollegeRepo collegeRepo;
 
-    public AdminExcelService(FacultyRepo facultyRepo) {
+    @Autowired
+    public AdminExcelService(FacultyRepo facultyRepo, CollegeRepo collegeRepo) {
         this.facultyRepo = facultyRepo;
+        this.collegeRepo = collegeRepo;
     }
 
     // Upload or Update Faculty Excel
-    public void uploadFaculty(MultipartFile file) throws Exception {
+    public void uploadFaculty(MultipartFile file, Long collegeId) throws Exception {
+        College college = collegeId != null ? collegeRepo.findById(collegeId).orElse(null) : null;
         try (InputStream is = file.getInputStream(); Workbook workbook = new XSSFWorkbook(is)) {
             Sheet sheet = workbook.getSheetAt(0);
 
@@ -60,12 +67,14 @@ public class AdminExcelService {
                 if (faculty.getPassword() == null) {
                     faculty.setPassword(facultyId);
                 }
+                faculty.setCollege(college);
 
                 facultyRepo.save(faculty);
             }
 
-            // Step 2: Delete faculties that are not present in Excel
-            List<Faculty> dbFaculties = facultyRepo.findAll();
+            // Step 2: Delete faculties that are not present in Excel (within same college)
+            List<Faculty> dbFaculties = collegeId != null ? facultyRepo.findByCollegeId(collegeId)
+                    : facultyRepo.findAll();
             for (Faculty f : dbFaculties) {
                 if (!excelFacultyIds.contains(f.getFacultyId())) {
                     facultyRepo.delete(f);

@@ -11,6 +11,7 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.OnlineAssessment.service.StudentExcelService;
 import com.example.OnlineAssessment.service.AdminExcelService;
 import com.example.OnlineAssessment.service.QuestionExcelService;
+import com.example.OnlineAssessment.security.JwtUtil;
 
 @RestController
 @RequestMapping("/upload")
@@ -26,10 +27,16 @@ public class ExcelUploadController {
     @Autowired
     private AdminExcelService adminExcelService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
     @PostMapping("/students")
-    public ResponseEntity<String> uploadStudents(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> uploadStudents(@RequestHeader("Authorization") String authHeader,
+            @RequestParam("file") MultipartFile file) {
         try {
-            studentExcelService.uploadStudents(file);
+            String token = authHeader.substring(7);
+            Long collegeId = jwtUtil.extractCollegeId(token);
+            studentExcelService.uploadStudents(file, collegeId);
             return ResponseEntity.ok("Students uploaded successfully");
         } catch (Exception e) {
             e.printStackTrace();
@@ -39,12 +46,14 @@ public class ExcelUploadController {
     }
 
     @PostMapping("/questions")
-    public ResponseEntity<String> uploadQuestions(
+    public ResponseEntity<String> uploadQuestions(@RequestHeader("Authorization") String authHeader,
             @RequestParam("file") MultipartFile file,
             @RequestParam("quizId") Long quizId) {
 
         try {
-            questionExcelService.uploadQuestions(file, quizId);
+            String token = authHeader.substring(7);
+            Long collegeId = jwtUtil.extractCollegeId(token);
+            questionExcelService.uploadQuestions(file, quizId, collegeId);
             return ResponseEntity.ok("Questions uploaded successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -57,9 +66,12 @@ public class ExcelUploadController {
     }
 
     @PostMapping("/faculty")
-    public ResponseEntity<String> uploadFaculty(@RequestParam("file") MultipartFile file) {
+    public ResponseEntity<String> uploadFaculty(@RequestHeader("Authorization") String authHeader,
+            @RequestParam("file") MultipartFile file) {
         try {
-            adminExcelService.uploadFaculty(file);
+            String token = authHeader.substring(7);
+            Long collegeId = jwtUtil.extractCollegeId(token);
+            adminExcelService.uploadFaculty(file, collegeId);
             return ResponseEntity.ok("Faculty uploaded successfully");
         } catch (Exception e) {
             e.printStackTrace();

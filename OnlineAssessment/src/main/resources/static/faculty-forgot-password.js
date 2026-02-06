@@ -34,7 +34,7 @@
 
         modal.querySelector("#sendOtpBtn").addEventListener("click", async () => {
             const email = modal.querySelector("#facultyEmail").value.trim();
-            if (!email) return alert("Enter email.");
+            if (!email) return showAlert("Enter email.");
 
             // Open OTP modal immediately
             openOtpModal(email);
@@ -42,7 +42,7 @@
             try {
                 await authFetch(`/password/faculty/send-otp?email=${encodeURIComponent(email)}`, { method: "POST" });
             } catch (err) {
-                alert("Failed to send OTP: " + err.message);
+                showAlert("Failed to send OTP: " + err.message);
             }
         });
     }
@@ -89,7 +89,7 @@
             const newPassword = pwdInput.value;
             const confirmPassword = confirmInput.value;
 
-            if (!otp) return alert("Enter OTP.");
+            if (!otp) return showAlert("Enter OTP.");
 
             if (!pwdRegex.test(newPassword)) {
                 pwdError.innerHTML = "Password must be >8 chars, with 1 Upper, 1 Lower, 1 Num, 1 Special.";
@@ -110,7 +110,7 @@
                 footer.innerHTML = `<button class="faculty-btn" id="okBtn">Login Now</button>`;
                 modal.querySelector("#okBtn").addEventListener("click", () => modal.classList.add("hidden"));
             } catch (err) {
-                alert("Error: " + err.message);
+                showAlert("Error: " + err.message);
             }
         });
     }

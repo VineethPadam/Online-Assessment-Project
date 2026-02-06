@@ -16,8 +16,23 @@
 		visitedQuestions: new Set(), // Track which questions were viewed
 		markedForReview: new Set(),
 		timers: {}, // For per-question timing
-		isConnectionStable: true
+		isConnectionStable: true,
+		monacoEditor: null,
+		monacoLoaded: false
 	};
+
+	// Initialize Monaco
+	function initMonaco(callback) {
+		if (currentExam.monacoLoaded) {
+			if (callback) callback();
+			return;
+		}
+		require.config({ paths: { 'vs': 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+		require(['vs/editor/editor.main'], function () {
+			currentExam.monacoLoaded = true;
+			if (callback) callback();
+		});
+	}
 
 	function getRoll() {
 		if (studentRoll) return studentRoll;
@@ -114,7 +129,7 @@
 	// -------------------- DASHBOARD LOGIC --------------------
 	takeQuizBtn?.addEventListener("click", () => {
 		const roll = getRoll();
-		if (!roll) return alert("Please login first to access quizzes.");
+		if (!roll) return showAlert("Please login first to access quizzes.");
 		showBatchSelector();
 	});
 
@@ -173,7 +188,7 @@
 
 		if (!currentRoll) {
 			currentRoll = getRoll();
-			if (!currentRoll) return alert("Please login first.");
+			if (!currentRoll) return showAlert("Please login first.");
 		}
 
 		console.log("Student Roll:", currentRoll);
@@ -213,14 +228,43 @@
 
 		const { modal } = createSimpleModal(content);
 
-		// Populate Departments
+		// Populate Departments and setup change listeners
 		try {
 			const res = await authFetch("/departments");
 			if (res.ok) {
 				const depts = await res.json();
 				const deptSelect = modal.querySelector("#qDept");
+				const yearSelect = modal.querySelector("#qYear");
+				const sectionSelect = modal.querySelector("#qSection");
+
 				if (deptSelect && depts && depts.length > 0) {
 					deptSelect.innerHTML = depts.map(d => `<option value="${d.name}" ${currentDept === d.name ? 'selected' : ''}>${d.name}</option>`).join("");
+
+					const updateDropdowns = (deptName) => {
+						const dept = depts.find(d => d.name === deptName);
+						if (dept) {
+							// Update Year
+							let yearHtml = "";
+							for (let i = 1; i <= dept.years; i++) {
+								yearHtml += `<option value="${i}" ${currentYear == i ? 'selected' : ''}>Year ${i}</option>`;
+							}
+							yearSelect.innerHTML = yearHtml;
+
+							// Update Section based on Year
+							const updateSections = () => {
+								const yearVal = yearSelect.value;
+								const sectionsMap = typeof dept.sections === 'string' ? JSON.parse(dept.sections) : (dept.sections || {});
+								const sectionsList = sectionsMap[yearVal] || [];
+								sectionSelect.innerHTML = sectionsList.map(s => `<option value="${s}" ${currentSection === s ? 'selected' : ''}>${s}</option>`).join("");
+							};
+
+							yearSelect.onchange = updateSections;
+							updateSections();
+						}
+					};
+
+					deptSelect.onchange = () => updateDropdowns(deptSelect.value);
+					updateDropdowns(deptSelect.value || depts[0].name);
 				}
 			}
 		} catch (err) { console.error("Dept error", err); }
@@ -233,7 +277,7 @@
 			const section = modal.querySelector("#qSection").value;
 			const resultsArea = modal.querySelector("#quizResultsArea");
 
-			if (!dept) return alert("Please select a department");
+			if (!dept) return showAlert("Please select a department");
 
 			fetchBtn.textContent = "Loading...";
 			fetchBtn.disabled = true;
@@ -279,23 +323,52 @@
 			const fId = (q.quiz.faculty?.facultyId || 'N/A').replace(/'/g, "\\'");
 			const dept = meta.dept.replace(/'/g, "\\'");
 
+			const now = new Date();
+			const startTime = q.startTime ? new Date(q.startTime) : null;
+			const endTime = q.endTime ? new Date(q.endTime) : null;
+
+			let statusHtml = "";
+			let canEnter = true;
+			let btnText = "Start";
+			let btnColor = "#10b981";
+
+			if (!q.active) {
+				statusHtml = `<div style="color:#ef4444; font-size:11px; font-weight:800;">STATUS: DISABLED BY FACULTY</div>`;
+				canEnter = false;
+				btnText = "Unavailable";
+				btnColor = "#94a3b8";
+			} else if (startTime && now < startTime) {
+				const timeStr = startTime.toLocaleString([], { weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+				statusHtml = `<div style="color:#f59e0b; font-size:11px; font-weight:800;">SCHEDULED: AVAILABLE AT ${timeStr.toUpperCase()}</div>`;
+				canEnter = false;
+				btnText = "Locked";
+				btnColor = "#cbd5e1";
+			} else if (endTime && now > endTime) {
+				statusHtml = `<div style="color:#ef4444; font-size:11px; font-weight:800;">EXPIRED: ENDED AT ${endTime.toLocaleTimeString()}</div>`;
+				canEnter = false;
+				btnText = "Expired";
+				btnColor = "#fecaca";
+			} else {
+				statusHtml = `<div style="color:#10b981; font-size:11px; font-weight:800;">STATUS: OPEN & READY</div>`;
+			}
+
 			return `
-							<tr style="border-bottom:1px solid #f1f5f9;">
+							<tr style="border-bottom:1px solid #f1f5f9; background: ${canEnter ? 'white' : '#f8fafc'};">
 								<td style="padding:15px; vertical-align:middle;">
-									<strong style="color:#1e293b; font-size:15px;">${q.quiz.quizName}</strong><br>
+									<strong style="color:${canEnter ? '#1e293b' : '#64748b'}; font-size:15px;">${q.quiz.quizName}</strong><br>
 									<span style="font-size:11px; color:var(--primary); font-weight:700;">ID: ${q.quiz.quizCode}</span><br>
 									<span style="font-size:12px; color:#64748b;">Duration: ${q.durationMinutes || 30} mins</span>
+									<div style="margin-top:8px;">${statusHtml}</div>
 								</td>
 								<td style="padding:15px; vertical-align:middle; color:#475569;">
 									<div style="font-weight:600;">${q.quiz.faculty?.facultyName || 'N/A'}</div>
 									<div style="font-size:11px; color:#94a3b8;">FID: ${fId}</div>
 								</td>
 								<td style="padding:15px; text-align:center; vertical-align:middle;">
-									<button style="padding:8px 16px; background:#10b981; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px; transition:0.2s;"
-										onmouseover="this.style.background='#059669'"
-										onmouseout="this.style.background='#10b981'"
-										onclick="window.startQuizProcess(${q.quiz.id}, '${qName}', '${fName}', ${q.durationMinutes || 30}, '${dept}', '${meta.year}', '${meta.section}', '${qCode}', '${fId}')">
-										Start
+									<button style="padding:10px 20px; background:${btnColor}; color:white; border:none; border-radius:8px; cursor:${canEnter ? 'pointer' : 'not-allowed'}; font-weight:800; font-size:13px; transition:0.2s; min-width:100px; text-transform:uppercase;"
+										${canEnter ? `onmouseover="this.style.background='#059669'" onmouseout="this.style.background='${btnColor}'"` : ""}
+										${canEnter ? `onclick="window.startQuizProcess(${q.quiz.id}, '${qName}', '${fName}', ${q.durationMinutes || 30}, '${dept}', '${meta.year}', '${meta.section}', '${qCode}', '${fId}')"` : "disabled"}>
+										${btnText}
 									</button>
 								</td>
 							</tr>
@@ -360,7 +433,7 @@
 				performSecurityPreFlight(quizId, quizName, facultyName, finalDuration, dept, year, section, quizCode, facultyId);
 			};
 
-		} catch (e) { alert(e.message); }
+		} catch (e) { showAlert(e.message); }
 	};
 
 	async function performSecurityPreFlight(quizId, quizName, facultyName, duration, dept, year, section, quizCode, facultyId) {
@@ -462,7 +535,7 @@
 		try {
 			const res = await authFetch(`/quiz/${quizId}/sections/for-student?department=${dept}&year=${year}&section=${section}`);
 			let sections = await res.json();
-			if (!sections?.length) return alert("Error: Sections or questions not loaded.");
+			if (!sections?.length) return showAlert("Error: Sections or questions not loaded.");
 
 			// Flatten questions and assign section info
 			let allQuestions = [];
@@ -475,7 +548,7 @@
 				allQuestions = allQuestions.concat(secQs);
 			});
 
-			if (!allQuestions.length) return alert("Error: No questions found in this exam.");
+			if (!allQuestions.length) return showAlert("Error: No questions found in this exam.");
 
 			// Prep Data
 			const seed = hashString(studentRoll + quizId);
@@ -569,7 +642,7 @@
 				}
 			});
 
-		} catch (e) { alert("Failed to start exam: " + e.message); }
+		} catch (e) { showAlert("Failed to start exam: " + e.message); }
 	}
 
 	function renderExamUI() {
@@ -631,6 +704,9 @@
           </div>
         </div>
 
+        <!-- SPLITTER 1 -->
+        <div class="global-splitter" id="gSplit1"></div>
+
         <!-- COLUMN 2: CENTER PANEL (Question Area) -->
         <div class="exam-col col-center">
           <div class="panel-header">Question & Options</div>
@@ -654,6 +730,9 @@
              </div>
           </div>
         </div>
+
+        <!-- SPLITTER 2 -->
+        <div class="global-splitter" id="gSplit2"></div>
 
         <!-- COLUMN 3: RIGHT PANEL (Navigation) -->
         <div class="exam-col col-right">
@@ -694,7 +773,6 @@
 		document.body.appendChild(overlay);
 
 		// Wire up buttons
-		// Wire up buttons
 		overlay.querySelector("#exPrev").onclick = () => moveQuestion(-1);
 		overlay.querySelector("#exNext").onclick = () => moveQuestion(1);
 		overlay.querySelector("#exReset").onclick = resetCurrentAnswer;
@@ -704,6 +782,76 @@
 
 		renderActiveQuestion();
 		renderNavGrid();
+		setupGlobalResizers(overlay);
+	}
+
+	function setupGlobalResizers(overlay) {
+		const grid = overlay.querySelector(".exam-grid-container");
+		const s1 = overlay.querySelector("#gSplit1");
+		const s2 = overlay.querySelector("#gSplit2");
+
+		if (!grid || !s1 || !s2) return;
+
+		// Initial widths
+		let leftW = 280;
+		let rightW = 320;
+
+		const minW = 200;
+		const maxW = 600;
+
+		// Splitter 1 (Left) Logic
+		s1.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			s1.classList.add("dragging");
+			document.body.style.cursor = "col-resize";
+
+			const onMove = (em) => {
+				const newW = em.clientX - 15; // 15px padding
+				if (newW >= minW && newW <= maxW) {
+					leftW = newW;
+					grid.style.gridTemplateColumns = `${leftW}px 12px 1fr 12px ${rightW}px`;
+				}
+			};
+
+			const onUp = () => {
+				s1.classList.remove("dragging");
+				document.body.style.cursor = "";
+				document.removeEventListener("mousemove", onMove);
+				document.removeEventListener("mouseup", onUp);
+				// Triggers resize for monaco if present
+				if (currentExam.monacoEditor) currentExam.monacoEditor.layout();
+			};
+
+			document.addEventListener("mousemove", onMove);
+			document.addEventListener("mouseup", onUp);
+		});
+
+		// Splitter 2 (Right) Logic
+		s2.addEventListener("mousedown", (e) => {
+			e.preventDefault();
+			s2.classList.add("dragging");
+			document.body.style.cursor = "col-resize";
+
+			const onMove = (em) => {
+				const containerRight = grid.getBoundingClientRect().right;
+				const newW = containerRight - em.clientX - 15; // 15px padding
+				if (newW >= minW && newW <= maxW) {
+					rightW = newW;
+					grid.style.gridTemplateColumns = `${leftW}px 12px 1fr 12px ${rightW}px`;
+				}
+			};
+
+			const onUp = () => {
+				s2.classList.remove("dragging");
+				document.body.style.cursor = "";
+				document.removeEventListener("mousemove", onMove);
+				document.removeEventListener("mouseup", onUp);
+				if (currentExam.monacoEditor) currentExam.monacoEditor.layout();
+			};
+
+			document.addEventListener("mousemove", onMove);
+			document.addEventListener("mouseup", onUp);
+		});
 	}
 
 	function handleFullscreenExit() {
@@ -890,13 +1038,41 @@
 				<h3 style="white-space: pre-wrap; font-family: 'Consolas', monospace; font-size: 19px;">${q.questionText}</h3>
 				${q.questionImage ? `<div style="margin-top:15px; text-align:center;"><img src="${q.questionImage}" style="max-width:100%; border-radius:15px; box-shadow:0 10px 30px rgba(0,0,0,0.1); border:5px solid white;"></div>` : ""}
 			`;
-			qTextDiv.style.position = "relative";
 		}
+		qTextDiv.style.position = "relative";
 
-
-		// Panel 3: Options / Input
+		// Panel 3: Options / Input / Coding
 		const oList = document.getElementById("examOptionsList");
-		oList.innerHTML = "";
+		const qCenterPanel = document.querySelector(".col-center .panel-content");
+
+		// Reset to default layout if it was changed
+		qCenterPanel.innerHTML = `
+			 <div class="question-area">
+                <div class="q-text-display" id="dispQText"></div>
+                <div class="options-area">
+                   <p class="opt-instruction">Select the correct answer from the options below:</p>
+                   <div id="examOptionsList" class="options-vertical-list"></div>
+                </div>
+             </div>
+             <div class="center-footer">
+               <button class="action-btn clear-btn" id="exReset">Clear Answer</button>
+               <button class="nav-btn next-btn" id="exNext">Next</button>
+             </div>
+		`;
+		// Re-wire buttons since we replaced innerHTML
+		document.getElementById("exPrev").onclick = () => moveQuestion(-1);
+		document.getElementById("exNext").onclick = () => moveQuestion(1);
+		document.getElementById("exReset").onclick = resetCurrentAnswer;
+		updateControlButtons();
+
+		const newOList = document.getElementById("examOptionsList");
+		const newQText = document.getElementById("dispQText");
+		newQText.innerHTML = qTextDiv.innerHTML; // Restore question text
+
+		if (q.questionType === "CODING") {
+			renderCodingQuestion(q, qCenterPanel);
+			return;
+		}
 
 		if (q.questionType === "NUMERICAL") {
 			const savedAns = currentExam.answers[q.questionId] || "";
@@ -1151,8 +1327,385 @@
 	}
 
 	function updateControlButtons() {
-		document.getElementById("exPrev").disabled = currentExam.currentIndex === 0;
-		document.getElementById("exNext").disabled = currentExam.currentIndex === currentExam.questions.length - 1;
+		const exPrev = document.getElementById("exPrev");
+		const exNext = document.getElementById("exNext");
+		if (exPrev) exPrev.disabled = currentExam.currentIndex === 0;
+		if (exNext) exNext.disabled = currentExam.currentIndex === currentExam.questions.length - 1;
+	}
+
+	function renderCodingQuestion(q, container) {
+		container.innerHTML = `
+			<div class="coding-container">
+				<div class="coding-main-split" id="codingSplitPane">
+					<div class="problem-statement-panel scrollable" id="codingLeftPane">
+						<h4 style="margin:0 0 10px; color:var(--primary); font-size:18px;">Problem Statement</h4>
+						<p style="font-size:15px; line-height:1.7; color:#334155;">${q.questionText}</p>
+						
+						${q.inputFormat ? `
+							<button class="details-toggle-btn" onclick="toggleDetails(this)">
+								<span>Input Format</span> <span>▼</span>
+							</button>
+							<div class="details-content">
+								<pre style="background:#f1f5f9; padding:10px; border-radius:6px; font-size:13px; white-space:pre-wrap; margin:0;">${q.inputFormat}</pre>
+							</div>
+						` : ''}
+
+						${q.outputFormat ? `
+							<button class="details-toggle-btn" onclick="toggleDetails(this)">
+								<span>Output Format</span> <span>▼</span>
+							</button>
+							<div class="details-content">
+								<pre style="background:#f1f5f9; padding:10px; border-radius:6px; font-size:13px; white-space:pre-wrap; margin:0;">${q.outputFormat}</pre>
+							</div>
+						` : ''}
+
+						${q.constraints ? `
+							<button class="details-toggle-btn" onclick="toggleDetails(this)">
+								<span>Constraints</span> <span>▼</span>
+							</button>
+							<div class="details-content">
+								<pre style="background:#fff7ed; padding:10px; border-radius:6px; font-size:13px; white-space:pre-wrap; border:1px solid #ffedd5; color:#9a3412; margin:0;">${q.constraints}</pre>
+							</div>
+						` : ''}
+
+						<button class="details-toggle-btn active" onclick="toggleDetails(this)">
+							<span>Sample Test Cases</span> <span>▲</span>
+						</button>
+						<div class="details-content show">
+							<div id="sampleTestCasesContainer" style="display:grid; gap:12px;">
+								${(() => {
+				try {
+					const samples = q.sampleInput.startsWith("[") ? JSON.parse(q.sampleInput) : [{ input: q.sampleInput, output: q.sampleOutput }];
+					return samples.map((s, idx) => `
+											<div class="test-case-item" style="border: 1px solid #e2e8f0; ${idx === 0 ? 'border-left: 4px solid var(--primary);' : ''}">
+												<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+													<span class="test-case-label" style="margin:0;">Sample ${idx + 1}</span>
+												</div>
+												<div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+													<div>
+														<span style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Input</span>
+														<pre style="margin:4px 0 0; font-size:12px; background:#f8fafc; padding:8px; border-radius:4px;">${s.input || 'No input'}</pre>
+													</div>
+													<div>
+														<span style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase;">Expected Output</span>
+														<pre style="margin:4px 0 0; font-size:12px; background:#f0fdf4; padding:8px; border-radius:4px; color:#166534;">${s.output || 'No output'}</pre>
+													</div>
+												</div>
+											</div>
+										`).join("");
+				} catch (e) {
+					return `<div class="test-case-item"><pre>${q.sampleInput}</pre></div>`;
+				}
+			})()}
+							</div>
+						</div>
+
+						${q.hints ? `
+							<div style="margin-top:20px;">
+								<button class="nav-btn" style="padding:6px 12px; font-size:12px; background:#f0f9ff; color:#0369a1; border:1px solid #bae6fd;" 
+									onclick="this.nextElementSibling.classList.toggle('hidden'); if(this.nextElementSibling.classList.contains('hidden')) { this.innerText='💡 Show Hint'; } else { this.innerText='💡 Hide Hint'; }">
+									💡 Show Hint
+								</button>
+								<div class="hidden" style="margin-top:10px; background:#f0f9ff; padding:10px; border-radius:6px; font-size:12px; color:#0369a1; border:1px dashed #7dd3fc;">
+									${q.hints}
+								</div>
+							</div>
+						` : ''}
+					</div>
+
+					<div class="splitter-handle" id="codingSplitter"></div>
+					
+					<div class="editor-section" id="codingRightPane" style="flex:1; min-width:200px;">
+						<div class="editor-toolbar">
+							<div style="display:flex; align-items:center; gap:15px;">
+								<span style="color:#aaa; font-size:12px; font-weight:700;">LANGUAGE</span>
+								<select id="langSelector" class="lang-selector">
+									<option value="java">Java</option>
+									<option value="c">C</option>
+									<option value="cpp">C++</option>
+									<option value="python">Python</option>
+								</select>
+							</div>
+							<div class="run-btns">
+								<button class="nav-btn btn-run" id="btnRunCode">▶ Run Code</button>
+								<button class="nav-btn btn-submit-code" id="btnSubmitCode">✓ Submit Code</button>
+							</div>
+						</div>
+						<div id="monacoContainer" class="editor-container" style="height:100%;"></div>
+					</div>
+				</div>
+				
+				<div class="output-panel">
+					<div class="output-header">
+						<span>Console Output</span>
+						<span id="runStatus"></span>
+					</div>
+					<div class="output-content" id="compilerOutput">Run your code to see results...</div>
+				</div>
+			</div>
+		`;
+
+		// Toggle Logic
+		window.toggleDetails = (btn) => {
+			btn.classList.toggle("active");
+			const content = btn.nextElementSibling;
+			content.classList.toggle("show");
+			const arrow = btn.querySelector("span:last-child");
+			arrow.textContent = content.classList.contains("show") ? "▲" : "▼";
+		};
+
+		// Resizer Logic
+		const resizer = document.getElementById("codingSplitter");
+		const leftPane = document.getElementById("codingLeftPane");
+		const rightPane = document.getElementById("codingRightPane");
+		let isResizing = false;
+
+		resizer.addEventListener('mousedown', (e) => {
+			isResizing = true;
+			resizer.classList.add("dragging");
+			document.body.style.cursor = 'col-resize';
+			e.preventDefault();
+		});
+
+		document.addEventListener('mousemove', (e) => {
+			if (!isResizing) return;
+			const containerOffset = resizer.parentElement.getBoundingClientRect().left;
+			const newWidth = e.clientX - containerOffset; // Make it relative to container
+			const containerWidth = resizer.parentElement.offsetWidth;
+
+			if (newWidth > 150 && newWidth < containerWidth - 150) {
+				leftPane.style.width = `${newWidth}px`;
+			}
+		});
+
+		document.addEventListener('mouseup', () => {
+			if (isResizing) {
+				isResizing = false;
+				resizer.classList.remove("dragging");
+				document.body.style.cursor = '';
+				// Trigger monaco resize
+				if (currentExam.monacoEditor) currentExam.monacoEditor.layout();
+			}
+		});
+
+		initMonaco(() => {
+			if (currentExam.monacoEditor) {
+				currentExam.monacoEditor.dispose();
+			}
+
+			const lang = document.getElementById("langSelector").value;
+			let savedCode = "";
+			const ans = currentExam.answers[q.questionId];
+			if (ans) {
+				try {
+					const parsed = JSON.parse(ans);
+					savedCode = parsed.code || "";
+					if (parsed.language) document.getElementById("langSelector").value = parsed.language;
+				} catch (e) { savedCode = ans; }
+			}
+			if (!savedCode) savedCode = getDefaultCode(lang);
+
+			currentExam.monacoEditor = monaco.editor.create(document.getElementById('monacoContainer'), {
+				value: savedCode,
+				language: lang,
+				theme: 'vs-dark',
+				automaticLayout: true,
+				fontSize: 16, // Bigger font as requested (implied by "big size")
+				minimap: { enabled: false },
+				scrollBeyondLastLine: false,
+				padding: { top: 15, bottom: 15 }
+			});
+
+			currentExam.monacoEditor.onDidChangeModelContent(() => {
+				const currentLang = document.getElementById("langSelector").value;
+				currentExam.answers[q.questionId] = JSON.stringify({
+					code: currentExam.monacoEditor.getValue(),
+					language: currentLang
+				});
+			});
+		});
+
+		document.getElementById("langSelector").onchange = (e) => {
+			const newLang = e.target.value;
+			const currentCode = currentExam.monacoEditor.getValue();
+			if (!currentCode.trim() || isDefaultCode(currentCode)) {
+				currentExam.monacoEditor.setValue(getDefaultCode(newLang));
+			}
+			monaco.editor.setModelLanguage(currentExam.monacoEditor.getModel(), newLang);
+			currentExam.answers[q.questionId] = JSON.stringify({
+				code: currentExam.monacoEditor.getValue(),
+				language: newLang
+			});
+		};
+
+		document.getElementById("btnRunCode").onclick = () => runCode(q, false);
+		document.getElementById("btnSubmitCode").onclick = () => runCode(q, true);
+	}
+
+	function getDefaultCode(lang) {
+		if (lang === 'java') {
+			return `public class Main {\n    public static void main(String[] args) {\n        // Your code here\n    }\n}`;
+		} else if (lang === 'c') {
+			return `#include <stdio.h>\n\nint main() {\n    // Your code here\n    return 0;\n}`;
+		} else if (lang === 'cpp') {
+			return `#include <iostream>\n\nint main() {\n    // Your code here\n    return 0;\n}`;
+		} else if (lang === 'python') {
+			return `# Your code here\nprint("Hello World")`;
+		}
+		return '';
+	}
+
+	function isDefaultCode(code) {
+		return code.includes("// Your code here");
+	}
+
+	async function runCode(question, isFinalSubmit) {
+		const lang = document.getElementById("langSelector").value;
+		const code = currentExam.monacoEditor.getValue();
+		const outputArea = document.getElementById("compilerOutput");
+		const statusArea = document.getElementById("runStatus");
+		const runBtn = document.getElementById("btnRunCode");
+		const submitBtn = document.getElementById("btnSubmitCode");
+
+		outputArea.textContent = isFinalSubmit ? "Evaluating against hidden test cases..." : "Compiling and Running...";
+		statusArea.innerHTML = '<span class="status-tag pending">Processing...</span>';
+		runBtn.disabled = true;
+		submitBtn.disabled = true;
+
+		try {
+			if (isFinalSubmit) {
+				const res = await authFetch("/quiz/compiler/evaluate", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						questionId: question.questionId,
+						language: lang,
+						code: code
+					})
+				});
+
+				if (!res.ok) throw new Error(await res.text());
+				const data = await res.json();
+
+				if (data.status === "ERROR") {
+					outputArea.innerHTML = `<div style="color:#ef4444; white-space:pre-wrap; font-family:monospace; font-size:12px;"><span style="font-weight:700;">COMPILATION ERROR:</span>\n${data.compilationError}</div>`;
+					statusArea.innerHTML = '<span class="status-tag fail">Compile Error</span>';
+				} else {
+					let html = `<div style="margin-bottom:15px; padding-bottom:10px; border-bottom:1px solid #eee;">
+						<span style="font-weight:800; color:${data.status === 'PASSED' ? '#059669' : '#dc2626'}; font-size:16px;">
+							${data.status === 'PASSED' ? '✅ ALL TEST CASES PASSED' : '❌ SOME TEST CASES FAILED'}
+						</span>
+						<div style="font-size:13px; color:#64748b; margin-top:4px;">Score: ${data.passedCount} / ${data.totalCount} test cases passed</div>
+					</div>`;
+
+					html += `<div style="display:grid; gap:8px;">`;
+					(data.reports || []).forEach(r => {
+						html += `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 15px; background:${r.passed ? '#f0fdf4' : '#fef2f2'}; border-radius:8px; border:1px solid ${r.passed ? '#bbf7d0' : '#fecaca'};">
+							<div style="display:flex; align-items:center; gap:10px;">
+								<span style="font-size:16px;">${r.passed ? '✅' : '❌'}</span>
+								<span style="font-weight:600; color:${r.passed ? '#166534' : '#991b1b'};">Test Case ${r.testCaseIndex}</span>
+							</div>
+							<div style="display:flex; align-items:center; gap:12px;">
+								<span style="font-size:12px; color:#64748b; font-family:monospace;">${r.executionTimeMs}ms</span>
+								<span style="font-weight:800; font-size:11px; text-transform:uppercase; color:${r.passed ? '#15803d' : '#b91c1c'};">${r.passed ? 'Passed' : 'Failed'}</span>
+							</div>
+						</div>`;
+						if (!r.passed && r.error) {
+							html += `<pre style="font-size:11px; color:#ef4444; margin:-5px 0 10px 10px; background:#fff1f2; padding:8px; border-radius:4px; border:1px solid #fecaca; font-family:monospace;">${r.error}</pre>`;
+						}
+					});
+					html += `</div>`;
+
+					outputArea.innerHTML = html;
+					statusArea.innerHTML = `<span class="status-tag ${data.status === 'PASSED' ? 'pass' : 'fail'}">${data.status}</span>`;
+
+					currentExam.answers[question.questionId] = JSON.stringify({
+						code: code,
+						language: lang
+					});
+					renderNavGrid();
+
+					if (data.status === 'PASSED') {
+						showFacultyNotice("Success!", "Excellent! All test cases passed. Your final code has been submitted.", "success");
+					} else {
+						showFacultyNotice("Submission Saved", "Your code was saved, but it failed some test cases. You can refine your logic and submit again.", "info");
+					}
+				}
+			} else {
+				// Run Against All Sample Cases
+				let samples = [];
+				try {
+					samples = question.sampleInput.startsWith("[") ? JSON.parse(question.sampleInput) : [{ input: (question.sampleInput || ""), output: (question.sampleOutput || "") }];
+				} catch (e) {
+					samples = [{ input: (question.sampleInput || ""), output: (question.sampleOutput || "") }];
+				}
+
+				outputArea.innerHTML = `<div style="padding:10px; color:var(--text-muted);">Running ${samples.length} sample cases...</div>`;
+				let overallHtml = `<div style="display:grid; gap:20px;">`;
+				let allPassed = true;
+
+				for (let i = 0; i < samples.length; i++) {
+					const s = samples[i];
+					const res = await authFetch("/quiz/compiler/run", {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						body: JSON.stringify({
+							language: lang,
+							code: code,
+							input: s.input || ""
+						})
+					});
+
+					if (!res.ok) throw new Error(await res.text());
+					const data = await res.json();
+					const actual = (data.output || "").trim();
+					const expected = (s.output || "").trim();
+					const isPass = !data.error && actual === expected;
+					if (!isPass) allPassed = false;
+
+					overallHtml += `
+            <div style="background:white; border-radius:12px; border:1px solid ${isPass ? '#bbf7d0' : '#fecaca'}; overflow:hidden; box-shadow:0 4px 6px -1px rgba(0,0,0,0.05);">
+              <div style="background:${isPass ? '#f0fdf4' : '#fef2f2'}; padding:10px 15px; border-bottom:1px solid ${isPass ? '#bbf7d0' : '#fecaca'}; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-weight:800; font-size:12px; color:${isPass ? '#166534' : '#991b1b'};">SAMPLE TEST CASE ${i + 1}</span>
+                <span style="background:${isPass ? '#10b981' : '#ef4444'}; color:white; padding:2px 10px; border-radius:100px; font-size:10px; font-weight:900; text-transform:uppercase;">${isPass ? 'Passed' : 'Failed'}</span>
+              </div>
+              <div style="padding:15px; display:grid; gap:12px;">
+                ${data.error ? `
+                  <div style="color:#ef4444; white-space:pre-wrap; font-family:monospace; background:#fef2f2; padding:10px; border-radius:6px; border:1px solid #fecaca;">
+                    <span style="font-weight:700;">RUNTIME ERROR:</span>\n${data.error}
+                  </div>
+                ` : `
+                  <div style="background:#f8fafc; padding:8px 12px; border-radius:6px; border:1px solid #e2e8f0;">
+                    <div style="font-size:10px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:4px;">Input</div>
+                    <pre style="margin:0; font-family:monospace; font-size:12px;">${s.input || 'No input'}</pre>
+                  </div>
+                  <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div style="background:#f0fdf4; padding:8px 12px; border-radius:6px; border:1px solid #bbf7d0;">
+                      <div style="font-size:10px; font-weight:800; color:#166534; text-transform:uppercase; margin-bottom:4px;">Expected</div>
+                      <pre style="margin:0; font-family:monospace; font-size:12px; color:#166534;">${expected || 'No output'}</pre>
+                    </div>
+                    <div style="background:${isPass ? '#f0fdf4' : '#fef2f2'}; padding:8px 12px; border-radius:6px; border:1px solid ${isPass ? '#bbf7d0' : '#fecaca'};">
+                      <div style="font-size:10px; font-weight:800; color:${isPass ? '#166534' : '#991b1b'}; text-transform:uppercase; margin-bottom:4px;">Actual</div>
+                      <pre style="margin:0; font-family:monospace; font-size:12px; color:${isPass ? '#166534' : '#991b1b'};">${actual || 'No output'}</pre>
+                    </div>
+                  </div>
+                  <div style="font-size:11px; color:#64748b;">⏳ Execution Time: ${data.executionTimeMs}ms</div>
+                `}
+              </div>
+            </div>
+          `;
+				}
+				overallHtml += `</div>`;
+				outputArea.innerHTML = overallHtml;
+				statusArea.innerHTML = allPassed ? '<span class="status-tag pass">Samples Passed</span>' : '<span class="status-tag fail">Samples Failed</span>';
+			}
+		} catch (e) {
+			outputArea.innerHTML = `<div style="color:#ef4444; font-weight:700;">System Error:</div><div style="color:#ef4444;">${e.message}</div>`;
+			statusArea.innerHTML = '<span class="status-tag fail">System Error</span>';
+		} finally {
+			runBtn.disabled = false;
+			submitBtn.disabled = false;
+		}
 	}
 
 	function startGlobalTimer() {
@@ -1169,14 +1722,17 @@
 
 			if (currentExam.totalSeconds <= 0) {
 				clearInterval(interval);
-				alert("Exam time is up! Auto-submitting...");
+				showAlert("Exam time is up! Auto-submitting...", "Time Expired", "⌛");
 				submitExam(true);
 			}
 		}, 1000);
 	}
 
 	async function submitExam(forced = false, skipConfirm = false) {
-		if (!forced && !skipConfirm && !confirm("Are you really sure you want to finish the exam?")) return;
+		if (!forced && !skipConfirm) {
+			const confirmed = await showConfirm("Are you really sure you want to finish the exam?", "Confirm Submission");
+			if (!confirmed) return;
+		}
 
 		currentExam.active = false;
 
@@ -1211,7 +1767,7 @@
 
 				document.querySelector(".exam-overlay")?.remove();
 				document.body.classList.remove("exam-body-locked"); // Restore scroll
-				alert("Assessment submitted successfully. You can now view your result in the 'View Results' section.");
+				showAlert("Assessment submitted successfully. You can now view your result in the 'View Results' section.", "Success", "✅");
 
 				// Reset to dashboard
 				document.getElementById("studentDashboard")?.classList.remove("hidden");
@@ -1223,7 +1779,7 @@
 				throw new Error(errorMsg);
 			}
 		} catch (e) {
-			alert("Submission failed! " + e.message);
+			showAlert("Submission failed! " + e.message, "Error", "❌");
 			document.getElementById("subLoader")?.remove();
 			currentExam.active = true; // Allow retry
 		}
@@ -1280,7 +1836,7 @@
 	// -------------------- VIEW RESULTS --------------------
 	viewResultBtn?.addEventListener("click", () => {
 		const roll = getRoll();
-		if (!roll) return alert("Please login first to view results.");
+		if (!roll) return showAlert("Please login first to view results.");
 		const content = `
       <div style="display:grid; gap:10px;">
         <input type="text" id="resRoll" value="${roll}" disabled class="modal-select">
@@ -1349,7 +1905,7 @@
 
 	window.showDetailedKey = async (resData) => {
 		const isPublished = resData.published || resData.isPublished;
-		if (!isPublished) return alert("The detailed solutions for this quiz are not yet available.");
+		if (!isPublished) return showAlert("The detailed solutions for this quiz are not yet available.", "Unavailable", "🔒");
 
 		// Fetch actual questions to show the correct key
 		const qRes = await authFetch(`/quiz/${resData.quiz.id}/questions`);
@@ -1413,18 +1969,62 @@
                 </div>
               </div>
             `;
-			}
+			} else if (q.questionType === "CODING") {
+				let displayCode = studentAns;
+				let displayLang = "java";
+				try {
+					const parsed = JSON.parse(studentAns);
+					displayCode = parsed.code || studentAns;
+					displayLang = parsed.language || "java";
+				} catch (e) { }
 
-			const studentList = studentAns.split(",").map(s => s.trim()).filter(x => x);
-			const correctList = correctAns.split(",").map(s => s.trim()).filter(x => x);
+				const marksAwarded = resData.score_breakdown ? (resData.score_breakdown[q.questionId] || 0) : 0;
+				const isPerfect = marksAwarded >= q.marks && q.marks > 0;
 
-			const isCorrect = studentList.length > 0 &&
-				studentList.length === correctList.length &&
-				studentList.every(s => correctList.includes(s));
+				return `
+              <div class="exam-col" style="padding:40px; background:white; border-radius:28px; border:2px solid #ffffff; box-shadow:0 15px 35px rgba(0,0,0,0.05), 0 0 0 1px rgba(99, 102, 241, 0.05); transition:0.4s;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
+                  <div style="flex:1;">
+                    <div style="display:flex; align-items:center; gap:12px; margin-bottom:12px;">
+                       <span style="font-size:11px; font-weight:900; color:var(--primary); text-transform:uppercase; letter-spacing:2px; background:rgba(99, 102, 241, 0.1); padding:5px 12px; border-radius:8px;">Question ${idx + 1}</span>
+                       <span style="font-size:13px; font-weight:800; color:var(--text-muted);">${q.marks} Points</span>
+                       <span style="font-size:11px; font-weight:800; color:#0ea5e9; background:#e0f2fe; padding:5px 10px; border-radius:100px;">CODING</span>
+                    </div>
+                    <h2 style="margin:0; font-size:20px; line-height:1.6; color:var(--text-main); font-weight:800; white-space: pre-wrap; font-family: 'Consolas', monospace; background:#f8fafc; padding:15px; border-radius:12px; border:1px solid #e2e8f0;">${q.questionText}</h2>
+                  </div>
+                  <div class="status-badge ${marksAwarded > 0 ? (isPerfect ? 'status-pass' : 'status-pass') : 'status-fail'}" style="padding:12px 28px; border-radius:100px; font-weight:900; font-size:12px; box-shadow:0 6px 15px rgba(0,0,0,0.08); text-transform:uppercase; letter-spacing:1px;">
+                    ${marksAwarded > 0 ? (isPerfect ? 'Perfect Score' : 'Partial Credit') : (studentAns ? 'Failed Execution' : 'Unattempted')}
+                  </div>
+                </div>
+                
+                <div style="margin-top:20px; background:#1e1e1e; border-radius:12px; overflow:hidden;">
+                    <div style="padding:10px 20px; background:#333; color:#aaa; font-size:11px; font-weight:800; text-transform:uppercase; display:flex; justify-content:space-between;">
+                        <span>Student Solution (${displayLang.toUpperCase()})</span>
+                        <span style="color:#10b981;">Score Received: ${marksAwarded} / ${q.marks}</span>
+                    </div>
+                    <pre style="margin:0; padding:20px; color:#d4d4d4; font-family:'Consolas', monospace; font-size:13px; line-height:1.5; overflow-x:auto;"><code>${displayCode.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")}</code></pre>
+                </div>
 
-			const isUnanswered = studentList.length === 0;
+                <div style="margin-top:25px; padding:20px; background:#f0f9ff; border-radius:12px; border:1px solid #bae6fd;">
+                    <div style="color:#0369a1; font-size:11px; font-weight:900; text-transform:uppercase; margin-bottom:10px;">Evaluation Summary</div>
+                    <div style="font-size:14px; color:#0c4a6e; line-height:1.5;">
+                        This program was evaluated against <b>hidden test cases</b>. Marks were assigned based on the number of passed cases.
+                    </div>
+                </div>
+              </div>
+            `;
+			} else {
+				// MCQ / Generic Solution View
+				const studentList = studentAns.split(",").map(s => s.trim()).filter(x => x);
+				const correctList = correctAns.split(",").map(s => s.trim()).filter(x => x);
 
-			return `
+				const isCorrect = studentList.length > 0 &&
+					studentList.length === correctList.length &&
+					studentList.every(s => correctList.includes(s));
+
+				const isUnanswered = studentList.length === 0;
+
+				return `
               <div class="exam-col" style="padding:40px; background:white; border-radius:28px; border:2px solid #ffffff; box-shadow:0 15px 35px rgba(0,0,0,0.05), 0 0 0 1px rgba(99, 102, 241, 0.05); transition:0.4s;">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:30px;">
                   <div style="flex:1;">
@@ -1442,19 +2042,19 @@
                 
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap:12px;">
                   ${(q.options?.choices || []).map(opt => {
-				const optTrim = opt.trim();
-				const isRight = correctList.includes(optTrim);
-				const isChosen = studentList.includes(optTrim);
+					const optTrim = opt.trim();
+					const isRight = correctList.includes(optTrim);
+					const isChosen = studentList.includes(optTrim);
 
-				let stateCls = "";
-				let icon = "○";
-				if (isRight) { stateCls = "background:#ecfdf5; border-color:#10b981; color:#064e3b; border-width: 3px; transform:scale(1.05); z-index:2; border-left: 10px solid #10b981;"; icon = "✅ (CORRECT)"; }
-				else if (isChosen) { stateCls = "background:#fff1f2; border-color:#f43f5e; color:#9f1239; border-width: 3px; border-left: 10px solid #f43f5e;"; icon = "❌ (YOUR ERROR)"; }
-				else { stateCls = "background:#f8fafc; border-color:#e2e8f0; color:#64748b;"; }
+					let stateCls = "";
+					let icon = "○";
+					if (isRight) { stateCls = "background:#ecfdf5; border-color:#10b981; color:#064e3b; border-width: 3px; transform:scale(1.05); z-index:2; border-left: 10px solid #10b981;"; icon = "✅ (CORRECT)"; }
+					else if (isChosen) { stateCls = "background:#fff1f2; border-color:#f43f5e; color:#9f1239; border-width: 3px; border-left: 10px solid #f43f5e;"; icon = "❌ (YOUR ERROR)"; }
+					else { stateCls = "background:#f8fafc; border-color:#e2e8f0; color:#64748b;"; }
 
-				const optImg = (q.options?.choiceImages || [])[q.options.choices.indexOf(opt)];
+					const optImg = (q.options?.choiceImages || [])[q.options.choices.indexOf(opt)];
 
-				return `
+					return `
                       <div style="padding:14px 18px; border-radius:10px; border:2px solid; font-weight:600; font-size:14px; display:flex; flex-direction:column; gap:12px; ${stateCls}">
                         <div style="display:flex; align-items:center; gap:12px;">
                            <span style="font-size:16px;">${icon}</span>
@@ -1463,7 +2063,7 @@
                         ${optImg ? `<div><img src="${optImg}" style="max-height:100px; border-radius:5px;"></div>` : ""}
                       </div>
                     `;
-			}).join("")}
+				}).join("")}
                 </div>
                 
                 <div style="margin-top:40px; padding:25px 30px; background:#f8fafc; border-radius:20px; border:2px dashed #e2e8f0; display:flex; flex-wrap:wrap; gap:60px; font-size:15px; position:relative;">
@@ -1479,10 +2079,11 @@
                 </div>
               </div>
             `;
+			}
 		}).join("")}
-        </div>
-      </div>
-    `;
+        </div >
+      </div >
+	`;
 		document.body.appendChild(overlay);
 
 		overlay.querySelector("#closeSolver").onclick = () => {

@@ -1,0 +1,390 @@
+/* Landing Page Styles - Fantastic & Realistic UI */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;700;800&display=swap');
+
+:root {
+    --primary: #4f46e5;
+    --primary-dark: #4338ca;
+    --secondary: #ec4899;
+    --accent: #8b5cf6;
+    --dark: #0f172a;
+    --light: #f8fafc;
+    --text-main: #334155;
+    --text-light: #64748b;
+    --glass-bg: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.4);
+    --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    color: var(--text-main);
+    background: var(--bg-color);
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* --- Navigation Bar --- */
+.navbar {
+    background: rgba(255, 255, 255, 0.85) !important;
+    backdrop-filter: blur(12px) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3) !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+    padding: 15px 0 !important;
+    transition: all 0.3s ease;
+}
+
+.nav-links a {
+    color: var(--dark) !important;
+    font-weight: 600 !important;
+    font-size: 1rem !important;
+    transition: color 0.3s ease;
+}
+
+.nav-links a:hover,
+.nav-links a.active {
+    color: var(--primary) !important;
+    background: transparent !important;
+}
+
+/* --- Hero Section --- */
+.hero-container {
+    position: relative;
+    min-height: 85vh;
+    /* Taller, premium feel */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    background: linear-gradient(180deg, rgba(15, 23, 42, 0.8) 0%, rgba(15, 23, 42, 0.6) 50%, rgba(15, 23, 42, 0.9) 100%),
+        url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=1920');
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+    /* Parallax effect */
+    color: white;
+    padding: 0 20px;
+    margin-bottom: 80px;
+    border-radius: 0 0 60px 60px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+/* Animated background particles or sheen could be added here */
+.hero-container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 100px;
+    background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), transparent);
+    pointer-events: none;
+}
+
+.hero-container h1 {
+    font-size: 5rem !important;
+    font-weight: 800 !important;
+    margin-bottom: 20px !important;
+    color: #ffffff !important;
+    background: none !important;
+    -webkit-text-fill-color: initial !important;
+    /* Reset any gradient text */
+    text-shadow: 0 0 30px rgba(79, 70, 229, 0.6), 0 4px 10px rgba(0, 0, 0, 0.5);
+    /* Glowing effect */
+    letter-spacing: -2px;
+    line-height: 1.1;
+    max-width: 1000px;
+    animation: fadeDown 1s ease-out;
+}
+
+.hero-container p {
+    font-size: 1.6rem !important;
+    color: rgba(255, 255, 255, 0.95) !important;
+    max-width: 800px !important;
+    margin: 0 auto !important;
+    line-height: 1.6;
+    font-weight: 400;
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    animation: fadeUp 1s ease-out 0.3s backwards;
+}
+
+.hero-subtext {
+    font-size: 1rem !important;
+    opacity: 0.8;
+    margin-top: 20px !important;
+}
+
+@keyframes fadeDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* --- Section Headings --- */
+.section-title {
+    text-align: center;
+    margin: 100px 0 50px;
+    position: relative;
+}
+
+.section-title h2 {
+    font-size: 3rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 15px;
+    position: relative;
+    display: inline-block;
+}
+
+.section-title p {
+    font-size: 1.1rem;
+    color: var(--text-light);
+    max-width: 600px;
+    margin: 0 auto;
+}
+
+/* --- Cards (Global) --- */
+.about-card,
+.offer-card,
+.method-card,
+.feature-category div {
+    background: var(--card-bg);
+    border-radius: 24px;
+    padding: 35px;
+    transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    border: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    position: relative;
+    overflow: hidden;
+    z-index: 1;
+}
+
+.about-card:hover,
+.offer-card:hover,
+.method-card:hover,
+.feature-category div:hover {
+    transform: translateY(-10px);
+    box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.15);
+    border-color: var(--primary);
+}
+
+/* Add a subtle shine effect on hover */
+.about-card::after,
+.offer-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(120deg, transparent 30%, rgba(255, 255, 255, 0.4) 50%, transparent 70%);
+    transform: translateX(-100%);
+    transition: 0.6s;
+    z-index: -1;
+}
+
+.about-card:hover::after,
+.offer-card:hover::after {
+    transform: translateX(100%);
+}
+
+/* --- Offer Grid --- */
+.offer-grid,
+.features-grid,
+.course-grid,
+#examTypesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 30px;
+    padding: 0 5%;
+    max-width: 1400px;
+    margin: 0 auto;
+}
+
+/* New Image Card Styles */
+.offer-card {
+    padding: 0 !important;
+    /* override global */
+    display: flex;
+    flex-direction: column;
+}
+
+.offer-card .offer-img {
+    height: 220px;
+    width: 100%;
+    background-size: cover;
+    background-position: center;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.offer-card h4 {
+    margin: 25px 0 10px;
+    padding: 0 25px;
+}
+
+/* --- Icons --- */
+.icon-box,
+.about-card .icon,
+.offer-card .icon {
+    width: 70px;
+    height: 70px;
+    background: linear-gradient(135deg, #e0e7ff 0%, #f3e8ff 100%);
+    color: var(--primary);
+    border-radius: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    transition: transform 0.4s ease;
+}
+
+.about-card:hover .icon-box {
+    transform: scale(1.1) rotate(5deg);
+    background: var(--primary);
+    color: white;
+}
+
+/* --- Features Section --- */
+.feature-category {
+    background: var(--card-bg);
+    border-radius: 30px;
+    padding: 40px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.03);
+    margin: 0 auto;
+    max-width: 1200px;
+}
+
+.feature-category h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* --- How It Works --- */
+.how-it-works-container {
+    padding: 0 5%;
+}
+
+#howItWorksSteps {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 30px;
+}
+
+#howItWorksSteps>div {
+    background: var(--card-bg) !important;
+    padding: 25px 40px !important;
+    border-radius: 50px !important;
+    border: 2px solid #e0e7ff !important;
+    color: var(--dark) !important;
+    font-weight: 600 !important;
+    font-size: 1.1rem !important;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.03) !important;
+    transition: transform 0.3s ease !important;
+    display: flex;
+    align-items: center;
+}
+
+#howItWorksSteps>div:hover {
+    transform: translateY(-5px) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+}
+
+/* --- Footer / Contact --- */
+.contact-section {
+    background: var(--card-bg);
+    padding: 80px 0;
+    margin-top: 100px;
+    border-top: 1px solid var(--border);
+}
+
+input,
+textarea {
+    background: var(--bg-color);
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 15px;
+    font-family: inherit;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    width: 100%;
+    outline: none;
+}
+
+input:focus,
+textarea:focus {
+    border-color: var(--primary);
+    background: white;
+    box-shadow: 0 0 0 4px rgba(79, 70, 229, 0.1);
+}
+
+button.primary-btn {
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    color: white;
+    padding: 16px 36px;
+    border-radius: 14px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border: none;
+    cursor: pointer;
+    box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+    transition: all 0.3s ease;
+}
+
+button.primary-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 15px 30px rgba(79, 70, 229, 0.4);
+}
+
+/* Animations */
+.animate-up {
+    animation: fadeUp 0.8s ease-out forwards;
+    opacity: 0;
+    animation-delay: 0.1s;
+}
+
+@media (max-width: 768px) {
+    .hero-container h1 {
+        font-size: 2.5rem !important;
+    }
+
+    .hero-container {
+        padding: 120px 20px 80px;
+    }
+
+    .offer-grid,
+    .features-grid,
+    .feature-category {
+        grid-template-columns: 1fr !important;
+    }
+
+    .feature-category>div:first-child {
+        order: 2;
+    }
+
+    /* Image on top logic if we want, but simple stack is fine */
+}

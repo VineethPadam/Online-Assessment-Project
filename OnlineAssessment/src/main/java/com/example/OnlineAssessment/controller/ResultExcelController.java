@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.example.OnlineAssessment.service.ResultExcelService;
+import com.example.OnlineAssessment.security.JwtUtil;
 
 @RestController
 @RequestMapping("/results")
@@ -17,8 +18,19 @@ public class ResultExcelController {
     @Autowired
     private ResultExcelService resultExcelService;
 
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    private Long getCollegeId(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return jwtUtil.extractCollegeId(authHeader.substring(7));
+        }
+        return null;
+    }
+
     @GetMapping("/download")
     public ResponseEntity<byte[]> downloadClassResults(
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam(required = false) Long quizId,
             @RequestParam(required = false) String department,
             @RequestParam(required = false) String section,
@@ -29,8 +41,9 @@ public class ResultExcelController {
                 yearInt = Integer.parseInt(year);
             }
 
+            Long collegeId = getCollegeId(authHeader);
             byte[] excelData = resultExcelService.generateClassResultsExcel(
-                    quizId, department, section, yearInt);
+                    quizId, department, section, yearInt, collegeId);
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.parseMediaType(

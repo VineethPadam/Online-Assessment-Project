@@ -16,7 +16,6 @@ import org.springframework.web.multipart.MultipartFile;
 import com.example.OnlineAssessment.entity.Options;
 import com.example.OnlineAssessment.entity.Questions;
 import com.example.OnlineAssessment.entity.Quiz;
-import com.example.OnlineAssessment.repositories.OptionsRepo;
 import com.example.OnlineAssessment.repositories.QuestionRepo;
 import com.example.OnlineAssessment.repositories.QuizRepo;
 
@@ -27,15 +26,12 @@ public class QuestionExcelService {
         private QuestionRepo questionRepo;
 
         @Autowired
-        private OptionsRepo optionsRepo;
-
-        @Autowired
         private QuizRepo quizRepo;
 
-        public void uploadQuestions(MultipartFile file, Long quizId) throws Exception {
+        public void uploadQuestions(MultipartFile file, Long quizId, Long collegeId) throws Exception {
 
-                Quiz quiz = quizRepo.findById(quizId)
-                                .orElseThrow(() -> new RuntimeException("Quiz does not exist. Create quiz first."));
+                Quiz quiz = quizRepo.findByIdAndFaculty_College_Id(quizId, collegeId)
+                                .orElseThrow(() -> new RuntimeException("Quiz does not exist or access denied."));
 
                 List<Questions> existingQuestions = questionRepo.findByQuiz_Id(quizId);
                 if (!existingQuestions.isEmpty()) {

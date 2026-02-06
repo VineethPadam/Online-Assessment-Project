@@ -18,6 +18,7 @@ import com.example.OnlineAssessment.repositories.QuizRepo;
 import com.example.OnlineAssessment.service.QuestionService;
 import com.example.OnlineAssessment.service.QuizService;
 import com.example.OnlineAssessment.service.StudentService;
+import com.example.OnlineAssessment.security.JwtUtil;
 
 @RestController
 @RequestMapping("/quiz")
@@ -40,12 +41,28 @@ public class QuizController {
     private QuizRepo quizRepo;
 
     @Autowired
+    private com.example.OnlineAssessment.repositories.QuestionRepo questionRepo;
+
+    @Autowired
     private com.example.OnlineAssessment.service.SectionService sectionService;
 
+    @Autowired
+    private com.example.OnlineAssessment.service.CompilerService compilerService;
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
     private String getCurrentFacultyId() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        Faculty faculty = facultyRepo.findByEmail(email);
+        String authUser = SecurityContextHolder.getContext().getAuthentication().getName();
+        Faculty faculty = facultyRepo.findByEmail(authUser);
         return faculty != null ? faculty.getFacultyId() : null;
+    }
+
+    private Long getCurrentCollegeId(String authHeader) {
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return jwtUtil.extractCollegeId(authHeader.substring(7));
+        }
+        return null;
     }
 
     // ✅ Create a new quiz
@@ -101,10 +118,18 @@ public class QuizController {
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
             String questionType = (String) payload.getOrDefault("questionType", "MCQ");
+            String inputFormat = (String) payload.get("inputFormat");
+            String outputFormat = (String) payload.get("outputFormat");
+            String sampleInput = (String) payload.get("sampleInput");
+            String sampleOutput = (String) payload.get("sampleOutput");
+            String testCases = (String) payload.get("testCases");
+            String constraints = (String) payload.get("constraints");
+            String hints = (String) payload.get("hints");
 
             Questions q = questionService.addQuestionToQuiz(quizId, text, questionType, options, correct, marks,
                     negMarks, timeLimit,
-                    questionImage, choiceImages);
+                    questionImage, choiceImages, inputFormat, outputFormat, sampleInput, sampleOutput, testCases,
+                    constraints, hints);
             return ResponseEntity.ok(q);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -129,10 +154,18 @@ public class QuizController {
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
             String questionType = (String) payload.getOrDefault("questionType", "MCQ");
+            String inputFormat = (String) payload.get("inputFormat");
+            String outputFormat = (String) payload.get("outputFormat");
+            String sampleInput = (String) payload.get("sampleInput");
+            String sampleOutput = (String) payload.get("sampleOutput");
+            String testCases = (String) payload.get("testCases");
+            String constraints = (String) payload.get("constraints");
+            String hints = (String) payload.get("hints");
 
             Questions q = questionService.updateQuestion(questionId, text, questionType, options, correct, marks,
                     negMarks,
-                    timeLimit, questionImage, choiceImages);
+                    timeLimit, questionImage, choiceImages, inputFormat, outputFormat, sampleInput, sampleOutput,
+                    testCases, constraints, hints);
             return ResponseEntity.ok(q);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -153,16 +186,21 @@ public class QuizController {
     // ✅ Activate or deactivate quiz
     @PostMapping("/activate")
     public ResponseEntity<?> activateQuiz(
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam Long quizId,
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year,
             @RequestParam boolean active,
             @RequestParam(defaultValue = "0") int durationMinutes,
-            @RequestParam(required = false) String sectionConfigs) {
+            @RequestParam(required = false) String sectionConfigs,
+            @RequestParam(required = false) String startTime,
+            @RequestParam(required = false) String endTime) {
 
         try {
-            quizService.activateQuiz(quizId, section, department, year, active, durationMinutes, sectionConfigs);
+            Long collegeId = getCurrentCollegeId(authHeader);
+            quizService.activateQuiz(quizId, section, department, year, active, durationMinutes, sectionConfigs,
+                    startTime, endTime, collegeId);
             return ResponseEntity.ok("Quiz activation updated successfully");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -172,6 +210,7 @@ public class QuizController {
     // ✅ Get all active quizzes for a student
     @GetMapping("/active")
     public ResponseEntity<?> getActiveQuizzesForStudent(
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam String rollNumber,
             @RequestParam String section,
             @RequestParam String department,
@@ -184,6 +223,7 @@ public class QuizController {
         }
 
         Student student = studentService.getByRollNumber(rollNumber);
+        Long collegeId = getCurrentCollegeId(authHeader);
 
         if (student == null || !student.getStudentSection().equalsIgnoreCase(section)
                 || !student.getDepartment().equalsIgnoreCase(department)
@@ -191,19 +231,21 @@ public class QuizController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid student details provided.");
         }
 
-        return ResponseEntity.ok(quizService.getActiveQuizzesForStudent(section, department, year));
+        return ResponseEntity.ok(quizService.getActiveQuizzesForStudent(section, department, year, collegeId));
     }
 
     // ✅ Fetch sections and questions for a student
     @GetMapping("/{quizId}/sections/for-student")
     public List<?> getSectionsForStudent(
+            @RequestHeader("Authorization") String authHeader,
             @RequestParam String section,
             @RequestParam String department,
             @RequestParam int year,
             @PathVariable Long quizId) {
 
+        Long collegeId = getCurrentCollegeId(authHeader);
         com.example.OnlineAssessment.entity.QuizActivation activation = quizService.getQuizActivation(quizId, section,
-                department, year);
+                department, year, collegeId);
         if (activation == null || !activation.isActive()) {
             throw new RuntimeException("Quiz is not active for your class.");
         }
@@ -360,6 +402,7 @@ public class QuizController {
 
     @PostMapping("/{quizId}/publish-result")
     public ResponseEntity<String> publishResult(
+            @RequestHeader("Authorization") String authHeader,
             @PathVariable Long quizId,
             @RequestParam String section,
             @RequestParam String department,
@@ -367,7 +410,8 @@ public class QuizController {
             @RequestParam boolean publish) {
 
         try {
-            quizService.publishResults(quizId, section, department, year, publish);
+            Long collegeId = getCurrentCollegeId(authHeader);
+            quizService.publishResults(quizId, section, department, year, publish, collegeId);
             return ResponseEntity.ok(publish ? "Result published" : "Result unpublished");
         } catch (RuntimeException e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -377,11 +421,13 @@ public class QuizController {
     // ✅ Sections Endpoints
     @PostMapping("/{quizId}/sections")
     public ResponseEntity<?> createSection(
+            @RequestHeader("Authorization") String authHeader,
             @PathVariable Long quizId,
             @RequestParam String name,
             @RequestParam(required = false) String description) {
         try {
-            return ResponseEntity.ok(sectionService.createSection(quizId, name, description));
+            Long collegeId = getCurrentCollegeId(authHeader);
+            return ResponseEntity.ok(sectionService.createSection(quizId, name, description, collegeId));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
         }
@@ -393,9 +439,12 @@ public class QuizController {
     }
 
     @DeleteMapping("/sections/{sectionId}")
-    public ResponseEntity<?> deleteSection(@PathVariable Long sectionId) {
+    public ResponseEntity<?> deleteSection(
+            @RequestHeader("Authorization") String authHeader,
+            @PathVariable Long sectionId) {
         try {
-            sectionService.deleteSection(sectionId);
+            Long collegeId = getCurrentCollegeId(authHeader);
+            sectionService.deleteSection(sectionId, collegeId);
             return ResponseEntity.ok("Section deleted");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
@@ -419,13 +468,103 @@ public class QuizController {
             @SuppressWarnings("unchecked")
             List<String> choiceImages = (List<String>) payload.get("choiceImages");
             String questionType = (String) payload.getOrDefault("questionType", "MCQ");
+            String inputFormat = (String) payload.get("inputFormat");
+            String outputFormat = (String) payload.get("outputFormat");
+            String sampleInput = (String) payload.get("sampleInput");
+            String sampleOutput = (String) payload.get("sampleOutput");
+            String testCases = (String) payload.get("testCases");
+            String constraints = (String) payload.get("constraints");
+            String hints = (String) payload.get("hints");
 
             Questions q = questionService.addQuestionToSection(sectionId, text, questionType, options, correct, marks,
                     negMarks,
-                    timeLimit, questionImage, choiceImages);
+                    timeLimit, questionImage, choiceImages, inputFormat, outputFormat, sampleInput, sampleOutput,
+                    testCases, constraints, hints);
             return ResponseEntity.ok(q);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/compiler/run")
+    public ResponseEntity<?> runCode(@RequestBody Map<String, String> payload) {
+        String language = payload.get("language");
+        String code = payload.get("code");
+        String input = payload.get("input");
+
+        if (language == null || code == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Language and code are required");
+        }
+
+        return ResponseEntity.ok(compilerService.execute(language, code, input));
+    }
+
+    @PostMapping("/compiler/evaluate")
+    public ResponseEntity<?> evaluateCode(@RequestBody Map<String, String> payload) {
+        String questionId = payload.get("questionId");
+        String language = payload.get("language");
+        String code = payload.get("code");
+
+        if (questionId == null || language == null || code == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("questionId, language and code are required");
+        }
+
+        Questions q = questionRepo.findById(questionId).orElse(null);
+        if (q == null)
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Question not found");
+
+        String testCasesJson = q.getTestCases();
+        if (testCasesJson == null || testCasesJson.trim().isEmpty()) {
+            // If no hidden test cases, just run against sample and report as passed if
+            // sample passes
+            com.example.OnlineAssessment.service.CompilerService.ExecutionResult sampleRes = compilerService
+                    .execute(language, code, q.getSampleInput());
+            return ResponseEntity.ok(Map.of("success", sampleRes.success, "results", List.of(sampleRes)));
+        }
+
+        try {
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            List<Map<String, String>> testCases = mapper.readValue(testCasesJson,
+                    new com.fasterxml.jackson.core.type.TypeReference<List<Map<String, String>>>() {
+                    });
+
+            List<Map<String, Object>> reports = new java.util.ArrayList<>();
+            int passedCount = 0;
+            String compilationError = null;
+
+            for (int i = 0; i < testCases.size(); i++) {
+                Map<String, String> tc = testCases.get(i);
+                com.example.OnlineAssessment.service.CompilerService.ExecutionResult res = compilerService
+                        .execute(language, code, tc.get("input"));
+
+                if (!res.success && res.error != null && res.error.contains("Compilation Error")) {
+                    compilationError = res.error;
+                    break;
+                }
+
+                boolean passed = res.success && res.output != null && res.output.trim().equals(tc.get("output").trim());
+                if (passed)
+                    passedCount++;
+
+                reports.add(Map.of(
+                        "testCaseIndex", i + 1,
+                        "passed", passed,
+                        "executionTimeMs", res.executionTimeMs,
+                        "error", res.error != null ? res.error : ""));
+            }
+
+            if (compilationError != null) {
+                return ResponseEntity.ok(Map.of("compilationError", compilationError, "status", "ERROR"));
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "status", passedCount == testCases.size() ? "PASSED" : "FAILED",
+                    "passedCount", passedCount,
+                    "totalCount", testCases.size(),
+                    "reports", reports));
+
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid test cases format: " + e.getMessage());
         }
     }
 }

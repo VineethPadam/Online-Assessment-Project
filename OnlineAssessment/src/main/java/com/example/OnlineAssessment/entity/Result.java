@@ -36,6 +36,9 @@ public class Result {
     @Lob
     private String answers;
 
+    @Lob
+    private String scoreBreakdown; // JSON mapping questionId to marks awarded
+
     private double totalMarks;
 
     @Transient
@@ -46,6 +49,9 @@ public class Result {
 
     @Transient
     private java.util.Map<String, String> studentAnswers;
+
+    @Transient
+    private java.util.Map<String, Double> scoreBreakdownMap;
 
     public double getTotalMarks() {
         return totalMarks;
@@ -133,5 +139,21 @@ public class Result {
 
     public void setStudentAnswers(java.util.Map<String, String> studentAnswers) {
         this.studentAnswers = studentAnswers;
+    }
+
+    public String getScoreBreakdown() {
+        return scoreBreakdown;
+    }
+
+    public void setScoreBreakdown(String scoreBreakdown) {
+        this.scoreBreakdown = scoreBreakdown;
+    }
+
+    public java.util.Map<String, Double> getScoreBreakdownMap() {
+        return scoreBreakdownMap;
+    }
+
+    public void setScoreBreakdownMap(java.util.Map<String, Double> scoreBreakdownMap) {
+        this.scoreBreakdownMap = scoreBreakdownMap;
     }
 }

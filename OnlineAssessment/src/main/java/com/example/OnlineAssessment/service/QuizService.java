@@ -26,6 +26,10 @@ public class QuizService {
 
     // Create a new quiz for a specific faculty
     public Quiz createQuiz(String quizCode, String quizName, String facultyId) {
+        if (quizCode == null)
+            throw new IllegalArgumentException("Quiz code cannot be null");
+        if (facultyId == null)
+            throw new IllegalArgumentException("Faculty ID cannot be null");
         Optional<Quiz> existing = quizRepo.findByQuizCodeAndFaculty_FacultyId(quizCode, facultyId);
         if (existing.isPresent()) {
             throw new RuntimeException("You already have a quiz with ID: " + quizCode);
@@ -43,13 +47,16 @@ public class QuizService {
 
     // Activate or deactivate a quiz
     public QuizActivation activateQuiz(Long internalQuizId, String section,
-            String department, int year, boolean active, int durationMinutes, String sectionConfigs) {
+            String department, int year, boolean active, int durationMinutes, String sectionConfigs,
+            String startTime, String endTime, Long collegeId) {
 
+        if (internalQuizId == null)
+            throw new IllegalArgumentException("Quiz ID cannot be null");
         Quiz quiz = quizRepo.findById(internalQuizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
         QuizActivation qa = quizActivationRepo
-                .findByQuizIdAndSectionDeptYear(quiz.getId(), section, department, year);
+                .findByQuizIdAndSectionDeptYear(quiz.getId(), section, department, year, collegeId);
 
         if (qa == null) {
             qa = new QuizActivation();
@@ -63,14 +70,26 @@ public class QuizService {
         qa.setDurationMinutes(durationMinutes);
         qa.setSectionConfigs(sectionConfigs);
 
+        if (startTime != null && !startTime.isEmpty()) {
+            qa.setStartTime(java.time.LocalDateTime.parse(startTime));
+        } else {
+            qa.setStartTime(null);
+        }
+
+        if (endTime != null && !endTime.isEmpty()) {
+            qa.setEndTime(java.time.LocalDateTime.parse(endTime));
+        } else {
+            qa.setEndTime(null);
+        }
+
         return quizActivationRepo.save(qa);
     }
 
     // Publish results
     public QuizActivation publishResults(Long internalQuizId, String section, String department, int year,
-            boolean publish) {
+            boolean publish, Long collegeId) {
         QuizActivation qa = quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department,
-                year);
+                year, collegeId);
         if (qa == null) {
             throw new RuntimeException("Quiz not activated for this batch");
         }
@@ -79,22 +98,36 @@ public class QuizService {
         return quizActivationRepo.save(qa);
     }
 
-    public List<QuizActivation> getActiveQuizzesForStudent(String section, String department, int year) {
-        return quizActivationRepo.findActiveQuizzesIgnoreCase(section, department, year);
+    public List<QuizActivation> getActiveQuizzesForStudent(String section, String department, int year,
+            Long collegeId) {
+        return quizActivationRepo.findActiveQuizzesIgnoreCase(section, department, year, collegeId);
     }
 
-    public boolean isQuizActiveForStudent(Long internalQuizId, String section, String department, int year) {
+    public boolean isQuizActiveForStudent(Long internalQuizId, String section, String department, int year,
+            Long collegeId) {
         QuizActivation qa = quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department,
-                year);
-        return qa != null && qa.isActive();
+                year, collegeId);
+        if (qa == null || !qa.isActive())
+            return false;
+
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        if (qa.getStartTime() != null && now.isBefore(qa.getStartTime()))
+            return false;
+        if (qa.getEndTime() != null && now.isAfter(qa.getEndTime()))
+            return false;
+
+        return true;
     }
 
-    public QuizActivation getQuizActivation(Long internalQuizId, String section, String department, int year) {
-        return quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department, year);
+    public QuizActivation getQuizActivation(Long internalQuizId, String section, String department, int year,
+            Long collegeId) {
+        return quizActivationRepo.findByQuizIdAndSectionDeptYear(internalQuizId, section, department, year, collegeId);
     }
 
     @Transactional
     public void deleteQuiz(Long quizId) {
-        quizRepo.deleteById(quizId);
+        if (quizId != null) {
+            quizRepo.deleteById(quizId);
+        }
     }
 }

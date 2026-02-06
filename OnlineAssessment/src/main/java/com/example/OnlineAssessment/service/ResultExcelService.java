@@ -25,10 +25,11 @@ public class ResultExcelService {
             Long quizId,
             String department,
             String section,
-            Integer year) throws IOException {
+            Integer year,
+            Long collegeId) throws IOException {
 
         // Use the common robust filtering/ranking logic from ResultService
-        List<Result> results = resultService.getRankedResults(quizId, department, section, year, "rank");
+        List<Result> results = resultService.getRankedResults(quizId, department, section, year, "rank", collegeId);
 
         Workbook workbook = new XSSFWorkbook();
         Sheet sheet = workbook.createSheet("Quiz Results");

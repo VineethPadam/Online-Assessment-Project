@@ -47,7 +47,9 @@ public class QuestionService {
     public Questions addQuestionToSection(Long sectionId, String questionText, String questionType,
             List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
-            String questionImage, List<String> choiceImages) {
+            String questionImage, List<String> choiceImages,
+            String inputFormat, String outputFormat, String sampleInput, String sampleOutput, String testCases,
+            String constraints, String hints) {
         com.example.OnlineAssessment.entity.Section section = sectionRepo.findById(sectionId)
                 .orElseThrow(() -> new RuntimeException("Section not found"));
 
@@ -60,6 +62,13 @@ public class QuestionService {
         question.setNegativeMarks(negativeMarks);
         question.setTimeLimitSeconds(timeLimitSeconds);
         question.setQuestionImage(questionImage);
+        question.setInputFormat(inputFormat);
+        question.setOutputFormat(outputFormat);
+        question.setSampleInput(sampleInput);
+        question.setSampleOutput(sampleOutput);
+        question.setTestCases(testCases);
+        question.setConstraints(constraints);
+        question.setHints(hints);
 
         Options options = new Options();
         options.setChoices(choices);
@@ -76,7 +85,9 @@ public class QuestionService {
     public Questions addQuestionToQuiz(Long internalQuizId, String questionText, String questionType,
             List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
-            String questionImage, List<String> choiceImages) {
+            String questionImage, List<String> choiceImages,
+            String inputFormat, String outputFormat, String sampleInput, String sampleOutput, String testCases,
+            String constraints, String hints) {
         Quiz quiz = quizRepo.findById(internalQuizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
@@ -88,6 +99,13 @@ public class QuestionService {
         question.setNegativeMarks(negativeMarks);
         question.setTimeLimitSeconds(timeLimitSeconds);
         question.setQuestionImage(questionImage);
+        question.setInputFormat(inputFormat);
+        question.setOutputFormat(outputFormat);
+        question.setSampleInput(sampleInput);
+        question.setSampleOutput(sampleOutput);
+        question.setTestCases(testCases);
+        question.setConstraints(constraints);
+        question.setHints(hints);
 
         Options options = new Options();
         options.setChoices(choices);
@@ -103,7 +121,9 @@ public class QuestionService {
     @Transactional
     public Questions updateQuestion(String questionId, String questionText, String questionType, List<String> choices,
             String correctOption, double marks, double negativeMarks, Integer timeLimitSeconds,
-            String questionImage, List<String> choiceImages) {
+            String questionImage, List<String> choiceImages,
+            String inputFormat, String outputFormat, String sampleInput, String sampleOutput, String testCases,
+            String constraints, String hints) {
         Questions question = questionRepo.findById(questionId)
                 .orElseThrow(() -> new RuntimeException("Question not found"));
 
@@ -113,6 +133,13 @@ public class QuestionService {
         question.setNegativeMarks(negativeMarks);
         question.setTimeLimitSeconds(timeLimitSeconds);
         question.setQuestionImage(questionImage);
+        question.setInputFormat(inputFormat);
+        question.setOutputFormat(outputFormat);
+        question.setSampleInput(sampleInput);
+        question.setSampleOutput(sampleOutput);
+        question.setTestCases(testCases);
+        question.setConstraints(constraints);
+        question.setHints(hints);
 
         Options options = question.getOptions();
         if (options == null) {

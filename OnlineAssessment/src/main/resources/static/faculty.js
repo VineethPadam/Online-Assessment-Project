@@ -1,4 +1,4 @@
-(() => {
+﻿(() => {
   // ===== Elements =====
   const facultyDashboard = document.getElementById("facultyDashboard");
   const addQuizBtn = document.getElementById("addQuizBtn");
@@ -26,6 +26,42 @@
       reader.onload = () => resolve(reader.result);
       reader.onerror = error => reject(error);
     });
+  }
+
+  // Permission Logic
+  // We read from sessionStorage dynamically because login happens without page reload.
+  function checkFeature(key, name) {
+    let perms = {}; // Default to empty (block if strict, or handled below)
+    try {
+      const u = JSON.parse(sessionStorage.getItem("user"));
+      if (u && u.permissions) perms = u.permissions;
+    } catch (e) { console.error("Perms parse error", e); }
+
+    // map keys if needed (keys match backend exactly: allowCoding, allowNumeric etc.)
+    // If the permission is explicitly FALSE, block it.
+    // If undefined, currently defaulting to ALLOW (return true) to avoid blocking legacy/error states,
+    // BUT if the user strictly wants blocking, we should check availability.
+    // Given the requirement, I will check explicit false. 
+    // NOTE: Backend now sends these permissions.
+
+    if (perms[key] === false) {
+      showPremiumModal(name);
+      return false;
+    }
+    return true;
+  }
+
+  function showPremiumModal(feature) {
+    createModal("Access Denied 🔒", `
+        <div style="text-align: center; padding: 20px;">
+            <div style="font-size: 50px; margin-bottom: 20px;">💎</div>
+            <h3 style="color: #6a0dad; margin-bottom: 10px;">Premium Feature</h3>
+            <p style="color: #666; margin-bottom: 25px;">
+                The <strong>${feature}</strong> feature is not enabled for your college.<br>
+                Please contact our sales team to upgrade your plan.
+            </p>
+        </div>
+    `, () => { }, { hideSubmit: true, maxWidth: "450px" });
   }
 
   // Initialize faculty logic
@@ -79,22 +115,99 @@
   }
 
   // Load departments and update any open dropdowns
+  let globalDepartments = [];
+
+  // Load departments and update any open dropdowns
   async function loadDepartments() {
-    if (departmentsListHTML) return departmentsListHTML;
     try {
       const res = await authFetch("/departments");
       if (res.ok) {
-        const depts = await res.json();
-        departmentsListHTML = depts.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
-        // Inject into any currently visible dropdowns
+        globalDepartments = await res.json();
+        departmentsListHTML = globalDepartments.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
+
+        // Refresh all dynamic selects in the document
         document.querySelectorAll(".dept-select-dynamic").forEach(select => {
           const currentVal = select.value;
           select.innerHTML = '<option value="">Select Department</option>' + departmentsListHTML;
           if (currentVal) select.value = currentVal;
+
+          const container = select.closest('.filter-panel, .modal-content, .manage-body, .input-group-row') || select.parentElement.parentElement;
+          attachDynamicListeners(container);
         });
       }
     } catch (err) { console.error("Department load error", err); }
     return departmentsListHTML;
+  }
+
+  function attachDynamicListeners(container) {
+    if (!container) return;
+    const deptSelect = container.querySelector(".dept-select-dynamic");
+    const yearSelect = container.querySelector(".year-select-dynamic") || container.querySelector("#aY, #fYear, #pY, #sYear, #nYear");
+
+    if (deptSelect) {
+      // Populate if empty and global list is ready
+      if (deptSelect.options.length <= 1 && globalDepartments.length > 0) {
+        const currentVal = deptSelect.value;
+        deptSelect.innerHTML = '<option value="">Select Department</option>' + globalDepartments.map(d => `<option value="${d.name}">${d.name}</option>`).join("");
+        if (currentVal) deptSelect.value = currentVal;
+      }
+
+      if (!deptSelect.dataset.listenerAdded) {
+        deptSelect.addEventListener("change", () => updateYearAndSectionDropdowns(container, "dept"));
+        deptSelect.dataset.listenerAdded = "true";
+      }
+    }
+    if (yearSelect && !yearSelect.dataset.listenerAdded) {
+      yearSelect.addEventListener("change", () => updateYearAndSectionDropdowns(container, "year"));
+      yearSelect.dataset.listenerAdded = "true";
+    }
+  }
+
+  function updateYearAndSectionDropdowns(container, triggerType = "dept") {
+    const deptSelect = container.querySelector(".dept-select-dynamic");
+    const yearSelect = container.querySelector(".year-select-dynamic") || container.querySelector("#aY, #fYear, #pY, #sYear, #nYear");
+    const secSelect = container.querySelector(".section-select-dynamic") || container.querySelector("#aS, #fSec, #pS, #sSec, #nSec");
+
+    if (!deptSelect) return;
+    const dept = globalDepartments.find(d => d.name === deptSelect.value);
+
+    if (triggerType === "dept") {
+      if (yearSelect) {
+        let yearHtml = '<option value="">Select Year</option>';
+        if (dept) {
+          for (let i = 1; i <= dept.years; i++) yearHtml += `<option value="${i}">${i}</option>`;
+          yearSelect.disabled = false;
+        } else {
+          yearSelect.disabled = true;
+        }
+        yearSelect.innerHTML = yearHtml;
+      }
+      if (secSelect) {
+        secSelect.innerHTML = '<option value="">Select Year first</option>';
+        secSelect.disabled = true;
+      }
+    } else if (triggerType === "year") {
+      if (secSelect) {
+        let secHtml = '<option value="">Select Section</option>';
+        const yearVal = yearSelect ? yearSelect.value : "";
+        if (dept && yearVal) {
+          try {
+            const sectionsMap = typeof dept.sections === 'string' ? JSON.parse(dept.sections) : (dept.sections || {});
+            const yearSections = sectionsMap[yearVal] || [];
+            yearSections.forEach(sec => {
+              secHtml += `<option value="${sec}">${sec}</option>`;
+            });
+            secSelect.disabled = false;
+          } catch (e) {
+            console.error("Sec parse error", e);
+            secSelect.disabled = false; // Fallback if parse fails but we have a dept
+          }
+        } else {
+          secSelect.disabled = true;
+        }
+        secSelect.innerHTML = secHtml;
+      }
+    }
   }
 
   // ===== Utility: Create Modal =====
@@ -106,9 +219,13 @@
     modal.className = "modal-content";
     if (options.maxWidth) modal.style.maxWidth = options.maxWidth;
 
-    modal.innerHTML = `<h3>${title}</h3>
-                       <div class="modal-body-scroll">${contentHTML}</div>
-                       <div class="modal-message" id="modalMsg"></div>`;
+    modal.innerHTML = `
+      <button class="modal-close-x" style="position:absolute; top:25px; right:30px; background:#f1f5f9; border:none; width:36px; height:36px; border-radius:100px; color:#64748b; font-size:20px; font-weight:900; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s; z-index:100;">×</button>
+      <h3>${title}</h3>
+      <div class="modal-body-scroll">${contentHTML}</div>
+      <div class="modal-message" id="modalMsg"></div>`;
+
+    modal.querySelector(".modal-close-x").onclick = () => document.body.removeChild(overlay);
 
     const actions = document.createElement("div");
     actions.className = "modal-actions";
@@ -181,42 +298,77 @@
     const isNew = startIndex === -1;
 
     const editorHTML = `
-      <div id="editorContent">
-        <label class="input-label">Question Type</label>
-        <select id="qType" style="margin-bottom:15px; width:100%; height:45px; border-radius:10px; border:2px solid #e2e8f0; padding:0 15px; font-weight:600;">
-           <option value="MCQ">Multiple Choice</option>
-           <option value="NUMERICAL">Numerical Answer (JEE/GATE Style)</option>
-        </select>
-      
-        <label class="input-label">Question Text</label>
-        <textarea id="edText" style="min-height:100px;"></textarea>
+      <div style="display:block; width:100%;">
+        <div id="editorContent" style="width:100%;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; padding-bottom:15px; border-bottom:1px solid #f1f5f9;">
+            <div style="font-size:12px; font-weight:800; color:var(--text-muted); text-transform:uppercase;">Question Configuration</div>
+            <button id="topExitBtn" class="btn-premium btn-secondary-outline" style="padding:8px 15px; font-size:11px; height:auto;">← Back to Library</button>
+          </div>
+          
+          <label class="input-label">Question Type</label>
+          <select id="qType" style="margin-bottom:15px; width:100%; height:45px; border-radius:10px; border:2px solid #e2e8f0; padding:0 15px; font-weight:600;">
+             <option value="MCQ">Multiple Choice</option>
+             <option value="NUMERICAL">Numerical Answer (JEE/GATE Style)</option>
+             <option value="CODING">Coding Question (Java/C/C++/Python)</option>
+          </select>
         
-        <label class="input-label">Question Image (Optional)</label>
-        <input type="file" id="edImg" accept="image/*" style="margin-bottom:15px;">
-        <div id="edImgPreview" style="margin-bottom:20px; max-height:150px; overflow:hidden; border-radius:8px; display:none;"></div>
+          <label class="input-label">Question Text</label>
+          <textarea id="edText" style="min-height:100px;"></textarea>
+          
+          <label class="input-label">Question Image (Optional)</label>
+          <input type="file" id="edImg" accept="image/*" style="margin-bottom:15px;">
+          <div id="edImgPreview" style="margin-bottom:20px; max-height:150px; overflow:hidden; border-radius:8px; display:none;"></div>
 
-        <div id="mcqSection">
-            <label class="input-label">Options (Mark correct answer)</label>
-            <div id="edOptList"></div>
-            <button id="edAddOpt" class="add-opt-btn" style="padding:10px; font-size:13px; margin-bottom:20px;">+ Add Option</button>
-        </div>
+          <div id="mcqSection">
+              <label class="input-label">Options (Mark correct answer)</label>
+              <div id="edOptList"></div>
+              <button id="edAddOpt" class="add-opt-btn" style="padding:10px; font-size:13px; margin-bottom:20px;">+ Add Option</button>
+          </div>
+          <div id="numericalSection" style="display:none;">
+               <label class="input-label">Correct Numerical Answer</label>
+               <input type="number" id="edNumAns" step="any" placeholder="e.g. 5.5 or -10" style="margin-bottom:20px;">
+               <p style="font-size:12px; color:var(--text-muted); margin-top:-15px; margin-bottom:20px;">Enter the exact numerical value correct for this question.</p>
+          </div>
 
-        <div id="numericalSection" style="display:none;">
-             <label class="input-label">Correct Numerical Answer</label>
-             <input type="number" id="edNumAns" step="any" placeholder="e.g. 5.5 or -10" style="margin-bottom:20px;">
-             <p style="font-size:12px; color:var(--text-muted); margin-top:-15px; margin-bottom:20px;">Enter the exact numerical value correct for this question.</p>
-        </div>
-        
-        <div class="input-group-row">
-          <div><label class="input-label">Marks</label><input type="number" id="edMarks" value="1"></div>
-          <div><label class="input-label">Neg Marks</label><input type="number" id="edNeg" value="0"></div>
-          <div><label class="input-label">Time (s)</label><input type="number" id="edTime" placeholder="Opt"></div>
-        </div>
+          <div id="codingSection" style="display:none;">
+               <h3 style="color:var(--primary); margin-top:10px; margin-bottom:20px; font-size:16px; border-bottom:2px solid #eee; padding-bottom:10px;">Coding Question Details</h3>
+               <label class="input-label">Input Format</label>
+               <textarea id="edInputFormat" placeholder="e.g. First line contains N..."></textarea>
+               
+               <label class="input-label">Output Format</label>
+               <textarea id="edOutputFormat" placeholder="e.g. Print the sum of even..."></textarea>
+               
+               <label class="input-label">Sample Test Cases (Visible to Students)</label>
+               <div id="edSampleList" style="display:grid; gap:10px; margin-bottom:10px;"></div>
+               <button id="edAddSample" class="add-opt-btn" style="padding:6px 12px; font-size:11px; margin-bottom:20px; background:#f0fdf4; color:#166534; border:1px solid #bbf7d0;">+ Add Sample Case</button>
 
-        <div class="editor-nav-container">
-           <button id="prevQ" class="nav-btn">← Previous</button>
-           <div class="question-counter" id="qCounter">Question 1 of 1</div>
-           <button id="nextQ" class="nav-btn">Next →</button>
+               <div class="input-group-row">
+                  <div>
+                      <label class="input-label">Constraints</label>
+                      <textarea id="edConstraints" style="min-height:80px;" placeholder="e.g. 1 <= N <= 10^5"></textarea>
+                  </div>
+                  <div>
+                      <label class="input-label">Hints (Optional)</label>
+                      <textarea id="edHints" style="min-height:80px;" placeholder="e.g. Use hash map for O(N)..."></textarea>
+                  </div>
+               </div>
+
+               <label class="input-label">Hidden Test Cases (Evaluated on Submit)</label>
+               <div id="edTestCaseList" style="display:grid; gap:15px; margin-bottom:15px;"></div>
+               <button id="edAddTestCase" class="add-opt-btn" style="padding:8px 15px; font-size:12px; margin-bottom:20px;">+ Add Hidden Test Case</button>
+          </div>
+          
+          <div class="input-group-row">
+            <div><label class="input-label">Marks</label><input type="number" id="edMarks" value="1"></div>
+            <div><label class="input-label">Neg Marks</label><input type="number" id="edNeg" value="0"></div>
+            <div><label class="input-label">Time (s)</label><input type="number" id="edTime" placeholder="Opt"></div>
+          </div>
+
+          <div class="editor-nav-container">
+             <button id="prevQ" class="nav-btn">← Previous</button>
+             <div class="question-counter" id="qCounter">Question 1 of 1</div>
+             <button id="nextQ" class="nav-btn">Next →</button>
+          </div>
         </div>
       </div>
     `;
@@ -225,8 +377,18 @@
       isNew ? "Add New Question" : "Edit Question",
       editorHTML,
       (m, o) => saveQuestion(m, o),
-      { submitText: "Save Question", cancelText: "Close Editor", maxWidth: "650px" }
+      { submitText: "Save Question", cancelText: "Close Editor", maxWidth: "950px" }
     );
+
+    // Sidebar instructions removed
+
+    // Wire up the new Top Exit button
+    const topExit = modal.querySelector("#topExitBtn");
+    if (topExit) {
+      topExit.onclick = () => modal.querySelector(".modal-close-x").click();
+    }
+
+    // Default init
 
     const qType = modal.querySelector("#qType");
     const edText = modal.querySelector("#edText");
@@ -237,25 +399,67 @@
     const edNumAns = modal.querySelector("#edNumAns");
     const mcqSection = modal.querySelector("#mcqSection");
     const numericalSection = modal.querySelector("#numericalSection");
+    const codingSection = modal.querySelector("#codingSection");
 
     const qCounter = modal.querySelector("#qCounter");
     const prevBtn = modal.querySelector("#prevQ");
     const nextBtn = modal.querySelector("#nextQ");
 
-    qType.addEventListener("change", () => {
+    qType.addEventListener("change", (e) => {
+      // Permission Checks - Only if user initiated (e.isTrusted)
+      // This prevents the modal from popping up when loading existing questions programmatically.
+      if (e && e.isTrusted) {
+        if (qType.value === "CODING" && !checkFeature("allowCoding", "Coding Questions")) {
+          qType.value = "MCQ";
+        }
+        if (qType.value === "NUMERICAL" && !checkFeature("allowNumeric", "Numeric Questions")) {
+          qType.value = "MCQ";
+        }
+      }
+
+      mcqSection.style.display = "none";
+      numericalSection.style.display = "none";
+      codingSection.style.display = "none";
+
       if (qType.value === "NUMERICAL") {
-        mcqSection.style.display = "none";
         numericalSection.style.display = "block";
+      } else if (qType.value === "CODING") {
+        codingSection.style.display = "block";
       } else {
         mcqSection.style.display = "block";
-        numericalSection.style.display = "none";
       }
     });
+
+    // Image Upload Permission
+    const qImgInput = modal.querySelector("#edImg");
+    if (qImgInput) {
+      qImgInput.onclick = (e) => {
+        if (!checkFeature("allowImages", "Image Uploads")) {
+          e.preventDefault();
+        }
+      };
+    }
+
+    // Sub-elements for coding
+    const edInputFormat = modal.querySelector("#edInputFormat");
+    const edOutputFormat = modal.querySelector("#edOutputFormat");
+    const edSampleList = modal.querySelector("#edSampleList");
+    const edConstraints = modal.querySelector("#edConstraints");
+    const edHints = modal.querySelector("#edHints");
+    const edTestCaseList = modal.querySelector("#edTestCaseList");
+    const edAddTestCase = modal.querySelector("#edAddTestCase");
+
+    edAddTestCase.onclick = () => addTestCaseRow();
 
     function renderCurrent() {
       if (currentIndex === -1) {
         qType.value = "MCQ"; qType.dispatchEvent(new Event('change'));
         edText.value = ""; edOptList.innerHTML = ""; edNumAns.value = "";
+        edInputFormat.value = ""; edOutputFormat.value = "";
+        edSampleList.innerHTML = "";
+        edConstraints.value = ""; edHints.value = "";
+        edTestCaseList.innerHTML = "";
+        addSampleRow();
         edMarks.value = 1; edNeg.value = 0; edTime.value = "";
         qCounter.textContent = "New Question Entry";
         prevBtn.style.display = nextBtn.style.display = "none";
@@ -289,6 +493,34 @@
       // Handle Content based on Type
       if (qType.value === "NUMERICAL") {
         edNumAns.value = q.options?.correctOption || "";
+      } else if (qType.value === "CODING") {
+        edInputFormat.value = q.inputFormat || "";
+        edOutputFormat.value = q.outputFormat || "";
+        edConstraints.value = q.constraints || "";
+        edHints.value = q.hints || "";
+
+        edSampleList.innerHTML = "";
+        try {
+          // If sampleInput starts with [, treat as JSON array, otherwise migrate old single sample
+          let samples = [];
+          if (q.sampleInput && q.sampleInput.startsWith("[")) {
+            samples = JSON.parse(q.sampleInput);
+          } else if (q.sampleInput || q.sampleOutput) {
+            samples = [{ input: q.sampleInput, output: q.sampleOutput }];
+          }
+          samples.forEach(s => addSampleRow(s.input, s.output));
+        } catch (e) {
+          console.error("Sample parse error", e);
+          addSampleRow(q.sampleInput, q.sampleOutput);
+        }
+        if (edSampleList.children.length === 0) addSampleRow();
+
+        edTestCaseList.innerHTML = "";
+        try {
+          const tcs = JSON.parse(q.testCases || "[]");
+          tcs.forEach(tc => addTestCaseRow(tc.input, tc.output));
+        } catch (e) { console.error("Test case parse error", e); }
+        if (edTestCaseList.children.length === 0) addTestCaseRow();
       } else {
         edOptList.innerHTML = "";
         const correctOnes = (q.options?.correctOption || "").split(",").map(s => s.trim());
@@ -320,6 +552,47 @@
       edOptList.appendChild(row);
     }
 
+    function addTestCaseRow(input = "", output = "") {
+      const row = document.createElement("div");
+      row.style.cssText = "background:#f8fafc; padding:15px; border-radius:10px; border:1px solid #e2e8f0; position:relative;";
+      row.innerHTML = `
+        <button class="remove-opt-btn" style="position:absolute; top:10px; right:10px; margin:0;">×</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:15px;">
+          <div>
+            <label style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:5px; display:block;">Input</label>
+            <textarea class="tc-input" style="min-height:60px; font-family:monospace; font-size:12px;" placeholder="e.g. 5\\n1 2 3 4 5">${input}</textarea>
+          </div>
+          <div>
+            <label style="font-size:11px; font-weight:800; color:#64748b; text-transform:uppercase; margin-bottom:5px; display:block;">Expected Output</label>
+            <textarea class="tc-output" style="min-height:60px; font-family:monospace; font-size:12px;" placeholder="e.g. 15">${output}</textarea>
+          </div>
+        </div>
+      `;
+      row.querySelector(".remove-opt-btn").onclick = () => row.remove();
+      edTestCaseList.appendChild(row);
+    }
+
+    function addSampleRow(input = "", output = "") {
+      const row = document.createElement("div");
+      row.className = "sample-row";
+      row.style.cssText = "background:#f0f9ff; padding:12px; border-radius:8px; border:1px solid #bae6fd; position:relative;";
+      row.innerHTML = `
+        <button class="remove-opt-btn" style="position:absolute; top:8px; right:8px; margin:0;">×</button>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+          <div>
+            <label style="font-size:10px; font-weight:800; color:#0369a1; text-transform:uppercase; margin-bottom:4px; display:block;">Sample Input</label>
+            <textarea class="sample-input" style="min-height:50px; font-family:monospace; font-size:11px;" placeholder="e.g. 5">${input}</textarea>
+          </div>
+          <div>
+            <label style="font-size:10px; font-weight:800; color:#0369a1; text-transform:uppercase; margin-bottom:4px; display:block;">Sample Output</label>
+            <textarea class="sample-output" style="min-height:50px; font-family:monospace; font-size:11px;" placeholder="e.g. 15">${output}</textarea>
+          </div>
+        </div>
+      `;
+      row.querySelector(".remove-opt-btn").onclick = () => row.remove();
+      edSampleList.appendChild(row);
+    }
+
     async function saveQuestion(m, o, silent = false) {
       const type = qType.value;
       const choices = []; const correct = []; const choiceImages = [];
@@ -349,14 +622,40 @@
           if (!silent) showMsg(m, "Required: text, 2+ options, & 1+ correct.", "error");
           return Promise.reject();
         }
-      } else {
-        // NUMERICAL
+      } else if (type === "NUMERICAL") {
         const ans = edNumAns.value.trim();
         if (!txt || !ans) {
           if (!silent) showMsg(m, "Required: text and correct answer.", "error");
           return Promise.reject();
         }
         correct.push(ans);
+      } else if (type === "CODING") {
+        if (!txt) {
+          if (!silent) showMsg(m, "Question text is required.", "error");
+          return Promise.reject();
+        }
+        // collect samples
+        const sampleArr = [];
+        for (const row of m.querySelectorAll("#edSampleList > div")) {
+          const inp = row.querySelector(".sample-input").value.trim();
+          const outp = row.querySelector(".sample-output").value.trim();
+          if (inp || outp) sampleArr.push({ input: inp, output: outp });
+        }
+        if (sampleArr.length === 0) {
+          if (!silent) showMsg(m, "At least one sample test case is required.", "error");
+          return Promise.reject();
+        }
+        var sampleData = JSON.stringify(sampleArr);
+
+        // collect test cases
+        const tcArr = [];
+        for (const row of m.querySelectorAll("#edTestCaseList > div")) {
+          const inp = row.querySelector(".tc-input").value.trim();
+          const outp = row.querySelector(".tc-output").value.trim();
+          if (inp || outp) tcArr.push({ input: inp, output: outp });
+        }
+        var testCasesData = JSON.stringify(tcArr);
+        correct.push("CODING_TASK");
       }
 
       const qImgInput = m.querySelector("#edImg");
@@ -377,7 +676,14 @@
         negativeMarks: edNeg.value,
         timeLimit: edTime.value || null,
         questionImage: qImageData,
-        choiceImages: choiceImages
+        choiceImages: choiceImages,
+        inputFormat: edInputFormat.value,
+        outputFormat: edOutputFormat.value,
+        sampleInput: (type === "CODING") ? sampleData : null,
+        sampleOutput: (type === "CODING") ? "JSON_ARRAY" : null,
+        constraints: edConstraints.value,
+        hints: edHints.value,
+        testCases: (type === "CODING") ? testCasesData : null
       };
 
       const qId = currentIndex >= 0 ? allQuestions[currentIndex].questionId : null;
@@ -406,6 +712,8 @@
     }
 
     modal.querySelector("#edAddOpt").onclick = () => addOptionRow();
+    if (modal.querySelector("#edAddSample")) modal.querySelector("#edAddSample").onclick = () => addSampleRow();
+    if (modal.querySelector("#edAddTestCase")) modal.querySelector("#edAddTestCase").onclick = () => addTestCaseRow();
     prevBtn.onclick = () => { if (currentIndex > 0) { currentIndex--; renderCurrent(); } };
     nextBtn.onclick = () => { if (currentIndex < allQuestions.length - 1) { currentIndex++; renderCurrent(); } };
 
@@ -437,6 +745,179 @@
     }, { submitText: "Save Section" });
   }
 
+  // ===== 3.6 Import from Bank =====
+  // ===== 3.6 Import from Bank =====
+  function openBankImportModal(quiz, callback, sectionId = null) {
+    const html = `
+      <div style="display:flex; flex-direction:column; height:80vh;">
+      
+        <!-- 1. Selection & Filters -->
+        <div style="padding:0 0 20px; border-bottom:1px solid #e2e8f0; display:grid; grid-template-columns: 1fr 1fr 1fr; gap:15px;">
+        
+            <!-- Target Section -->
+            <div id="targetSecContainer">
+                 <label class="input-label">Target Section</label>
+                 <select id="bTargetSec" style="height:45px;"><option value="">General (No Section)</option></select>
+            </div>
+            
+            <!-- Company -->
+            <div>
+                 <label class="input-label">Company</label>
+                 <select id="bCompany" style="height:45px;"><option value="">Loading...</option></select>
+            </div>
+            
+            <!-- Category -->
+            <div>
+                 <label class="input-label">Category</label>
+                 <select id="bCategory" style="height:45px;">
+                    <option value="">Select Category</option>
+                    <option value="CODING">Coding</option>
+                    <option value="APTITUDE">Aptitude</option>
+                    <option value="VERBAL">Verbal</option>
+                 </select>
+            </div>
+
+             <!-- Topic -->
+            <div>
+                 <label class="input-label">Topic</label>
+                 <select id="bTopic" style="height:45px;"><option value="">Select Topic</option></select>
+            </div>
+
+             <!-- Difficulty -->
+            <div>
+                 <label class="input-label">Difficulty</label>
+                 <select id="bDiff" style="height:45px;">
+                    <option value="">All Difficulties</option>
+                    <option value="Easy">Easy</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Hard">Hard</option>
+                 </select>
+            </div>
+            
+             <!-- Search Button -->
+            <div style="display:flex; align-items:flex-end;">
+                 <button id="bSearchBtn" class="btn-premium btn-primary-grad" style="height:45px; width:100%;">Search Bank</button>
+            </div>
+        </div>
+
+        <!-- 2. Results List -->
+        <div id="bResultsArea" style="flex:1; overflow-y:auto; padding:20px 0; min-height:0;">
+             <div style="text-align:center; color:#94a3b8; padding:50px;">Select filters and search to populate questions.</div>
+        </div>
+        
+      </div>
+    `;
+
+    const modal = createModal("Import from Question Bank", html, async (m, o) => {
+      // Import Action
+      const checkboxes = [...m.querySelectorAll(".bank-q-check:checked")];
+      if (checkboxes.length === 0) return showMsg(m, "No questions selected.", "error");
+
+      const bankIds = checkboxes.map(c => c.value);
+      const secId = sectionId ? sectionId : (m.querySelector("#bTargetSec").value || null);
+
+      const btn = m.querySelector("#modalSubmitBtn");
+      const originalText = btn.textContent;
+      btn.disabled = true; btn.textContent = "Importing...";
+
+      try {
+        const res = await authFetch("/api/bank/import", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ quizId: quiz.id, sectionId: secId, bankIds: bankIds })
+        });
+
+        if (res.ok) {
+          showMsg(m, `Successfully imported ${bankIds.length} questions!`);
+          setTimeout(() => { o.remove(); if (callback) callback(); }, 1500);
+        } else {
+          throw new Error(await res.text());
+        }
+      } catch (e) {
+        showMsg(m, e.message || "Import failed", "error");
+        btn.disabled = false; btn.textContent = originalText;
+      }
+
+    }, { submitText: "Import Selected", maxWidth: "1000px" });
+
+    // --- Logic ---
+    const bTargetSec = modal.querySelector("#bTargetSec");
+    const bCompany = modal.querySelector("#bCompany");
+    const bCategory = modal.querySelector("#bCategory");
+    const bTopic = modal.querySelector("#bTopic");
+    const bDiff = modal.querySelector("#bDiff");
+    const bSearch = modal.querySelector("#bSearchBtn");
+    const resArea = modal.querySelector("#bResultsArea");
+    const targetSecContainer = modal.querySelector("#targetSecContainer");
+
+    // 1. Load Sections
+    if (sectionId) {
+      targetSecContainer.style.display = "none";
+    } else {
+      authFetch(`/quiz/${quiz.id}/sections`).then(r => r.json()).then(secs => {
+        secs.forEach(s => {
+          const opt = document.createElement("option");
+          opt.value = s.id; opt.textContent = s.sectionName;
+          bTargetSec.appendChild(opt);
+        });
+      });
+    }
+
+    // 2. Load Companies
+    authFetch("/api/bank/companies").then(r => r.json()).then(comps => {
+      bCompany.innerHTML = '<option value="">Select Company</option>' + comps.map(c => `<option value="${c}">${c}</option>`).join("");
+    }).catch(e => bCompany.innerHTML = '<option value="">Error loading</option>');
+
+    // 3. Category Change -> Load Topics
+    bCategory.addEventListener("change", () => {
+      const cat = bCategory.value;
+      if (!cat) { bTopic.innerHTML = '<option value="">Select Topic</option>'; return; }
+
+      authFetch(`/api/bank/topics?category=${cat}`).then(r => r.json()).then(tops => {
+        bTopic.innerHTML = '<option value="">Select Topic</option>' + tops.map(t => `<option value="${t}">${t}</option>`).join("");
+      });
+    });
+
+    // 4. Search
+    bSearch.addEventListener("click", () => {
+      const comp = bCompany.value;
+      const cat = bCategory.value;
+      const top = bTopic.value;
+      const diff = bDiff.value;
+
+      if (!comp || !cat) return showMsg(modal, "Company and Category are required.", "error");
+
+      resArea.innerHTML = '<div class="loading-spinner" style="margin:50px auto;"></div>';
+
+      let url = `/api/bank/filter?company=${encodeURIComponent(comp)}&category=${encodeURIComponent(cat)}`;
+      if (top) url += `&topic=${encodeURIComponent(top)}`;
+      if (diff) url += `&difficulty=${encodeURIComponent(diff)}`;
+
+      authFetch(url).then(r => r.json()).then(data => {
+        if (data.length === 0) {
+          resArea.innerHTML = `<div style="text-align:center; padding:50px; color:#64748b;">No questions found for these filters.</div>`;
+          return;
+        }
+
+        resArea.innerHTML = data.map(q => `
+                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:10px; padding:15px; margin-bottom:10px; display:flex; gap:15px; align-items:flex-start;">
+                    <input type="checkbox" class="bank-q-check" value="${q.id}" style="mt-1; width:18px; height:18px; cursor:pointer;">
+                    <div style="flex:1;">
+                        <div style="margin-bottom:5px;">
+                            <span class="badge" style="background:${q.difficulty === 'Easy' ? '#d1fae5' : q.difficulty === 'Medium' ? '#fef3c7' : '#fee2e2'}; color:${q.difficulty === 'Easy' ? '#065f46' : q.difficulty === 'Medium' ? '#92400e' : '#991b1b'};">${q.difficulty || 'N/A'}</span>
+                            <span class="badge" style="background:#e0f2fe; color:#0369a1;">${q.topic || 'General'}</span>
+                            <span class="badge" style="background:#f3e8ff; color:#6b21a8;">${q.questionType}</span>
+                        </div>
+                        <div style="font-weight:600; color:#334155; font-size:14px; font-family:'Consolas', monospace; white-space:pre-wrap;">${q.questionText}</div>
+                    </div>
+                </div>
+            `).join("");
+      }).catch(e => {
+        resArea.innerHTML = `<div style="text-align:center; color:#ef4444; padding:50px;">Error fetching questions.</div>`;
+      });
+    });
+  }
+
   // ===== 4. Manage Questions Home (With Sections) =====
   function openManageQuestions(quiz) {
     document.getElementById("manageQuestionsUI")?.remove();
@@ -454,6 +935,10 @@
         </div>
         <div style="display:flex; gap:12px;">
           <button id="addQDirectBtn" class="btn-premium btn-secondary-outline">+ Add Question</button>
+
+          <div id="globalImportBtnWrapper" style="display:inline-block;">
+             <button id="importBankBtn" class="btn-premium btn-secondary-outline" style="background:#f0f9ff; color:#0284c7; border-color:#bae6fd;">Import from Bank</button>
+          </div>
           <button id="addSectionBtn" class="btn-premium btn-primary-grad">+ Add Section</button>
           <button id="backHome" class="btn-premium btn-secondary-outline">Back to Library</button>
         </div>
@@ -488,24 +973,25 @@
         const mixedQList = ui.querySelector("#mixedQList");
         const addQDirectBtn = ui.querySelector("#addQDirectBtn");
 
+        const mixedQs = allQs.filter(q => !q.sectionId && !q.section);
         const hasSections = sections && sections.length > 0;
 
-        // UI Rule: If sections exist, faculty should add questions to sections.
-        // Hiding the top direct-add button and the general area entirely.
+        // Rule: Show General Questions if there are questions not assigned to any section
+        if (mixedQs.length > 0) {
+          generalArea.style.display = "block";
+          mixedQList.innerHTML = "";
+          renderQuestionCards(mixedQs, mixedQList, quiz, loadSections);
+        } else {
+          generalArea.style.display = "none";
+        }
+
+        // Rule: Show top direct-add button only if NO sections exist (force usage of section-specific add if sections exist)
         if (hasSections) {
           addQDirectBtn.style.display = "none";
-          generalArea.style.display = "none";
+          ui.querySelector("#globalImportBtnWrapper").style.display = "none"; // Hide global import if sections exist
         } else {
           addQDirectBtn.style.display = "inline-flex";
-          // If no sections, we show mixed questions (unassigned ones)
-          const mixedQs = allQs.filter(q => !q.sectionId && !q.section);
-          if (mixedQs.length > 0) {
-            generalArea.style.display = "block";
-            mixedQList.innerHTML = "";
-            renderQuestionCards(mixedQs, mixedQList, quiz, loadSections);
-          } else {
-            generalArea.style.display = "none";
-          }
+          ui.querySelector("#globalImportBtnWrapper").style.display = "inline-block";
         }
 
         if (!hasSections) {
@@ -536,6 +1022,7 @@
               </div>
               <div class="section-actions">
                 <button class="btn-premium btn-primary-grad add-q-to-sec" style="padding: 8px 16px; font-size:12px;">+ Add Question</button>
+                <button class="btn-premium btn-secondary-outline import-bank-sec" style="padding: 8px 16px; font-size:12px; background:#f0f9ff; color:#0284c7; border-color:#bae6fd;">Import from Bank</button>
                 <button class="delete-btn delete-sec" style="padding: 8px 16px; font-size:12px;">Delete Section</button>
               </div>
             </div>
@@ -550,9 +1037,20 @@
           renderQuestionCards(sec.questions || [], qList, quiz, loadSections, sec.id);
 
           secWrap.querySelector(".add-q-to-sec").onclick = () => openQuestionEditor(quiz, [], -1, sec.id);
-          secWrap.querySelector(".delete-sec").onclick = () => {
-            if (confirm(`Delete section "${sec.sectionName}" and all its questions?`)) {
-              authFetch(`/quiz/sections/${sec.id}`, { method: "DELETE" }).then(r => { if (r.ok) loadSections(); });
+          secWrap.querySelector(".import-bank-sec").onclick = () => { if (checkFeature("allowQuestionBank", "Question Bank Access")) openBankImportModal(quiz, loadSections, sec.id); };
+          secWrap.querySelector(".delete-sec").onclick = async () => {
+            const confirmed = await showConfirm(`CRITICAL: This will delete the section "${sec.sectionName}" AND all ${sec.questions?.length || 0} questions within it. This cannot be undone. Proceed?`, "Danger: Permanent Deletion");
+            if (confirmed) {
+              authFetch(`/quiz/sections/${sec.id}`, { method: "DELETE" }).then(async r => {
+                if (r.ok) {
+                  loadSections();
+                  showAlert("Section Deleted Successfully", "Success", "🗑️");
+                }
+                else {
+                  const errText = await r.text();
+                  showAlert("Failed to delete section: " + errText);
+                }
+              }).catch(e => showAlert("Connection error while deleting section."));
             }
           };
 
@@ -580,9 +1078,17 @@
              ${q.timeLimitSeconds ? `<span style="margin-left:auto;">⏱️ ${q.timeLimitSeconds}s</span>` : ''}
           </div>
         `;
-        card.onclick = (e) => {
+        card.onclick = async (e) => {
           if (e.target.classList.contains('small-delete-btn')) {
-            if (confirm("Delete this question?")) authFetch(`/quiz/questions/${q.questionId}`, { method: "DELETE" }).then(r => { if (r.ok) reloadFn(); });
+            const confirmed = await showConfirm("Delete this question?");
+            if (confirmed) {
+              authFetch(`/quiz/questions/${q.questionId}`, { method: "DELETE" }).then(r => {
+                if (r.ok) {
+                  reloadFn();
+                  showAlert("Question Deleted", "Success", "🗑️");
+                }
+              });
+            }
             return;
           }
           openQuestionEditor(quizInfo, qs, i, sectionId);
@@ -594,6 +1100,7 @@
     loadSections();
 
     ui.querySelector("#addQDirectBtn").onclick = () => openQuestionEditor(quiz, [], -1, null);
+    ui.querySelector("#importBankBtn").onclick = () => { if (checkFeature("allowQuestionBank", "Question Bank Access")) openBankImportModal(quiz, loadSections); };
     ui.querySelector("#addSectionBtn").onclick = () => openSectionEditor(quiz, null, loadSections);
     ui.querySelector("#backHome").onclick = () => {
       ui.remove();
@@ -628,7 +1135,17 @@
           </div>
         `;
         card.querySelector(".manage-btn").onclick = () => openManageQuestions(ex);
-        card.querySelector(".delete-quiz-btn").onclick = () => { if (confirm(`Delete quiz "${ex.quizName}"?`)) authFetch(`/quiz/${ex.id}`, { method: "DELETE" }).then(r => { if (r.ok) refreshExamsList(ui); }); };
+        card.querySelector(".delete-quiz-btn").onclick = async () => {
+          const confirmed = await showConfirm(`Delete quiz "${ex.quizName}"?`);
+          if (confirmed) {
+            authFetch(`/quiz/${ex.id}`, { method: "DELETE" }).then(r => {
+              if (r.ok) {
+                refreshExamsList(ui);
+                showAlert("Exam Deleted", "Success", "🗑️");
+              }
+            });
+          }
+        };
         grid.appendChild(card);
       });
     });
@@ -678,10 +1195,6 @@
       <div class="manage-body">
         <div class="filter-panel" style="background:white; padding:35px; border-radius:20px; border:1px solid var(--border); margin-bottom:40px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:25px; box-shadow:var(--shadow-sm);">
           <div class="filter-item">
-            <label class="input-label" style="margin:0 0 8px;">Quiz ID</label>
-            <input type="number" id="fId" placeholder="Internal ID" style="margin:0; height:50px;">
-          </div>
-          <div class="filter-item">
             <label class="input-label" style="margin:0 0 8px;">Department</label>
             <select id="fDept" class="dept-select-dynamic" style="margin:0; height:50px;">
               <option value="">All Departments</option>
@@ -689,12 +1202,12 @@
             </select>
           </div>
           <div class="filter-item">
-            <label class="input-label" style="margin:0 0 8px;">Section</label>
-            <select id="fSec" style="margin:0; height:50px;"><option value="">All Sections</option>${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}">${s}</option>`).join("")}</select>
+            <label class="input-label" style="margin:0 0 8px;">Year</label>
+            <select id="fYear" class="year-select-dynamic" disabled style="margin:0; height:50px;"><option value="">All Years</option></select>
           </div>
           <div class="filter-item">
-            <label class="input-label" style="margin:0 0 8px;">Year</label>
-            <select id="fYear" style="margin:0; height:50px;"><option value="">All Years</option>${[1, 2, 3, 4].map(y => `<option value="${y}">${y}</option>`).join("")}</select>
+            <label class="input-label" style="margin:0 0 8px;">Section</label>
+            <select id="fSec" class="section-select-dynamic" disabled style="margin:0; height:50px;"><option value="">All Sections</option></select>
           </div>
           
           <div style="grid-column: 1/-1; display:flex; gap:15px; margin-top:10px; border-top:1px solid var(--border); padding-top:25px;">
@@ -734,7 +1247,7 @@
     facultyContainer.appendChild(resUI);
 
     resUI.querySelector("#vBtn").onclick = () => {
-      const q = resUI.querySelector("#fId").value; if (!q) return alert("Please enter a Quiz ID to search.");
+      const q = resUI.querySelector("#fId").value; if (!q) return showAlert("Please enter a Quiz ID to search.");
       const resBody = resUI.querySelector("#resBody");
       resBody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:50px;"><div class="loading-spinner"></div><p style="margin-top:15px; color:#64748b; font-weight:600;">Processing results...</p></td></tr>`;
 
@@ -776,7 +1289,7 @@
     };
 
     resUI.querySelector("#exBtn").onclick = () => {
-      const q = resUI.querySelector("#fId").value; if (!q) return alert("Quiz ID is required for Excel export.");
+      const q = resUI.querySelector("#fId").value; if (!q) return showAlert("Quiz ID is required for Excel export.");
       const btn = resUI.querySelector("#exBtn");
       const originalText = btn.innerHTML;
       btn.innerHTML = `<div class="loading-spinner" style="width:20px; height:20px; margin:0; border-width:2px; border-top-color:white;"></div> Preparing...`;
@@ -792,13 +1305,16 @@
           a.href = u; a.download = `Results_Quiz_${q}_${new Date().toLocaleDateString()}.xlsx`;
           document.body.appendChild(a); a.click(); a.remove();
         })
-        .catch(e => alert(e.message))
+        .catch(e => showAlert(e.message))
         .finally(() => {
           btn.innerHTML = originalText;
           btn.disabled = false;
         });
     };
     resUI.querySelector("#closeRes").onclick = () => { resUI.remove(); facultyDashboard.classList.remove("hidden"); };
+
+    // Setup dynamic listeners for the newly added results UI
+    attachDynamicListeners(resUI.querySelector(".filter-panel"));
   });
 
   studentAnalysisBtn?.addEventListener("click", () => {
@@ -886,7 +1402,7 @@
 
     getAnalysisBtn.onclick = async () => {
       const roll = rollInput.value.trim();
-      if (!roll) return alert("Please enter a Student Roll Number");
+      if (!roll) return showAlert("Please enter a Student Roll Number");
 
       getAnalysisBtn.innerHTML = `<div class="loading-spinner" style="width:20px; height:20px; border-top-color:white;"></div> Analyzing...`;
       getAnalysisBtn.disabled = true;
@@ -913,7 +1429,7 @@
 
       } catch (e) {
         console.error(e);
-        alert("Integrity Error: " + e.message);
+        showAlert("Integrity Error: " + e.message);
       } finally {
         getAnalysisBtn.innerHTML = "🔍 Analyze";
         getAnalysisBtn.disabled = false;
@@ -1081,7 +1597,6 @@
       
       <div id="activationConfigArea" style="margin-top:20px; display:none;">
          <div class="input-group-row">
-           <div><label class="input-label">Sec</label><select id="aS">${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}">${s}</option>`).join("")}</select></div>
            <div>
              <label class="input-label">Dept</label>
              <select id="aD" class="dept-select-dynamic">
@@ -1089,7 +1604,8 @@
                ${departmentsListHTML}
              </select>
            </div>
-           <div><label class="input-label">Year</label><select id="aY"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+           <div><label class="input-label">Year</label><select id="aY" class="year-select-dynamic" disabled><option value="">Select Year</option></select></div>
+           <div><label class="input-label">Sec</label><select id="aS" class="section-select-dynamic" disabled><option value="">Select Section</option></select></div>
          </div>
          
          <div style="margin-top:20px; padding:15px; background:#f8fafc; border-radius:12px; border:1px solid #e2e8f0;">
@@ -1098,8 +1614,24 @@
             <div id="sectionCountsList"></div>
          </div>
 
-         <label class="input-label">Duration (Mins)</label><input type="number" id="aDu" value="60">
-         <label class="input-label">Action</label><select id="aSt"><option value="true">Activate</option><option value="false">Deactivate</option></select>
+
+         <div class="input-group-row" style="grid-template-columns: 1fr 1fr; margin-top:20px;">
+            <div>
+               <label class="input-label">Available From (Optional)</label>
+               <input type="datetime-local" id="aSchedStart" style="height:45px; border-radius:10px; font-size:12px;">
+            </div>
+            <div>
+               <label class="input-label">Available To (Optional)</label>
+               <input type="datetime-local" id="aSchedEnd" style="height:45px; border-radius:10px; font-size:12px;">
+            </div>
+         </div>
+
+         <div class="input-group-row" style="margin-top:10px; grid-template-columns: 1fr 1fr;">
+            <div><label class="input-label">Exam duration (Mins)</label><input type="number" id="aDu" value="60"></div>
+            <div><label class="input-label">Activation Mode</label><select id="aSt"><option value="true">Active (Enabled)</option><option value="false">Inactive (Disabled)</option></select></div>
+         </div>
+         
+         <p style="font-size:11px; color:var(--text-muted); margin-top:10px;"><i>* If scheduled times are set, students can only enter during that window. If 'Inactive' is selected, the quiz is hidden regardless of schedule.</i></p>
       </div>
     `;
 
@@ -1164,8 +1696,11 @@
 
       if (!isValid) return showFacultyNotice("Configuration Error", errorMsg, "error");
 
+      const startTime = m.querySelector("#aSchedStart").value;
+      const endTime = m.querySelector("#aSchedEnd").value;
+
       const configStr = encodeURIComponent(JSON.stringify(configs));
-      const url = `/quiz/activate?quizId=${quizId}&section=${section}&department=${dept}&year=${year}&active=${active}&durationMinutes=${duration}&sectionConfigs=${configStr}`;
+      const url = `/quiz/activate?quizId=${quizId}&section=${section}&department=${dept}&year=${year}&active=${active}&durationMinutes=${duration}&sectionConfigs=${configStr}&startTime=${startTime}&endTime=${endTime}`;
 
       authFetch(url, { method: "POST" }).then(async r => {
         if (r.ok) {
@@ -1177,6 +1712,9 @@
         }
       });
     }, { hideSubmit: true, submitText: "Activate Assessment" });
+
+    // Setup dynamic listeners for activation modal
+    attachDynamicListeners(modal);
 
     // Helper: Subset sum variant to check if N elements can sum to T
     function canSatisfyMarks(marks, n, target) {
@@ -1284,7 +1822,6 @@
     createModal("Publish Control",
       `<label class="input-label">Quiz ID</label><input type="number" id="pI">
        <div class="input-group-row">
-         <div><label class="input-label">Sec</label><select id="pS">${["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"].map(s => `<option value="${s}">${s}</option>`).join("")}</select></div>
          <div>
            <label class="input-label">Dept</label>
            <select id="pD" class="dept-select-dynamic">
@@ -1292,13 +1829,18 @@
              ${departmentsListHTML}
            </select>
          </div>
-         <div><label class="input-label">Year</label><select id="pY"><option value="1">1</option><option value="2">2</option><option value="3">3</option><option value="4">4</option></select></div>
+         <div><label class="input-label">Year</label><select id="pY" class="year-select-dynamic" disabled><option value="">Year</option></select></div>
+         <div><label class="input-label">Sec</label><select id="pS" class="section-select-dynamic" disabled><option value="">Sec</option></select></div>
        </div>
        <label class="input-label">Action</label><select id="pSt"><option value="true">Publish</option><option value="false">Unpublish</option></select>`,
       (m, o) => {
         authFetch(`/quiz/${m.querySelector("#pI").value}/publish-result?section=${m.querySelector("#pS").value}&department=${m.querySelector("#pD").value}&year=${m.querySelector("#pY").value}&publish=${m.querySelector("#pSt").value}`, { method: "POST" })
           .then(async r => { showMsg(m, await r.text(), r.ok ? "success" : "error"); if (r.ok) setTimeout(() => o.remove(), 1500); });
       });
+
+    // Use the recently created modal container to attach listeners
+    const pModal = document.querySelector(".modal-overlay:last-child");
+    if (pModal) attachDynamicListeners(pModal);
   });
 
   init();

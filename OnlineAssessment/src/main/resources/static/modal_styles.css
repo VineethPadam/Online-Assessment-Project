@@ -27,6 +27,8 @@
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
     position: relative;
     animation: modalPop 0.3s ease-out;
+    max-height: 85vh;
+    overflow-y: auto;
 }
 
 .faculty-modal-header {

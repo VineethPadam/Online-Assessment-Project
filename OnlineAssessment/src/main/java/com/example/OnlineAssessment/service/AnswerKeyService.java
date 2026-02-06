@@ -27,8 +27,8 @@ public class AnswerKeyService {
 
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public List<Map<String, Object>> generateAnswerKey(Long quizId, String rollNo) {
-        Result result = resultRepo.findResultByStudentAndQuiz(rollNo, quizId);
+    public List<Map<String, Object>> generateAnswerKey(Long quizId, String rollNo, Long collegeId) {
+        Result result = resultRepo.findResultByStudentAndQuiz(rollNo, quizId, collegeId);
         if (result == null)
             return Collections.emptyList();
 
@@ -44,6 +44,8 @@ public class AnswerKeyService {
 
         for (Map.Entry<String, String> entry : studentAnswers.entrySet()) {
             String questionId = entry.getKey();
+            if (questionId == null)
+                continue;
             String selectedOption = entry.getValue();
 
             Questions question = questionRepo.findById(questionId).orElse(null);

@@ -10,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import com.example.OnlineAssessment.entity.Student;
+import com.example.OnlineAssessment.entity.College;
+import com.example.OnlineAssessment.repositories.CollegeRepo;
 
 @Service
 public class StudentExcelService {
@@ -17,7 +19,11 @@ public class StudentExcelService {
     @Autowired
     private StudentService studentService;
 
-    public void uploadStudents(MultipartFile file) throws Exception {
+    @Autowired
+    private CollegeRepo collegeRepo;
+
+    public void uploadStudents(MultipartFile file, Long collegeId) throws Exception {
+        College college = collegeId != null ? collegeRepo.findById(collegeId).orElse(null) : null;
         try (InputStream is = file.getInputStream();
                 Workbook workbook = new XSSFWorkbook(is)) {
 
@@ -41,6 +47,7 @@ public class StudentExcelService {
                 s.setDepartment(formatter.formatCellValue(row.getCell(4)).trim());
                 s.setStudentEmail(formatter.formatCellValue(row.getCell(5)).trim());
                 s.setPassword("Reset@2025");
+                s.setCollege(college);
 
                 studentService.saveStudent(s);
             }

@@ -76,11 +76,39 @@
 /* --- 3-COLUMN LAYOUT --- */
 .exam-grid-container {
 	display: grid;
-	grid-template-columns: 280px 1fr 320px;
-	gap: 15px;
+	grid-template-columns: 280px 12px 1fr 12px 320px;
+	gap: 0;
 	padding: 15px;
 	height: 100%;
 	box-sizing: border-box;
+}
+
+.global-splitter {
+	cursor: col-resize;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.2s;
+	z-index: 20;
+}
+
+.global-splitter:hover,
+.global-splitter.dragging {
+	background: #e0e7ff;
+}
+
+.global-splitter::after {
+	content: '⋮';
+	color: #94a3b8;
+	font-size: 14px;
+	font-weight: bold;
+	opacity: 0;
+	transition: opacity 0.2s;
+}
+
+.global-splitter:hover::after,
+.global-splitter.dragging::after {
+	opacity: 1;
 }
 
 .exam-col {
@@ -668,4 +696,231 @@
 ::-webkit-scrollbar-thumb {
 	background: #cbd5e1;
 	border-radius: 10px;
+}
+
+/* --- COMPILER INTERFACE STYLES --- */
+.coding-container {
+	display: flex;
+	flex-direction: column;
+	height: 100%;
+	gap: 15px;
+}
+
+.coding-main-split {
+	display: flex;
+	gap: 0;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.splitter-handle {
+	width: 10px;
+	background: #e2e8f0;
+	cursor: col-resize;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: background 0.2s;
+	z-index: 10;
+}
+
+.splitter-handle:hover,
+.splitter-handle.dragging {
+	background: var(--primary);
+}
+
+.splitter-handle::after {
+	content: '⋮';
+	color: #64748b;
+	font-weight: bold;
+}
+
+.splitter-handle:hover::after {
+	color: white;
+}
+
+.problem-statement-panel {
+	width: 400px;
+	min-width: 200px;
+	background: #fdfdfd;
+	border-right: 1px solid var(--border);
+	padding: 20px;
+	overflow-y: auto;
+}
+
+.details-toggle-btn {
+	background: #f1f5f9;
+	color: var(--primary);
+	font-weight: 700;
+	padding: 10px 15px;
+	border-radius: 8px;
+	font-size: 13px;
+	width: 100%;
+	text-align: left;
+	border: 1px solid #e2e8f0;
+	margin-top: 15px;
+	cursor: pointer;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	transition: all 0.2s;
+}
+
+.details-toggle-btn:hover {
+	background: #e0e7ff;
+	border-color: var(--primary-light);
+}
+
+.details-toggle-btn.active {
+	background: var(--primary);
+	color: white;
+	border-color: var(--primary);
+}
+
+.details-content {
+	display: none;
+	padding: 15px;
+	border: 1px solid #e2e8f0;
+	border-top: none;
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+	background: #fff;
+	animation: slideDown 0.2s ease-out;
+}
+
+.details-content.show {
+	display: block;
+}
+
+@keyframes slideDown {
+	from {
+		opacity: 0;
+		transform: translateY(-5px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+
+
+
+.editor-section {
+	display: flex;
+	flex-direction: column;
+	background: #1e1e1e;
+	border-radius: 12px;
+	overflow: hidden;
+	border: 1px solid #333;
+}
+
+.editor-toolbar {
+	background: #252526;
+	padding: 10px 20px;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	border-bottom: 1px solid #333;
+}
+
+.lang-selector {
+	background: #3c3c3c;
+	color: white;
+	border: 1px solid #555;
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 13px;
+	outline: none;
+}
+
+.editor-container {
+	flex: 1;
+	min-height: 300px;
+}
+
+.output-panel {
+	background: white;
+	border-radius: 12px;
+	border: 1px solid var(--border);
+	display: flex;
+	flex-direction: column;
+	max-height: 250px;
+}
+
+.output-header {
+	padding: 12px 20px;
+	background: #f8fafc;
+	border-bottom: 1px solid var(--border);
+	font-weight: 700;
+	font-size: 14px;
+	color: var(--text-main);
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.output-content {
+	padding: 15px;
+	font-family: 'Consolas', 'Monaco', monospace;
+	font-size: 13px;
+	overflow-y: auto;
+	background: #fafafa;
+	flex: 1;
+	white-space: pre-wrap;
+}
+
+.test-case-item {
+	background: #f1f5f9;
+	padding: 10px;
+	border-radius: 6px;
+	margin-bottom: 10px;
+	font-size: 12px;
+}
+
+.test-case-label {
+	font-weight: 800;
+	color: var(--primary);
+	margin-bottom: 5px;
+	display: block;
+}
+
+.run-btns {
+	display: flex;
+	gap: 10px;
+}
+
+.btn-run {
+	background: #3b82f6;
+	color: white;
+}
+
+.btn-submit-code {
+	background: #10b981;
+	color: white;
+}
+
+.status-tag {
+	padding: 2px 8px;
+	border-radius: 4px;
+	font-size: 11px;
+	font-weight: 800;
+	text-transform: uppercase;
+}
+
+.status-tag.pass {
+	background: #dcfce7;
+	color: #166534;
+}
+
+.status-tag.fail {
+	background: #fee2e2;
+	color: #991b1b;
+}
+
+.status-tag.pending {
+	background: #fef9c3;
+	color: #854d0e;
 }

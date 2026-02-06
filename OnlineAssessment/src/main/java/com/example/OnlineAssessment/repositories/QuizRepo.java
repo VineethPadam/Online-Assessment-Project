@@ -11,4 +11,6 @@ public interface QuizRepo extends JpaRepository<Quiz, Long> {
 	List<Quiz> findByFaculty_FacultyId(String facultyId);
 
 	Optional<Quiz> findByQuizCodeAndFaculty_FacultyId(String quizCode, String facultyId);
+
+	Optional<Quiz> findByIdAndFaculty_College_Id(Long id, Long collegeId);
 }

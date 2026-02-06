@@ -36,3 +36,39 @@ async function authFetch(url, options = {}) {
     return response;
 }
 
+// Global System Modals
+window.showAlert = (message, title = "Security Alert", icon = "⚠️") => {
+    const overlay = document.createElement("div");
+    overlay.className = "system-alert-overlay";
+    overlay.innerHTML = `
+    <div class="system-alert-card">
+      <span class="system-alert-icon">${icon}</span>
+      <h2 class="system-alert-title">${title}</h2>
+      <p class="system-alert-message">${message}</p>
+      <button class="system-alert-btn">Acknowledge</button>
+    </div>
+  `;
+    document.body.appendChild(overlay);
+    overlay.querySelector("button").onclick = () => overlay.remove();
+};
+
+window.showConfirm = (message, title = "Confirmation Required") => {
+    return new Promise((resolve) => {
+        const overlay = document.createElement("div");
+        overlay.className = "system-alert-overlay";
+        overlay.innerHTML = `
+      <div class="system-alert-card">
+        <h2 class="system-alert-title">${title}</h2>
+        <p class="system-alert-message">${message}</p>
+        <div class="system-confirm-btns">
+          <button id="sysCancel" class="system-alert-btn system-confirm-btn-cancel">Cancel</button>
+          <button id="sysOk" class="system-alert-btn">Proceed</button>
+        </div>
+      </div>
+    `;
+        document.body.appendChild(overlay);
+        overlay.querySelector("#sysCancel").onclick = () => { overlay.remove(); resolve(false); };
+        overlay.querySelector("#sysOk").onclick = () => { overlay.remove(); resolve(true); };
+    });
+};
+

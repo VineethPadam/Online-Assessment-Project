@@ -24,7 +24,8 @@ public class AnalyzeService {
             Long quizId,
             String department,
             String section,
-            Integer year) {
+            Integer year,
+            Long collegeId) {
 
         if (quizId == null) {
             throw new RuntimeException("QuizId is required");
@@ -34,21 +35,27 @@ public class AnalyzeService {
 
         boolean hasDept = department != null && !department.isBlank();
         boolean hasSec = section != null && !section.isBlank();
-        boolean hasYear = year != null && year > 0;
 
-        if (!hasDept && !hasSec && !hasYear) {
-            results = resultRepo.findRankedByQuiz(quizId);
-        } else if (hasDept && !hasSec && !hasYear) {
-            results = resultRepo.findRankedByQuizAndDepartment(quizId, department);
-        } else if (hasDept && hasSec && hasYear) {
-            results = resultRepo.findRankedByQuizDepartmentSectionYear(
-                    quizId, department, section, year);
-        } else if (hasDept && hasYear) {
-            results = resultRepo.findRankedByQuizDepartmentYear(
-                    quizId, department, year);
-        } else if (hasDept && hasSec) {
-            results = resultRepo.findRankedByQuizDepartmentSection(
-                    quizId, department, section);
+        if (year != null && year > 0) {
+            int y = year.intValue();
+            if (hasDept && hasSec) {
+                results = resultRepo.findRankedByQuizDepartmentSectionYear(
+                        quizId, department, section, y, collegeId);
+            } else if (hasDept) {
+                results = resultRepo.findRankedByQuizDepartmentYear(
+                        quizId, department, y, collegeId);
+            } else {
+                results = Collections.emptyList();
+            }
+        } else if (hasDept) {
+            if (hasSec) {
+                results = resultRepo.findRankedByQuizDepartmentSection(
+                        quizId, department, section, collegeId);
+            } else {
+                results = resultRepo.findRankedByQuizAndDepartment(quizId, department, collegeId);
+            }
+        } else if (!hasDept && !hasSec) {
+            results = resultRepo.findRankedByQuiz(quizId, collegeId);
         } else {
             results = Collections.emptyList();
         }

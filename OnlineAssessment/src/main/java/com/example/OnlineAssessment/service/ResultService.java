@@ -17,6 +17,7 @@ import com.example.OnlineAssessment.entity.QuizActivation;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.transaction.annotation.Transactional;
+import com.fasterxml.jackson.databind.JsonNode;
 
 @Service
 public class ResultService {
@@ -36,19 +37,27 @@ public class ResultService {
     @Autowired
     private QuizActivationRepo quizActivationRepo;
 
+    @Autowired
+    private CompilerService compilerService;
+
     private ObjectMapper objectMapper = new ObjectMapper();
 
     // ================== Evaluate and save student result ==================
     public Result evaluateAndSaveResult(String rollNumber, Long quizId,
-            Map<String, String> answers) throws Exception {
+            Map<String, String> answers, Long collegeId) throws Exception {
 
-        if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_Id(rollNumber, quizId)) {
+        Map<String, Double> scoreBreakdownMap = new HashMap<>();
+
+        if (resultRepo.existsByStudent_StudentRollNumberAndQuiz_IdAndStudent_College_Id(rollNumber, quizId,
+                collegeId)) {
             throw new RuntimeException("You have already attempted this quiz.");
         }
 
-        Student student = studentRepo.findByStudentRollNumber(rollNumber)
+        Student student = studentRepo.findByStudentRollNumberAndCollegeId(rollNumber, collegeId)
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
+        if (quizId == null)
+            throw new RuntimeException("Quiz ID cannot be null");
         Quiz quiz = quizRepo.findById(quizId)
                 .orElseThrow(() -> new RuntimeException("Quiz not found"));
 
@@ -75,21 +84,49 @@ public class ResultService {
                     try {
                         double cVal = Double.parseDouble(correctStr);
                         double sVal = Double.parseDouble(studentStr);
-                        // Tolerance for floating point comparison
                         if (Math.abs(cVal - sVal) < 0.0001) {
                             isCorrect = true;
                         }
                     } catch (NumberFormatException e) {
-                        // Fallback to exact string match if parsing fails
                         if (correctStr.equalsIgnoreCase(studentStr)) {
                             isCorrect = true;
                         }
                     }
 
-                    if (isCorrect) {
-                        score += question.getMarks();
-                    } else {
-                        score -= question.getNegativeMarks();
+                    double awarded = isCorrect ? question.getMarks() : -question.getNegativeMarks();
+                    score += awarded;
+                    scoreBreakdownMap.put(questionId, awarded);
+
+                } else if ("CODING".equalsIgnoreCase(question.getQuestionType())) {
+                    try {
+                        JsonNode node = objectMapper.readTree(studentAnswer);
+                        String code = node.get("code").asText();
+                        String lang = node.get("language").asText();
+
+                        String tcsJson = question.getTestCases();
+                        List<Map<String, String>> tcs = objectMapper.readValue(tcsJson,
+                                new TypeReference<List<Map<String, String>>>() {
+                                });
+
+                        int passed = 0;
+                        if (tcs != null && !tcs.isEmpty()) {
+                            for (Map<String, String> tc : tcs) {
+                                String inp = tc.get("input");
+                                String exp = tc.get("output");
+                                CompilerService.ExecutionResult res = compilerService.execute(lang, code, inp);
+                                if (res.success && res.output != null && res.output.trim().equals(exp.trim())) {
+                                    passed++;
+                                }
+                            }
+                            double awarded = ((double) passed / tcs.size()) * question.getMarks();
+                            score += awarded;
+                            scoreBreakdownMap.put(questionId, awarded);
+                        } else {
+                            // No test cases, give 0 or full? Let's say 0 to be safe
+                            scoreBreakdownMap.put(questionId, 0.0);
+                        }
+                    } catch (Exception e) {
+                        scoreBreakdownMap.put(questionId, 0.0);
                     }
                 } else {
                     // MCQ Evaluation
@@ -103,12 +140,12 @@ public class ResultService {
                             .filter(s -> !s.isEmpty())
                             .toList();
 
-                    if (correctOptions.size() == selectedOptions.size()
-                            && correctOptions.containsAll(selectedOptions)) {
-                        score += question.getMarks();
-                    } else {
-                        score -= question.getNegativeMarks();
-                    }
+                    boolean isCorrect = correctOptions.size() == selectedOptions.size()
+                            && correctOptions.containsAll(selectedOptions);
+
+                    double awarded = isCorrect ? question.getMarks() : -question.getNegativeMarks();
+                    score += awarded;
+                    scoreBreakdownMap.put(questionId, awarded);
                 }
             }
         }
@@ -121,13 +158,14 @@ public class ResultService {
 
         result.setSubmissionTime(java.time.LocalDateTime.now());
         result.setAnswers(objectMapper.writeValueAsString(answers));
+        result.setScoreBreakdown(objectMapper.writeValueAsString(scoreBreakdownMap));
 
         return resultRepo.save(result);
     }
 
     // ================== Fetch student results if published ==================
-    public List<Result> getStudentResults(String rollNumber, Long quizId) {
-        if (studentRepo.findById(rollNumber).isEmpty()) {
+    public List<Result> getStudentResults(String rollNumber, Long quizId, Long collegeId) {
+        if (studentRepo.findByStudentRollNumberAndCollegeId(rollNumber, collegeId).isEmpty()) {
             throw new RuntimeException("Student not found");
         }
 
@@ -135,23 +173,24 @@ public class ResultService {
         // but wait, I renamed areResultsPublished in quizService or removed it?
         // Let's check QuizService again.
 
-        return resultRepo.findResultsByStudentAndQuiz(rollNumber, quizId);
+        return resultRepo.findResultsByStudentAndQuiz(rollNumber, quizId, collegeId);
     }
 
     // ================== Fetch all results by filter ==================
-    public List<Result> getResultsByFilter(String section, String department, int year, Long quizId) {
-        return resultRepo.findResultsBySectionDepartmentYearAndQuiz(section, department, year, quizId);
+    public List<Result> getResultsByFilter(String section, String department, int year, Long quizId, Long collegeId) {
+        return resultRepo.findResultsBySectionDepartmentYearAndQuiz(section, department, year, quizId, collegeId);
     }
 
     // ================== Fetch raw student answers ==================
-    public String getStudentAnswers(String rollNumber, Long quizId) {
-        Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId);
+    public String getStudentAnswers(String rollNumber, Long quizId, Long collegeId) {
+        Result result = resultRepo.findResultByStudentAndQuiz(rollNumber, quizId, collegeId);
         return result != null ? result.getAnswers() : "{}";
     }
 
     // ================== Check if student has attempted ==================
-    public boolean hasAttemptedQuiz(String rollNumber, Long quizId) {
-        return resultRepo.existsByStudent_StudentRollNumberAndQuiz_Id(rollNumber, quizId);
+    public boolean hasAttemptedQuiz(String rollNumber, Long quizId, Long collegeId) {
+        return resultRepo.existsByStudent_StudentRollNumberAndQuiz_IdAndStudent_College_Id(rollNumber, quizId,
+                collegeId);
     }
 
     // ================== Get ranked results with all filters ==================
@@ -160,7 +199,8 @@ public class ResultService {
             String department,
             String section,
             Integer year,
-            String sortBy) {
+            String sortBy,
+            Long collegeId) {
 
         List<Result> results;
 
@@ -169,19 +209,20 @@ public class ResultService {
         boolean hasYear = year != null && year > 0;
 
         if (!hasDepartment && !hasSection && !hasYear) {
-            results = resultRepo.findRankedByQuiz(quizId);
+            results = resultRepo.findRankedByQuiz(quizId, collegeId);
 
         } else if (hasDepartment && !hasSection && !hasYear) {
-            results = resultRepo.findRankedByQuizAndDepartment(quizId, department);
+            results = resultRepo.findRankedByQuizAndDepartment(quizId, department, collegeId);
 
         } else if (hasDepartment && hasSection && !hasYear) {
-            results = resultRepo.findRankedByQuizDepartmentSection(quizId, department, section);
+            results = resultRepo.findRankedByQuizDepartmentSection(quizId, department, section, collegeId);
 
-        } else if (hasDepartment && !hasSection && hasYear) {
-            results = resultRepo.findRankedByQuizDepartmentYear(quizId, department, year);
+        } else if (hasDepartment && !hasSection && year != null && year > 0) {
+            results = resultRepo.findRankedByQuizDepartmentYear(quizId, department, year.intValue(), collegeId);
 
-        } else if (hasDepartment && hasSection && hasYear) {
-            results = resultRepo.findRankedByQuizDepartmentSectionYear(quizId, department, section, year);
+        } else if (hasDepartment && hasSection && year != null && year > 0) {
+            results = resultRepo.findRankedByQuizDepartmentSectionYear(quizId, department, section, year.intValue(),
+                    collegeId);
 
         } else {
             throw new RuntimeException("Invalid filter combination");
@@ -218,16 +259,17 @@ public class ResultService {
 
     // ================== Get all results for a student ==================
     @Transactional(readOnly = true)
-    public List<Result> getAllStudentResults(String rollNumber) {
-        List<Result> results = resultRepo.findResultsByStudent_StudentRollNumber(rollNumber);
+    public List<Result> getAllStudentResults(String rollNumber, Long collegeId) {
+        List<Result> results = resultRepo.findResultsByStudent_StudentRollNumber(rollNumber, collegeId);
         for (Result r : results) {
             double totalMarks = r.getTotalMarks();
             r.setPassFail((totalMarks > 0 && ((double) r.getScore() / totalMarks) * 100 >= 40) ? "Pass" : "Fail");
 
             // Check publication
             Student s = r.getStudent();
+            Long cId = (s.getCollege() != null) ? s.getCollege().getId() : null;
             QuizActivation qA = quizActivationRepo.findByQuizIdAndSectionDeptYear(
-                    r.getQuiz().getId(), s.getStudentSection(), s.getDepartment(), s.getStudentYear());
+                    r.getQuiz().getId(), s.getStudentSection(), s.getDepartment(), s.getStudentYear(), cId);
             r.setPublished(qA != null && qA.isPublished());
 
             if (!r.isPublished()) {
@@ -244,8 +286,14 @@ public class ResultService {
                                 objectMapper.readValue(r.getAnswers(), new TypeReference<Map<String, String>>() {
                                 }));
                     }
+                    if (r.getScoreBreakdown() != null) {
+                        r.setScoreBreakdownMap(
+                                objectMapper.readValue(r.getScoreBreakdown(), new TypeReference<Map<String, Double>>() {
+                                }));
+                    }
                 } catch (Exception e) {
                     r.setStudentAnswers(new HashMap<>());
+                    r.setScoreBreakdownMap(new HashMap<>());
                 }
             }
         }

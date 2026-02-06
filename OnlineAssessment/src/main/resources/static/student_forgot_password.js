@@ -70,7 +70,7 @@
 
         modal.querySelector("#sendStudentOtpBtn").addEventListener("click", () => {
             const roll = modal.querySelector("#studentRollInput").value.trim();
-            if (!roll) return alert("Enter roll number.");
+            if (!roll) return showAlert("Enter roll number.");
 
             // Simulate / Call API
             fetch(`/password/student/send-otp?roll=${encodeURIComponent(roll)}`, { method: "POST" })
@@ -78,10 +78,10 @@
                     if (res.ok) {
                         openOtpModal(roll);
                     } else {
-                        alert(await res.text());
+                        showAlert(await res.text());
                     }
                 })
-                .catch(() => alert("Failed to send OTP."));
+                .catch(() => showAlert("Failed to send OTP."));
         });
     }
 
@@ -129,7 +129,7 @@
             const newPassword = pwdInput.value;
             const confirmPassword = confirmInput.value;
 
-            if (!otp) return alert("Enter OTP.");
+            if (!otp) return showAlert("Enter OTP.");
 
             // Enhanced Validation
             if (!pwdRegex.test(newPassword)) {
@@ -151,7 +151,7 @@
                 footer.innerHTML = `<button class="faculty-btn" id="studentOkBtn">Login Now</button>`;
                 modal.querySelector("#studentOkBtn").addEventListener("click", () => modal.classList.add("hidden"));
             } catch (err) {
-                alert("Error: " + err.message);
+                showAlert("Error: " + err.message);
             }
         });
     }

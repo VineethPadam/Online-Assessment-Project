@@ -24,30 +24,51 @@ public class FacultyController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validateFaculty(@RequestBody Faculty faculty) {
+    public ResponseEntity<?> validateFaculty(@RequestBody Map<String, Object> payload) {
+        String email = (String) payload.get("email");
+        String password = (String) payload.get("password");
+        Object cidObj = payload.get("collegeId");
+        if (cidObj == null)
+            return ResponseEntity.badRequest().body("College selection is required");
+        Long collegeId = Long.valueOf(cidObj.toString());
 
-        Faculty f = facultyService.validateFaculty(
-                faculty.getEmail(),
-                faculty.getPassword()
-        );
+        try {
+            Faculty f = facultyService.validateFaculty(email, password, collegeId);
 
-        if (f != null) {
+            if (f != null) {
 
-            String token = jwtUtil.generateToken(f.getEmail(), "FACULTY");
+                String token = jwtUtil.generateToken(f.getEmail(), "FACULTY", collegeId);
 
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("email", f.getEmail());
-            response.put("facultyName", f.getFacultyName());
-            response.put("department", f.getDepartment());
-            response.put("facultyId", f.getFacultyId());
-            response.put("role", "FACULTY");
+                Map<String, Object> response = new HashMap<>();
+                response.put("token", token);
+                response.put("email", f.getEmail());
+                response.put("facultyName", f.getFacultyName());
+                response.put("department", f.getDepartment());
+                response.put("facultyId", f.getFacultyId());
+                response.put("role", "FACULTY");
 
-            return ResponseEntity.ok(response);
+                // Add permissions
+                com.example.OnlineAssessment.entity.College c = f.getCollege();
+                if (c != null) {
+                    Map<String, Object> perms = new HashMap<>();
+                    perms.put("allowMcq", c.isAllowMcqQuestions());
+                    perms.put("allowCoding", c.isAllowCodingQuestions());
+                    perms.put("allowNumeric", c.isAllowNumericQuestions());
+                    perms.put("allowImages", c.isAllowImageInQuestions());
+                    perms.put("allowQuestionBank", c.isAllowQuestionBankAccess());
+                    perms.put("maxFaculty", c.getMaxFacultyUsers());
+                    perms.put("maxStudents", c.getMaxStudentUsers());
+                    response.put("permissions", perms);
+                }
+
+                return ResponseEntity.ok(response);
+            }
+
+            return ResponseEntity
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body("Invalid Credentials");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body("Invalid Credentials");
     }
 }

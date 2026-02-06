@@ -11,6 +11,8 @@
 	<link rel="stylesheet" href="admin_style.css">
 	<link rel="stylesheet" href="faculty-forgot-password.css">
 	<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+	<link rel="stylesheet" href="landing_style.css">
 </head>
 
 <body>
@@ -19,12 +21,19 @@
 	<nav class="navbar">
 		<div class="nav-container">
 			<div class="logo-group">
-				<img src="Images/AssessPRO.png" alt="MITS Logo" class="college-logo">
+				<div class="graduation-cap" style="font-size: 2.5rem; color: #5c6bc0; cursor: pointer;" id="homeLogo">🎓
+				</div>
 			</div>
 
 			<div class="nav-links" id="publicNavLinks">
-				<a href="#about" id="aboutUsBtn">About Us</a>
-				<a href="#contact" id="contactUsBtn">Contact Us</a>
+				<a href="#home" class="nav-item active" id="homeNavBtn">Home</a>
+				<a href="#features" class="nav-item">Features</a>
+				<a href="#how-it-works" class="nav-item">How It Works</a>
+				<a href="#about" class="nav-item">About Us</a>
+				<a href="#contact" class="nav-item">Contact</a>
+				<a href="#" class="nav-item" id="loginNavBtn">Login</a>
+				<div class="hamburger-menu"
+					style="margin-left: 15px; font-size: 1.2rem; cursor: pointer; color: #64748b;">☰</div>
 			</div>
 
 			<div class="profile-menu hidden" id="profileMenu">
@@ -45,8 +54,224 @@
 
 		<div class="content-wrapper">
 
+			<!-- Landing Section -->
+			<section id="landingSection" class="active-section landing-section">
+				<!-- 1. Hero Section -->
+				<div class="hero-container animate-up" id="home">
+					<h1 id="heroTitle">MITS Assessment Portal</h1>
+					<p id="heroTagline">A Smart Platform for MCQ & Coding Examinations</p>
+				</div>
+
+				<!-- Stats Bar -->
+				<div class="stats-container animate-up"
+					style="display: flex; justify-content: center; gap: 50px; flex-wrap: wrap; margin-top: -40px; margin-bottom: 60px; position: relative; z-index: 10;">
+					<div class="stat-card"
+						style="background: var(--card-bg); padding: 20px 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; min-width: 150px;">
+						<h3 style="margin: 0; font-size: 2.5rem; color: var(--primary); font-weight: 800;">10k+</h3>
+						<p style="margin: 5px 0 0; color: var(--text-muted); font-weight: 600;">Students</p>
+					</div>
+					<div class="stat-card"
+						style="background: var(--card-bg); padding: 20px 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; min-width: 150px;">
+						<h3 style="margin: 0; font-size: 2.5rem; color: var(--secondary); font-weight: 800;">500+</h3>
+						<p style="margin: 5px 0 0; color: var(--text-muted); font-weight: 600;">Exams Conducted</p>
+					</div>
+					<div class="stat-card"
+						style="background: var(--card-bg); padding: 20px 40px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); text-align: center; min-width: 150px;">
+						<h3 style="margin: 0; font-size: 2.5rem; color: var(--accent); font-weight: 800;">99.9%</h3>
+						<p style="margin: 5px 0 0; color: var(--text-muted); font-weight: 600;">System Uptime</p>
+					</div>
+				</div>
+
+				<!-- 2. What We Offer -->
+				<div class="section-title animate-up" id="offer" style="padding-top: 80px;">
+					<h2>What We Offer</h2>
+					<p>Explore our comprehensive assessment solutions.</p>
+				</div>
+				<div class="offer-grid animate-up" id="offerGrid"
+					style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 25px; margin-bottom: 80px;">
+					<!-- Populated by JS -->
+				</div>
+
+				<!-- 3. Why Choose Our Portal -->
+				<div class="section-title animate-up" id="why-choose">
+					<h2>Why Choose Our Portal</h2>
+					<p>Experience the difference with our advanced features.</p>
+				</div>
+				<div class="features-grid animate-up" id="whyChooseGrid"
+					style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 30px; margin-bottom: 80px;">
+					<!-- Populated by JS -->
+				</div>
+
+				<!-- 4. About Us -->
+				<div class="section-title animate-up" id="about">
+					<h2 id="aboutTitle">Who We Are</h2>
+				</div>
+				<div class="about-container animate-up"
+					style="max-width: 900px; margin: 0 auto 60px; text-align: center;">
+					<p id="aboutAboutDesc"
+						style="font-size: 1.1rem; color: var(--text-muted); line-height: 1.8; margin-bottom: 30px;">
+						We are an online examination platform designed to conduct secure, reliable, and scalable
+						assessments including MCQs, programming tests, and skill-based evaluations.
+					</p>
+
+					<h3 style="color: var(--text-dark); margin-bottom: 20px;">What We Do</h3>
+					<div id="whatWeDoList"
+						style="display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 30px;">
+						<!-- Tags/Chips populated by JS -->
+					</div>
+
+					<div id="aboutStoryContainer" class="hidden">
+						<h3 style="color: var(--text-dark); margin-bottom: 15px;">Our Story</h3>
+						<p id="aboutStory" style="font-style: italic; color: #64748b;"></p>
+					</div>
+				</div>
+
+				<!-- 5. Vision & Mission -->
+				<div class="section-title animate-up" id="vision">
+					<h2>Vision & Mission</h2>
+				</div>
+				<div class="grid-2 animate-up"
+					style="gap: 40px; margin-bottom: 80px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+					<!-- Vision Card -->
+					<div class="vision-card"
+						style="height: 400px; position: relative; border-radius: 30px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
+						<div
+							style="position: absolute; inset: 0; background: url('https://images.unsplash.com/photo-1457369804613-52c61a468e7d?auto=format&fit=crop&q=80&w=800') center/cover;">
+						</div>
+						<div
+							style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);">
+						</div>
+						<div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 40px; color: white;">
+							<div class="icon-box"
+								style="margin: 0 0 20px 0; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: white; border: 1px solid rgba(255,255,255,0.3);">
+								👁️</div>
+							<h3 style="font-size: 2rem; margin-bottom: 10px; font-weight: 800;">Our Vision</h3>
+							<p id="visionText" style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">To become a
+								trusted digital examination platform that empowers learners and institutions.</p>
+						</div>
+					</div>
+
+					<!-- Mission Card -->
+					<div class="mission-card"
+						style="height: 400px; position: relative; border-radius: 30px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.15);">
+						<div
+							style="position: absolute; inset: 0; background: url('https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=800') center/cover;">
+						</div>
+						<div
+							style="position: absolute; inset: 0; background: linear-gradient(to top, rgba(0,0,0,0.8), transparent);">
+						</div>
+						<div style="position: absolute; bottom: 0; left: 0; width: 100%; padding: 40px; color: white;">
+							<div class="icon-box"
+								style="margin: 0 0 20px 0; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: white; border: 1px solid rgba(255,255,255,0.3);">
+								🚀</div>
+							<h3 style="font-size: 2rem; margin-bottom: 10px; font-weight: 800;">Our Mission</h3>
+							<p id="missionText" style="font-size: 1.1rem; line-height: 1.6; opacity: 0.9;">Deliver
+								secure online examinations, promote skill-based evaluation, and provide equal
+								opportunity.</p>
+						</div>
+					</div>
+				</div>
+
+				<!-- 6. Features -->
+				<div class="section-title animate-up" id="features">
+					<h2>Platform Features</h2>
+				</div>
+				<div id="featuresContainer" class="animate-up" style="margin-bottom: 80px; display: grid; gap: 40px;">
+					<!-- Populated by JS (Examination, Evaluation, Security) -->
+				</div>
+
+				<!-- 7. How It Works -->
+				<div class="section-title animate-up" id="how-it-works">
+					<h2>How It Works</h2>
+				</div>
+				<div class="how-it-works-container animate-up" style="margin-bottom: 60px;">
+					<div id="howItWorksSteps"
+						style="display: flex; justify-content: center; flex-wrap: wrap; gap: 20px;">
+						<!-- Steps Populated by JS -->
+					</div>
+				</div>
+
+				<div class="section-title animate-up">
+					<h3>Exam Types</h3>
+				</div>
+				<div id="examTypesGrid"
+					style="display: flex; justify-content: center; gap: 30px; margin-bottom: 80px; flex-wrap: wrap;">
+					<!-- Populated by JS -->
+				</div>
+
+				<!-- 8. Contact Us -->
+				<div class="section-title animate-up" id="contact">
+					<h2>Contact Us</h2>
+					<p>We are here to help and answer any questions you might have.</p>
+				</div>
+
+				<div class="grid-2 animate-up"
+					style="display: grid; grid-template-columns: 1fr 1.5fr; gap: 40px; margin-bottom: 100px;">
+					<!-- Contact Side Info -->
+					<div style="display: flex; flex-direction: column; gap: 20px;">
+						<div class="about-card" style="padding: 25px; display: flex; align-items: center; gap: 20px;">
+							<div
+								style="width: 50px; height: 50px; background: #e0e7ff; color: #5c6bc0; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+								📧</div>
+							<div>
+								<h4 style="margin: 0; color: #1e293b;">Email Us</h4>
+								<p id="landingDisplayEmail" style="margin: 5px 0 0; color: #64748b; font-weight: 600;">
+									support@exam.portal</p>
+							</div>
+						</div>
+						<div class="about-card" style="padding: 25px; display: flex; align-items: center; gap: 20px;">
+							<div
+								style="width: 50px; height: 50px; background: #ecfdf5; color: #10b981; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+								📞</div>
+							<div>
+								<h4 style="margin: 0; color: #1e293b;">Phone</h4>
+								<p id="landingDisplayPhone" style="margin: 5px 0 0; color: #10b981; font-weight: 600;">
+									+91 98765 43210</p>
+							</div>
+						</div>
+					</div>
+
+					<!-- Contact Form -->
+					<div class="about-card" style="padding: 40px;">
+						<h3 style="margin: 0 0 25px 0; color: #1e293b; font-weight: 800;">Send us a Message</h3>
+						<form id="landingContactForm" onsubmit="submitPublicContact(event)">
+							<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+								<div class="input-group" style="margin: 0;">
+									<input type="text" id="contactName" required placeholder=" ">
+									<label>Full Name</label>
+								</div>
+								<div class="input-group" style="margin: 0;">
+									<input type="email" id="contactEmail" required placeholder=" ">
+									<label>Email Address</label>
+								</div>
+							</div>
+							<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+								<div class="input-group" style="margin: 0;">
+									<input type="text" id="contactPhone" placeholder=" ">
+									<label>Phone Number (Optional)</label>
+								</div>
+								<div class="input-group" style="margin: 0;">
+									<input type="text" id="contactSubject" required placeholder=" ">
+									<label>Subject</label>
+								</div>
+							</div>
+							<div class="input-group" style="margin-bottom: 30px;">
+								<textarea id="contactMessage" required placeholder=" "
+									style="width: 100%; min-height: 120px; padding: 15px; border-radius: 8px; border: 1px solid var(--border); font-family: inherit; resize: vertical;"></textarea>
+								<label style="top: -10px; font-size: 0.8rem; color: var(--primary-purple);">Your
+									Message</label>
+							</div>
+							<button type="submit" class="primary-btn" id="contactSubmitBtn">Send Message 🚀</button>
+						</form>
+						<div id="contactFormStatus"
+							style="margin-top: 15px; text-align: center; font-weight: 700; display: none;"></div>
+					</div>
+				</div>
+			</section>
+			</section>
+
 			<!-- Role Selection -->
-			<section id="roleSelection" class="active-section">
+			<section id="roleSelection" class="hidden-section">
 				<div class="hero-text">
 					<h1>Welcome to MITS Assessment</h1>
 					<p class="subtitle">Select your role to continue accessing the portal.</p>
@@ -54,30 +279,42 @@
 
 				<div class="card-container">
 					<div class="role-card" data-role="student">
-						<div class="icon">🎓</div>
-						<h3>Student</h3>
-						<p>Access quizzes, view results, and track progress.</p>
-						<div class="btn-wrapper">
-							<button class="role-btn btn-student">Enter as Student <span
-									class="arrow">&rsaquo;</span></button>
+						<div class="card-img"
+							style="background-image: url('https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=400');">
+						</div>
+						<div class="card-content">
+							<h3>Student</h3>
+							<p>Access quizzes, view results, and track progress.</p>
+							<div class="btn-wrapper">
+								<button class="role-btn btn-student">Enter as Student <span
+										class="arrow">&rsaquo;</span></button>
+							</div>
 						</div>
 					</div>
 					<div class="role-card" data-role="faculty">
-						<div class="icon">👨‍🏫</div>
-						<h3>Faculty</h3>
-						<p>Create quizzes, manage students, and monitor results.</p>
-						<div class="btn-wrapper">
-							<button class="role-btn btn-faculty">Enter as Faculty <span
-									class="arrow">&rsaquo;</span></button>
+						<div class="card-img"
+							style="background-image: url('https://images.unsplash.com/photo-1544531320-94a282424265?auto=format&fit=crop&q=80&w=400');">
+						</div>
+						<div class="card-content">
+							<h3>Faculty</h3>
+							<p>Create quizzes, manage students, and monitor results.</p>
+							<div class="btn-wrapper">
+								<button class="role-btn btn-faculty">Enter as Faculty <span
+										class="arrow">&rsaquo;</span></button>
+							</div>
 						</div>
 					</div>
 					<div class="role-card" data-role="admin">
-						<div class="icon">🛡</div>
-						<h3>Admin</h3>
-						<p>System administration and full oversight.</p>
-						<div class="btn-wrapper">
-							<button class="role-btn btn-admin">Enter as Admin <span
-									class="arrow">&rsaquo;</span></button>
+						<div class="card-img"
+							style="background-image: url('https://images.unsplash.com/photo-1556761175-5973dc0f32e7?auto=format&fit=crop&q=80&w=400');">
+						</div>
+						<div class="card-content">
+							<h3>Admin</h3>
+							<p>Manage users, departments, and system settings.</p>
+							<div class="btn-wrapper">
+								<button class="role-btn btn-admin">Enter as Admin <span
+										class="arrow">&rsaquo;</span></button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -85,55 +322,84 @@
 
 			<!-- Login Form -->
 			<section id="loginSection" class="hidden-section">
-				<div class="login-card">
-					<h3 class="login-title" id="loginTitle">Login</h3>
-					<div id="loginError"></div>
+				<div class="login-split-container">
 
-					<!-- Student Fields -->
-					<div id="studentFields" class="role-fields">
-						<div class="input-group">
-							<input type="text" id="studentRoll" required placeholder=" ">
-							<label>Roll Number</label>
-						</div>
-						<div class="input-group">
-							<input type="password" id="studentPassword" required placeholder=" "
-								autocomplete="new-password">
-							<label>Password</label>
-							<span class="toggle-password" data-target="studentPassword">👁️</span>
-						</div>
-						<button id="studentForgotPasswordBtn" class="link-btn" type="button">Forgot Password?</button>
-					</div>
+					<!-- Left Side: Vision & Mission (Image Background) -->
+					<div class="login-vision-panel"
+						style="background-image: url('Images/campus_vision_art.png'); background-size: cover; background-position: center bottom; border-radius: 24px; overflow: hidden; position: relative; min-height: 600px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);">
+						<!-- Subtle Gradient Overlay for readability -->
+						<div class="vision-overlay"
+							style="background: linear-gradient(to top, rgba(10, 10, 30, 0.8), rgba(10, 10, 30, 0.1)); width:100%; height:100%; display:flex; flex-direction:column; justify-content:flex-end; padding:40px; box-sizing:border-box;">
 
-					<!-- Faculty Fields -->
-					<div id="facultyFields" class="role-fields">
-						<div class="input-group">
-							<input type="email" id="facultyEmail" required placeholder=" ">
-							<label>Email Address</label>
-						</div>
-						<div class="input-group">
-							<input type="password" id="facultyPassword" required placeholder=" ">
-							<label>Password</label>
-							<span class="toggle-password" data-target="facultyPassword">👁️</span>
-						</div>
-						<button id="facultyForgotPasswordBtn" class="link-btn" type="button">Forgot Password?</button>
-					</div>
+							<!-- Vision Card -->
+							<div class="glass-card"
+								style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 25px; margin-bottom: 20px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);">
+								<h2
+									style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 10px 0; display:flex; align-items:center; gap:10px;">
+									<span
+										style="background:var(--primary-purple); width:4px; height:20px; border-radius:4px; display:inline-block;"></span>
+									OUR VISION
+								</h2>
+								<p style="color:rgba(255,255,255,0.9); font-size:0.95rem; line-height:1.6; margin:0;">
+									To be a center of excellence in technical education and research, producing global
+									leaders who are technologically competent and socially responsible.
+								</p>
+							</div>
 
-					<!-- Admin Fields -->
-					<div id="adminFields" class="role-fields">
-						<div class="input-group">
-							<input type="text" id="adminUsername" required placeholder=" ">
-							<label>Username</label>
-						</div>
-						<div class="input-group">
-							<input type="password" id="adminPassword" required placeholder=" ">
-							<label>Password</label>
-							<span class="toggle-password" data-target="adminPassword">👁️</span>
+							<!-- Mission Card -->
+							<div class="glass-card"
+								style="background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 16px; padding: 25px; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);">
+								<h2
+									style="color:#fff; font-size:1.4rem; font-weight:700; margin:0 0 10px 0; display:flex; align-items:center; gap:10px;">
+									<span
+										style="background:#4a90e2; width:4px; height:20px; border-radius:4px; display:inline-block;"></span>
+									OUR MISSION
+								</h2>
+								<p style="color:rgba(255,255,255,0.9); font-size:0.95rem; line-height:1.6; margin:0;">
+									To provide high-quality education through innovative teaching methodologies,
+									ensuring students are well-prepared for the dynamic challenges of the industry and
+									society.
+								</p>
+							</div>
+
 						</div>
 					</div>
 
-					<div class="action-buttons">
-						<button id="loginBtn" class="primary-btn">Login</button>
-						<button id="backBtn" class="secondary-btn">Back</button>
+					<!-- Right Side: Login Form -->
+					<div class="login-card">
+						<h3 class="login-title" id="loginTitle">Login</h3>
+						<div id="loginError"></div>
+
+						<!-- College Selection -->
+						<div class="input-group college-group">
+							<select id="collegeSelect" required
+								style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--background); color: var(--text-main); font-family: inherit; margin-bottom: 20px; cursor: pointer;">
+								<option value="" disabled selected>Select Your College</option>
+							</select>
+						</div>
+
+						<!-- Unified Login Fields -->
+						<div id="unifiedLoginFields">
+							<div class="input-group">
+								<input type="text" id="loginIdentifier" required placeholder=" ">
+								<label>Roll Number / Email / Username</label>
+							</div>
+							<div class="input-group">
+								<input type="password" id="loginPassword" required placeholder=" "
+									autocomplete="current-password">
+								<label>Password</label>
+								<span class="toggle-password" data-target="loginPassword">👁️</span>
+							</div>
+							<div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+								<button id="forgotPasswordBtn" class="link-btn" type="button" style="margin: 0;">Forgot
+									Password?</button>
+							</div>
+						</div>
+
+						<div class="action-buttons" style="margin-top: 10px;">
+							<button id="loginBtn" class="primary-btn">Login</button>
+							<button id="backBtn" class="secondary-btn">Cancel</button>
+						</div>
 					</div>
 				</div>
 			</section>
@@ -147,30 +413,45 @@
 				<!-- Student Dashboard -->
 				<div id="studentDashboard" class="dashboard-cards hidden">
 					<div class="role-card" id="takeQuizBtn">
-						<div class="icon">🎯</div>
-						<h3>Take Quiz</h3>
-						<p>Start and attempt quizzes assigned to you</p>
+						<div class="card-img"
+							style="background-image: url('https://images.unsplash.com/photo-1434030216411-0b793f4b4173?auto=format&fit=crop&q=80&w=400');">
+						</div>
+						<div class="card-content">
+							<h3>Take Quiz</h3>
+							<p>Start and attempt quizzes assigned to you</p>
+						</div>
 					</div>
 					<div class="role-card" id="viewResultBtn">
-						<div class="icon">📊</div>
-						<h3>View Result</h3>
-						<p>Check your past quiz results</p>
+						<div class="card-img"
+							style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=400');">
+						</div>
+						<div class="card-content">
+							<h3>View Result</h3>
+							<p>Check your past quiz results</p>
+						</div>
 					</div>
-
 				</div>
 
 				<!-- Faculty Dashboard -->
 				<div id="facultyDashboard" class="hidden">
 					<div class="dashboard-cards" id="facultyHomeCards">
 						<div class="role-card" id="manageExamsCategoryBtn">
-							<div class="icon">📝</div>
-							<h3>Manage Examinations</h3>
-							<p>Create, activate, and manage your exams.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Manage Examinations</h3>
+								<p>Create, activate, and manage your exams.</p>
+							</div>
 						</div>
 						<div class="role-card" id="viewResultsCategoryBtn">
-							<div class="icon">📊</div>
-							<h3>Results & Analysis</h3>
-							<p>View rankings, publish results, and analyze student performance.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Results & Analysis</h3>
+								<p>View rankings, publish results, and analyze student performance.</p>
+							</div>
 						</div>
 					</div>
 
@@ -184,19 +465,31 @@
 						</div>
 						<div class="dashboard-cards">
 							<div class="role-card" id="addQuizBtn">
-								<div class="icon">➕</div>
-								<h3>Add Quiz</h3>
-								<p>Create new quizzes and upload questions.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1517842645767-c639042777db?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>Add Quiz</h3>
+									<p>Create new quizzes and upload questions.</p>
+								</div>
 							</div>
 							<div class="role-card" id="activateQuizBtn">
-								<div class="icon">✅</div>
-								<h3>Activate Quiz</h3>
-								<p>Set quizzes live for students to attempt.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1606326608606-aa0b62935f2b?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>Activate Quiz</h3>
+									<p>Set quizzes live for students to attempt.</p>
+								</div>
 							</div>
 							<div class="role-card" id="myExamsBtn">
-								<div class="icon">📚</div>
-								<h3>Exams Conducted by Me</h3>
-								<p>View and manage all your previous exams.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1486312338219-ce68d2c6f44d?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>Exams Conducted by Me</h3>
+									<p>View and manage all your previous exams.</p>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -211,19 +504,31 @@
 						</div>
 						<div class="dashboard-cards">
 							<div class="role-card" id="viewClassResultsBtn">
-								<div class="icon">📋</div>
-								<h3>View Class Results</h3>
-								<p>Check student performance and rankings.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1543286386-713df548e9cc?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>View Class Results</h3>
+									<p>Check student performance and rankings.</p>
+								</div>
 							</div>
 							<div class="role-card" id="publishResultBtn">
-								<div class="icon">📢</div>
-								<h3>Publish Result</h3>
-								<p>Make results visible to participants.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1557804506-669a67965ba0?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>Publish Result</h3>
+									<p>Make results visible to participants.</p>
+								</div>
 							</div>
 							<div class="role-card" id="studentAnalysisBtn">
-								<div class="icon">🔍</div>
-								<h3>Student Analysis</h3>
-								<p>Detailed performance history for individuals.</p>
+								<div class="card-img"
+									style="background-image: url('https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=400');">
+								</div>
+								<div class="card-content">
+									<h3>Student Analysis</h3>
+									<p>Detailed performance history for individuals.</p>
+								</div>
 							</div>
 						</div>
 					</div>
@@ -250,19 +555,31 @@
 				<div id="adminDashboard" class="hidden">
 					<div class="dashboard-cards">
 						<div class="role-card" id="manageFacultyDataBtn">
-							<div class="icon">👔</div>
-							<h3>Manage Faculty data</h3>
-							<p>Add, view, download or modify faculty records.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1577962917302-cd874c4e31d2?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Manage Faculty data</h3>
+								<p>Add, view, download or modify faculty records.</p>
+							</div>
 						</div>
 						<div class="role-card" id="manageDepartmentsBtn">
-							<div class="icon">🏛️</div>
-							<h3>Manage Departments</h3>
-							<p>Add or remove departments dynamically.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Manage Departments</h3>
+								<p>Add or remove departments dynamically.</p>
+							</div>
 						</div>
 						<div class="role-card" id="manageStudentDataBtn">
-							<div class="icon">🤝</div>
-							<h3>Manage Student data</h3>
-							<p>Add, view, download or modify student records.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Manage Student data</h3>
+								<p>Add, view, download or modify student records.</p>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -276,20 +593,32 @@
 					</div>
 
 					<div class="dashboard-cards" style="margin-bottom: 30px;">
-						<div class="role-card" id="uploadStudentAdminBtn">
-							<div class="icon">📤</div>
-							<h3>Add Student Data</h3>
-							<p>Multi-upload via Excel template.</p>
+						<div class="role-card" id="studentAddMainBtn">
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Add Student Data</h3>
+								<p>Choose between Individual or Bulk upload.</p>
+							</div>
 						</div>
 						<div class="role-card" id="viewStudentsBtn">
-							<div class="icon">👁️</div>
-							<h3>View Data</h3>
-							<p>Search and filter student records.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1450101499163-c8848c66ca85?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>View Data</h3>
+								<p>Search and filter student records.</p>
+							</div>
 						</div>
 						<div class="role-card" id="downloadStudentsCardBtn">
-							<div class="icon">📥</div>
-							<h3>Download Data</h3>
-							<p>Export students to Excel.</p>
+							<div class="card-img"
+								style="background-image: url('https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=400');">
+							</div>
+							<div class="card-content">
+								<h3>Download Data</h3>
+								<p>Export students to Excel.</p>
+							</div>
 						</div>
 					</div>
 
@@ -297,35 +626,26 @@
 						<div class="filter-panel"
 							style="background:white; padding:35px; border-radius:20px; border:1px solid var(--border); margin-bottom:40px; display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:25px; box-shadow:var(--shadow-sm);">
 							<div class="filter-item">
+								<label class="input-label" style="margin:0 0 8px;">Roll Number</label>
+								<input type="text" id="sRollSearch" placeholder="Filter by Roll No"
+									style="margin:0; height:50px; width:100%; border:1px solid var(--border); border-radius:10px; padding:0 15px;">
+							</div>
+							<div class="filter-item">
 								<label class="input-label" style="margin:0 0 8px;">Department</label>
 								<select id="sDept" class="dept-select-dynamic" style="margin:0; height:50px;">
 									<option value="">All Departments</option>
 								</select>
 							</div>
 							<div class="filter-item">
-								<label class="input-label" style="margin:0 0 8px;">Section</label>
-								<select id="sSec" style="margin:0; height:50px;">
-									<option value="">All Sections</option>
-									<option value="A">A</option>
-									<option value="B">B</option>
-									<option value="C">C</option>
-									<option value="D">D</option>
-									<option value="E">E</option>
-									<option value="F">F</option>
-									<option value="G">G</option>
-									<option value="H">H</option>
-									<option value="I">I</option>
-									<option value="J">J</option>
+								<label class="input-label" style="margin:0 0 8px;">Year</label>
+								<select id="sYear" class="year-select-dynamic" style="margin:0; height:50px;">
+									<option value="">All Years</option>
 								</select>
 							</div>
 							<div class="filter-item">
-								<label class="input-label" style="margin:0 0 8px;">Year</label>
-								<select id="sYear" style="margin:0; height:50px;">
-									<option value="">All Years</option>
-									<option value="1">1</option>
-									<option value="2">2</option>
-									<option value="3">3</option>
-									<option value="4">4</option>
+								<label class="input-label" style="margin:0 0 8px;">Section</label>
+								<select id="sSec" class="section-select-dynamic" style="margin:0; height:50px;">
+									<option value="">All Sections</option>
 								</select>
 							</div>
 							<div
@@ -383,10 +703,10 @@
 					</div>
 
 					<div class="dashboard-cards" style="margin-bottom: 30px;">
-						<div class="role-card" id="uploadFacultyAdminBtn">
-							<div class="icon">📤</div>
+						<div class="role-card" id="facultyAddMainBtn">
+							<div class="icon">➕</div>
 							<h3>Add Faculty Data</h3>
-							<p>Multi-upload via Excel template.</p>
+							<p>Choose between Individual or Bulk upload.</p>
 						</div>
 						<div class="role-card" id="viewFacultyBtn">
 							<div class="icon">👁️</div>
@@ -410,30 +730,9 @@
 								</select>
 							</div>
 							<div class="filter-item">
-								<label class="input-label" style="margin:0 0 8px;">Section</label>
-								<select id="fSecAdmin" style="margin:0; height:50px;">
-									<option value="">All Sections</option>
-									<option value="A">A</option>
-									<option value="B">B</option>
-									<option value="C">C</option>
-									<option value="D">D</option>
-									<option value="E">E</option>
-									<option value="F">F</option>
-									<option value="G">G</option>
-									<option value="H">H</option>
-									<option value="I">I</option>
-									<option value="J">J</option>
-								</select>
-							</div>
-							<div class="filter-item">
-								<label class="input-label" style="margin:0 0 8px;">Year</label>
-								<select id="fYearAdmin" style="margin:0; height:50px;">
-									<option value="">All Years</option>
-									<option value="1">1</option>
-									<option value="2">2</option>
-									<option value="3">3</option>
-									<option value="4">4</option>
-								</select>
+								<label class="input-label" style="margin:0 0 8px;">Faculty ID</label>
+								<input type="text" id="fIdSearch" placeholder="Filter by ID"
+									style="margin:0; height:50px; width:100%; border:1px solid var(--border); border-radius:10px; padding:0 15px;">
 							</div>
 							<div
 								style="grid-column: 1/-1; display:flex; gap:15px; margin-top:10px; border-top:1px solid var(--border); padding-top:25px;">
@@ -479,7 +778,52 @@
 		</div>
 	</main>
 
-	<footer class="page-footer">
+	<!-- Course Details Modal -->
+	<div id="landingCourseModal" class="hidden"
+		style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); backdrop-filter:blur(10px); z-index:5000; display:none; align-items:center; justify-content:center; padding:20px;">
+		<div
+			style="background:white; width:95%; max-width:800px; border-radius:30px; box-shadow:0 30px 60px rgba(0,0,0,0.2); overflow:hidden; border:1px solid #fbcfe8; animation: slideUp 0.4s ease; display:flex; flex-direction:column; max-height:85vh;">
+			<div id="courseModalHeader"
+				style="height:280px; background-image: url('https://images.unsplash.com/photo-1497633762265-9d179a990aa6?auto=format&fit=crop&q=80&w=1000'); background-size:cover; background-position:center; position:relative; flex-shrink:0;">
+				<div
+					style="position:absolute; inset:0; background:linear-gradient(to top, rgba(15, 23, 42, 0.95) 0%, rgba(15, 23, 42, 0.4) 60%, transparent 100%);">
+				</div>
+				<button onclick="document.getElementById('landingCourseModal').style.display='none'"
+					style="position:absolute; top:20px; right:20px; background:rgba(255,255,255,0.95); backdrop-filter:blur(8px); border:none; width:48px; height:48px; border-radius:50%; cursor:pointer; font-size:24px; color:#ef4444; display:flex; align-items:center; justify-content:center; z-index:30; box-shadow: 0 8px 16px rgba(0,0,0,0.15); transition: transform 0.2s ease;">&times;</button>
+				<div
+					style="position:absolute; bottom:30px; left:35px; right:35px; text-shadow: 0 4px 12px rgba(0,0,0,0.6);">
+					<span
+						style="background:#6366f1; color:white; padding:5px 14px; border-radius:20px; font-size:0.75rem; font-weight:700; display:inline-block; margin-bottom:12px; text-transform:uppercase; letter-spacing:1px; box-shadow: 0 4px 6px rgba(0,0,0,0.2);">Course
+						Details</span>
+					<h2 id="modalCourseTitle"
+						style="margin:0; color:white; font-size:2.4rem; font-weight:800; line-height: 1.1; letter-spacing: -0.5px; max-width: 90%;">
+						Course
+						Title</h2>
+					<div id="modalCourseDates"
+						style="margin-top:12px; color:rgba(226, 232, 240, 0.95); font-weight:500; display:flex; flex-wrap:wrap; gap:20px; font-size:1rem; align-items:center;">
+						<!-- Populated via JS -->
+					</div>
+				</div>
+			</div>
+			<div style="padding:30px; overflow-y:auto; flex:1; min-height:0; scrollbar-width: thin;">
+				<h3
+					style="color:var(--landing-primary); margin-top:0; border-bottom:2px solid #f1f5f9; padding-bottom:10px; margin-bottom:20px;">
+					Detailed Syllabus & Topics</h3>
+				<div id="modalCourseSyllabus"
+					style="color:var(--text-dark); line-height:1.8; font-size:1rem; white-space:pre-wrap;">
+					<!-- Populated via JS -->
+				</div>
+			</div>
+			<div
+				style="padding:20px 30px; background:#f8fafc; border-top:1px solid #e1e8ed; text-align:right; flex-shrink:0;">
+				<button class="primary-btn"
+					onclick="document.getElementById('landingCourseModal').style.display='none'">Close
+					Details</button>
+			</div>
+		</div>
+	</div>
+
+	<footer class="page-footer" id="contact">
 		<div class="footer-content">
 			Developed by <strong>Vineeth sai</strong> & <strong>Yaswanth Reddy</strong>,
 			Dept of CSE (2023–2027 Batch) |
@@ -497,8 +841,10 @@
 		</div>
 	</div>
 
-	<!-- Load Chart.js first before other scripts that depend on it -->
 	<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+	<!-- Monaco Editor -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
 
 	<script src="authFetch.js"></script>
 	<script src="login.js"></script>

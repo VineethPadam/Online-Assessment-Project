@@ -22,10 +22,29 @@ public class QuizActivation {
 
     private int durationMinutes = 0; // exam duration in minutes
 
+    private java.time.LocalDateTime startTime;
+    private java.time.LocalDateTime endTime;
+
     @Lob
     private String sectionConfigs; // JSON string: {"sectionId": count, "-1": count}
 
     // Getters & Setters
+    public java.time.LocalDateTime getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(java.time.LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public java.time.LocalDateTime getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(java.time.LocalDateTime endTime) {
+        this.endTime = endTime;
+    }
+
     public int getId() {
         return id;
     }

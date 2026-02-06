@@ -1,6 +1,5 @@
 package com.example.OnlineAssessment.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -48,7 +47,22 @@ public class Questions {
     @Column(columnDefinition = "LONGTEXT")
     private String questionImage; // stores Base64 string
 
-    private String questionType; // "MCQ" or "NUMERICAL"
+    private String questionType; // "MCQ", "NUMERICAL", or "CODING"
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String inputFormat;
+    @Column(columnDefinition = "LONGTEXT")
+    private String outputFormat;
+    @Column(columnDefinition = "LONGTEXT")
+    private String sampleInput;
+    @Column(columnDefinition = "LONGTEXT")
+    private String sampleOutput;
+    @Column(columnDefinition = "LONGTEXT")
+    private String testCases; // Hidden test cases for evaluation
+    @Column(columnDefinition = "LONGTEXT")
+    private String constraints;
+    @Column(columnDefinition = "LONGTEXT")
+    private String hints;
 
     // Getters & Setters
     public String getQuestionId() {
@@ -129,5 +143,61 @@ public class Questions {
 
     public void setQuestionType(String questionType) {
         this.questionType = questionType;
+    }
+
+    public String getInputFormat() {
+        return inputFormat;
+    }
+
+    public void setInputFormat(String inputFormat) {
+        this.inputFormat = inputFormat;
+    }
+
+    public String getOutputFormat() {
+        return outputFormat;
+    }
+
+    public void setOutputFormat(String outputFormat) {
+        this.outputFormat = outputFormat;
+    }
+
+    public String getSampleInput() {
+        return sampleInput;
+    }
+
+    public void setSampleInput(String sampleInput) {
+        this.sampleInput = sampleInput;
+    }
+
+    public String getSampleOutput() {
+        return sampleOutput;
+    }
+
+    public void setSampleOutput(String sampleOutput) {
+        this.sampleOutput = sampleOutput;
+    }
+
+    public String getTestCases() {
+        return testCases;
+    }
+
+    public void setTestCases(String testCases) {
+        this.testCases = testCases;
+    }
+
+    public String getConstraints() {
+        return constraints;
+    }
+
+    public void setConstraints(String constraints) {
+        this.constraints = constraints;
+    }
+
+    public String getHints() {
+        return hints;
+    }
+
+    public void setHints(String hints) {
+        this.hints = hints;
     }
 }

@@ -24,23 +24,43 @@ public class AdminController {
     private JwtUtil jwtUtil;
 
     @PostMapping("/validate")
-    public ResponseEntity<?> validateAdmin(@RequestBody Admin admin) {
+    public ResponseEntity<?> validateAdmin(@RequestBody Map<String, Object> payload) {
+        String username = (payload.get("username") != null) ? payload.get("username").toString().trim() : "";
+        String password = (payload.get("password") != null) ? payload.get("password").toString().trim() : "";
+        Object cidObj = payload.get("collegeId");
+        if (cidObj == null)
+            return ResponseEntity.badRequest().body("College selection is required");
+        Long collegeId = Long.valueOf(cidObj.toString());
 
-        String username = admin.getUsername().trim();
-        String password = admin.getPassword().trim();
+        try {
+            Admin a = adminService.validateAdmin(username, password, collegeId);
 
-        Admin a = adminService.validateAdmin(username, password);
+            if (a != null) {
+                String token = jwtUtil.generateToken(a.getUsername(), "ADMIN", collegeId);
+                Map<String, Object> response = new HashMap<>();
+                response.put("token", token);
+                response.put("username", a.getUsername());
+                response.put("role", "ADMIN");
 
-        if (a != null) {
-            String token = jwtUtil.generateToken(a.getUsername(), "ADMIN");
-            Map<String, Object> response = new HashMap<>();
-            response.put("token", token);
-            response.put("username", a.getUsername());
-            response.put("role", "ADMIN");
-            return ResponseEntity.ok(response);
+                // Add permissions
+                com.example.OnlineAssessment.entity.College c = a.getCollege();
+                if (c != null) {
+                    Map<String, Object> perms = new HashMap<>();
+                    perms.put("allowMcq", c.isAllowMcqQuestions());
+                    perms.put("allowCoding", c.isAllowCodingQuestions());
+                    perms.put("allowNumeric", c.isAllowNumericQuestions());
+                    perms.put("allowImages", c.isAllowImageInQuestions());
+                    perms.put("allowQuestionBank", c.isAllowQuestionBankAccess());
+                    perms.put("maxFaculty", c.getMaxFacultyUsers());
+                    perms.put("maxStudents", c.getMaxStudentUsers());
+                    response.put("permissions", perms);
+                }
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Credentials");
+        } catch (RuntimeException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(e.getMessage());
         }
-
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid Credentials");
     }
 
 }
