@@ -1,17 +1,15 @@
 package com.example.OnlineAssessment.entity;
 
-import com.fasterxml.jackson.annotation.JsonBackReference;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
-import jakarta.persistence.ElementCollection;
+
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
-
-import java.util.Arrays;
-import java.util.List;
 
 @Entity
 public class Options {

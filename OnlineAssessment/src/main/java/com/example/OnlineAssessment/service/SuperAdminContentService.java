@@ -1,15 +1,16 @@
 package com.example.OnlineAssessment.service;
 
-import com.example.OnlineAssessment.entity.PortalInfo;
-import com.example.OnlineAssessment.entity.Founder;
-import com.example.OnlineAssessment.entity.Trainer;
-import com.example.OnlineAssessment.entity.SuperAdminProfile;
-import com.example.OnlineAssessment.entity.ContactMessage;
-import com.example.OnlineAssessment.repositories.*;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import com.example.OnlineAssessment.entity.ContactMessage;
+import com.example.OnlineAssessment.entity.PortalInfo;
+import com.example.OnlineAssessment.entity.SuperAdminProfile;
+import com.example.OnlineAssessment.repositories.ContactMessageRepository;
+import com.example.OnlineAssessment.repositories.PortalInfoRepository;
+import com.example.OnlineAssessment.repositories.SuperAdminProfileRepository;
 
 @Service
 public class SuperAdminContentService {
